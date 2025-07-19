@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-// 👉 For testing - replace with your Google OAuth client ID when ready
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+// 👉 Google OAuth client ID configured for testing
+const GOOGLE_CLIENT_ID = "511078051910-im9pf7k89147s010lj118l1cgn7vk3k4.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
 export default function GoogleCalendarSync() {
