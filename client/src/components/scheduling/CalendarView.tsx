@@ -301,14 +301,14 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                           }`}
                         >
                           {eventInSlot && (
-                            <div className="text-xs">
-                              <div className="font-medium text-[#56A0D3] truncate">
+                            <div className="text-xs bg-[#56A0D3] text-white p-1 rounded">
+                              <div className="font-medium truncate">
                                 {eventInSlot.title}
                               </div>
-                              <div className="text-[#4A8BB8] truncate">
+                              <div className="truncate opacity-90">
                                 {eventInSlot.coach}
                               </div>
-                              <div className="text-xs text-[#7BB5DC]">
+                              <div className="text-xs opacity-80">
                                 {eventInSlot.eventType}
                               </div>
                             </div>
