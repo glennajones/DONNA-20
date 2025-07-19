@@ -6,46 +6,60 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.events";
 
 export default function GoogleCalendarSync() {
   const [gapiLoaded, setGapiLoaded] = useState(false);
+  const [gisLoaded, setGisLoaded] = useState(false);
   const [isSignedIn, setIsSignedIn] = useState(false);
-  const [authInstance, setAuthInstance] = useState(null);
+  const [tokenClient, setTokenClient] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [error, setError] = useState('');
+  const [accessToken, setAccessToken] = useState(null);
 
-  // Load GAPI script
+  // Load Google APIs and GIS scripts
   useEffect(() => {
-    // Check if we have a valid Google Client ID
-    if (GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com") {
-      setError('Google Client ID not configured. Please set up OAuth credentials first.');
-      return;
-    }
+    // Load GAPI script
+    const gapiScript = document.createElement('script');
+    gapiScript.src = "https://apis.google.com/js/api.js";
+    gapiScript.onload = initGapi;
+    document.body.appendChild(gapiScript);
 
-    const script = document.createElement('script');
-    script.src = "https://apis.google.com/js/api.js";
-    script.onload = initClient;
-    document.body.appendChild(script);
+    // Load GIS script
+    const gisScript = document.createElement('script');
+    gisScript.src = "https://accounts.google.com/gsi/client";
+    gisScript.onload = initGis;
+    document.body.appendChild(gisScript);
     
     // Check connection status on load
     checkConnectionStatus();
   }, []);
 
-  const initClient = () => {
-    window.gapi.load('client:auth2', async () => {
-      try {
-        await window.gapi.client.init({
-          clientId: GOOGLE_CLIENT_ID,
-          scope: SCOPES,
-        });
-        const auth = window.gapi.auth2.getAuthInstance();
-        setAuthInstance(auth);
-        setIsSignedIn(auth.isSignedIn.get());
-        auth.isSignedIn.listen(setIsSignedIn);
-        setGapiLoaded(true);
-      } catch (err) {
-        console.error('GAPI initialization error:', err);
-        setError('Failed to initialize Google API. Please check your configuration.');
-      }
+  const initGapi = async () => {
+    await new Promise((resolve) => {
+      window.gapi.load('client', resolve);
     });
+    
+    await window.gapi.client.init({
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+    });
+    
+    setGapiLoaded(true);
+  };
+
+  const initGis = () => {
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: SCOPES,
+      callback: (tokenResponse) => {
+        console.log('Token received:', tokenResponse);
+        setAccessToken(tokenResponse.access_token);
+        setIsSignedIn(true);
+        
+        // Save tokens to backend
+        saveTokenToBackend(tokenResponse);
+      },
+    });
+    
+    setTokenClient(client);
+    setGisLoaded(true);
   };
 
   const checkConnectionStatus = async () => {
@@ -63,8 +77,41 @@ export default function GoogleCalendarSync() {
     }
   };
 
+  const saveTokenToBackend = async (tokenResponse) => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setError('Please login first');
+      return;
+    }
+
+    try {
+      const expiresAt = Date.now() + (tokenResponse.expires_in * 1000);
+      
+      await fetch("/api/integrations/calendar", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          access_token: tokenResponse.access_token,
+          expires_at: expiresAt,
+        }),
+      });
+
+      alert("Google Calendar connected successfully!");
+      checkConnectionStatus();
+    } catch (err) {
+      console.error("Save token error:", err);
+      setError("Failed to save authentication. Please try again.");
+    }
+  };
+
   const handleConnect = async () => {
-    if (!authInstance) return;
+    if (!tokenClient) {
+      setError('Google authentication not ready. Please refresh the page.');
+      return;
+    }
     
     const token = localStorage.getItem('auth_token');
     if (!token) {
@@ -74,27 +121,7 @@ export default function GoogleCalendarSync() {
 
     try {
       setError('');
-      const user = await authInstance.signIn();
-      const authResponse = user.getAuthResponse(true);
-      console.log("Google OAuth Success:", authResponse);
-
-      // ✅ Save tokens to backend
-      await fetch("/api/integrations/calendar", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          access_token: authResponse.access_token,
-          id_token: authResponse.id_token,
-          expires_at: authResponse.expires_at,
-          refresh_token: authResponse.refresh_token,
-        }),
-      });
-
-      alert("Google Calendar connected successfully!");
-      checkConnectionStatus();
+      tokenClient.requestAccessToken({ prompt: 'consent' });
     } catch (err) {
       console.error("OAuth Error:", err);
       setError("Failed to connect Google Calendar. Please try again.");
@@ -111,8 +138,9 @@ export default function GoogleCalendarSync() {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
-      if (authInstance) {
-        authInstance.signOut();
+      if (accessToken && window.google?.accounts?.oauth2) {
+        window.google.accounts.oauth2.revoke(accessToken);
+        setAccessToken(null);
       }
       
       setConnectionStatus(null);
@@ -153,12 +181,14 @@ export default function GoogleCalendarSync() {
       }
 
       let syncedCount = 0;
+      // Set access token for API calls
+      window.gapi.client.setToken({access_token: accessToken});
+
       for (let evt of events) {
         try {
-          await window.gapi.client.request({
-            path: '/calendar/v3/calendars/primary/events',
-            method: 'POST',
-            body: {
+          await window.gapi.client.calendar.events.insert({
+            calendarId: 'primary',
+            resource: {
               summary: evt.title,
               description: evt.description,
               start: { dateTime: evt.start, timeZone: 'UTC' },
@@ -228,9 +258,9 @@ export default function GoogleCalendarSync() {
           <button
             onClick={handleConnect}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-medium"
-            disabled={!gapiLoaded}
+            disabled={!gapiLoaded || !gisLoaded}
           >
-            {gapiLoaded ? 'Connect Google Calendar' : 'Loading...'}
+            {(gapiLoaded && gisLoaded) ? 'Connect Google Calendar' : 'Loading...'}
           </button>
         ) : (
           <>
