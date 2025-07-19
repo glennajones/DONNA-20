@@ -246,3 +246,50 @@ export const insertEventSchema = createInsertSchema(events).omit({
 });
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
+
+// Fundraising & Sponsorship Schema
+export const campaigns = pgTable("campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  goal: decimal("goal", { precision: 10, scale: 2 }).notNull(),
+  raised: decimal("raised", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  startDate: text("start_date"), // YYYY-MM-DD format
+  endDate: text("end_date"), // YYYY-MM-DD format
+  status: text("status", { enum: ["active", "completed", "cancelled"] }).notNull().default("active"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const sponsors = pgTable("sponsors", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  logo: text("logo"), // URL or base64 image data
+  tier: text("tier", { enum: ["Bronze", "Silver", "Gold", "Platinum", "Diamond"] }).notNull(),
+  contact: text("contact"), // email
+  phone: text("phone"),
+  website: text("website"),
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Types for Fundraising
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
+export const insertSponsorSchema = createInsertSchema(sponsors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
+export type Sponsor = typeof sponsors.$inferSelect;

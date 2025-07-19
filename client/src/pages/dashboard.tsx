@@ -16,7 +16,8 @@ import {
   Database,
   BarChart3,
   UserCog,
-  TriangleAlert
+  TriangleAlert,
+  Heart
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -70,6 +71,14 @@ export default function Dashboard() {
       icon: CalendarPlus,
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700",
       roles: ["admin", "coach"],
+      href: "/training",
+    },
+    {
+      title: "Fundraising",
+      icon: Heart,
+      color: "bg-pink-50 hover:bg-pink-100 border-pink-200 text-pink-700",
+      roles: ["admin", "manager"],
+      href: "/fundraising",
     },
     {
       title: "System Settings",

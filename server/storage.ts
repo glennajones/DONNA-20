@@ -8,6 +8,8 @@ import {
   formTemplates,
   formResponses,
   events,
+  campaigns,
+  sponsors,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -25,7 +27,11 @@ import {
   type FormResponse,
   type InsertFormResponse,
   type Event,
-  type InsertEvent
+  type InsertEvent,
+  type Campaign,
+  type InsertCampaign,
+  type Sponsor,
+  type InsertSponsor
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -89,6 +95,20 @@ export interface IStorage {
   createEvent(event: InsertEvent): Promise<Event>;
   updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
   deleteEvent(id: number): Promise<boolean>;
+
+  // Campaign methods
+  getCampaign(id: number): Promise<Campaign | undefined>;
+  getCampaigns(): Promise<Campaign[]>;
+  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  updateCampaign(id: number, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  deleteCampaign(id: number): Promise<boolean>;
+
+  // Sponsor methods
+  getSponsor(id: number): Promise<Sponsor | undefined>;
+  getSponsors(): Promise<Sponsor[]>;
+  createSponsor(sponsor: InsertSponsor): Promise<Sponsor>;
+  updateSponsor(id: number, sponsor: Partial<InsertSponsor>): Promise<Sponsor | undefined>;
+  deleteSponsor(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -424,6 +444,70 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEvent(id: number): Promise<boolean> {
     const result = await db.delete(events).where(eq(events.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Campaign methods
+  async getCampaign(id: number): Promise<Campaign | undefined> {
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, id));
+    return campaign || undefined;
+  }
+
+  async getCampaigns(): Promise<Campaign[]> {
+    return await db.select().from(campaigns).orderBy(desc(campaigns.createdAt));
+  }
+
+  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
+    const [campaign] = await db
+      .insert(campaigns)
+      .values(insertCampaign)
+      .returning();
+    return campaign;
+  }
+
+  async updateCampaign(id: number, campaignUpdate: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+    const [campaign] = await db
+      .update(campaigns)
+      .set({ ...campaignUpdate, updatedAt: new Date() })
+      .where(eq(campaigns.id, id))
+      .returning();
+    return campaign || undefined;
+  }
+
+  async deleteCampaign(id: number): Promise<boolean> {
+    const result = await db.delete(campaigns).where(eq(campaigns.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Sponsor methods
+  async getSponsor(id: number): Promise<Sponsor | undefined> {
+    const [sponsor] = await db.select().from(sponsors).where(eq(sponsors.id, id));
+    return sponsor || undefined;
+  }
+
+  async getSponsors(): Promise<Sponsor[]> {
+    return await db.select().from(sponsors).orderBy(desc(sponsors.createdAt));
+  }
+
+  async createSponsor(insertSponsor: InsertSponsor): Promise<Sponsor> {
+    const [sponsor] = await db
+      .insert(sponsors)
+      .values(insertSponsor)
+      .returning();
+    return sponsor;
+  }
+
+  async updateSponsor(id: number, sponsorUpdate: Partial<InsertSponsor>): Promise<Sponsor | undefined> {
+    const [sponsor] = await db
+      .update(sponsors)
+      .set({ ...sponsorUpdate, updatedAt: new Date() })
+      .where(eq(sponsors.id, id))
+      .returning();
+    return sponsor || undefined;
+  }
+
+  async deleteSponsor(id: number): Promise<boolean> {
+    const result = await db.delete(sponsors).where(eq(sponsors.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }

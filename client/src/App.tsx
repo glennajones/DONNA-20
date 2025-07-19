@@ -15,6 +15,7 @@ import MembersPage from "./pages/members";
 import CommunicationPage from "./pages/communication";
 import FormsPage from "./pages/forms";
 import EventsPage from "./pages/events";
+import { FundraisingPage } from "./pages/fundraising";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/communication" component={CommunicationPage} />
       <Route path="/forms" component={FormsPage} />
       <Route path="/events" component={EventsPage} />
+      <Route path="/fundraising" component={FundraisingPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

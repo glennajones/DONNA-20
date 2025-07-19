@@ -873,6 +873,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Campaign Routes
+  app.get("/api/campaigns", authenticateToken, async (req: any, res) => {
+    try {
+      const campaigns = await storage.getCampaigns();
+      res.json(campaigns);
+    } catch (error) {
+      console.error("Get campaigns error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/campaigns", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create campaigns
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const campaignData = { ...req.body, createdBy: req.user.id };
+      const campaign = await storage.createCampaign(campaignData);
+      res.status(201).json(campaign);
+    } catch (error) {
+      console.error("Create campaign error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/campaigns/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update campaigns
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const campaignData = req.body;
+      
+      const updatedCampaign = await storage.updateCampaign(parseInt(id), campaignData);
+      
+      if (!updatedCampaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      res.json(updatedCampaign);
+    } catch (error) {
+      console.error("Update campaign error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/campaigns/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete campaigns
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteCampaign(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      res.json({ message: "Campaign deleted successfully" });
+    } catch (error) {
+      console.error("Delete campaign error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Sponsor Routes
+  app.get("/api/sponsors", authenticateToken, async (req: any, res) => {
+    try {
+      const sponsors = await storage.getSponsors();
+      res.json(sponsors);
+    } catch (error) {
+      console.error("Get sponsors error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/sponsors", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create sponsors
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const sponsorData = { ...req.body, createdBy: req.user.id };
+      const sponsor = await storage.createSponsor(sponsorData);
+      res.status(201).json(sponsor);
+    } catch (error) {
+      console.error("Create sponsor error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/sponsors/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update sponsors
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const sponsorData = req.body;
+      
+      const updatedSponsor = await storage.updateSponsor(parseInt(id), sponsorData);
+      
+      if (!updatedSponsor) {
+        return res.status(404).json({ message: "Sponsor not found" });
+      }
+      
+      res.json(updatedSponsor);
+    } catch (error) {
+      console.error("Update sponsor error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/sponsors/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete sponsors
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteSponsor(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Sponsor not found" });
+      }
+      
+      res.json({ message: "Sponsor deleted successfully" });
+    } catch (error) {
+      console.error("Delete sponsor error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

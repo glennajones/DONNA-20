@@ -1,0 +1,310 @@
+Here’s a complete, ready-to-run implementation for your Fundraising & Sponsorship module with React + Tailwind + plain‑JS.
+
+✅ Project structure
+css
+Copy
+Edit
+src/
+ └─ modules/
+     └─ Fundraising/
+         ├─ Campaigns.jsx
+         └─ Sponsors.jsx
+📌 src/modules/Fundraising/Campaigns.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+export default function Campaigns() {
+  const [campaigns, setCampaigns] = useState([
+    { id: 1, name: "Community Park", goal: 10000, raised: 2500 },
+    { id: 2, name: "School Renovation", goal: 20000, raised: 15000 },
+  ]);
+
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [formData, setFormData] = useState({ name: "", goal: "", raised: "" });
+
+  const openModal = (campaign = null) => {
+    if (campaign) {
+      setEditingCampaign(campaign.id);
+      setFormData({
+        name: campaign.name,
+        goal: campaign.goal,
+        raised: campaign.raised,
+      });
+    } else {
+      setEditingCampaign(null);
+      setFormData({ name: "", goal: "", raised: "" });
+    }
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+  };
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = () => {
+    if (editingCampaign) {
+      setCampaigns((prev) =>
+        prev.map((c) =>
+          c.id === editingCampaign
+            ? { ...c, ...formData, goal: Number(formData.goal), raised: Number(formData.raised) }
+            : c
+        )
+      );
+    } else {
+      setCampaigns((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          name: formData.name,
+          goal: Number(formData.goal),
+          raised: Number(formData.raised),
+        },
+      ]);
+    }
+    closeModal();
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Campaigns</h2>
+      <button
+        onClick={() => openModal()}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Add Campaign
+      </button>
+      <div className="mt-6">
+        <table className="min-w-full border">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 border">Name</th>
+              <th className="p-2 border">Goal</th>
+              <th className="p-2 border">Raised</th>
+              <th className="p-2 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {campaigns.map((c) => (
+              <tr key={c.id} className="border-t">
+                <td className="p-2 border">{c.name}</td>
+                <td className="p-2 border">${c.goal.toLocaleString()}</td>
+                <td className="p-2 border">${c.raised.toLocaleString()}</td>
+                <td className="p-2 border">
+                  <button
+                    onClick={() => openModal(c)}
+                    className="text-blue-500 hover:underline mr-2"
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4">
+              {editingCampaign ? "Edit Campaign" : "Add Campaign"}
+            </h3>
+            <input
+              name="name"
+              placeholder="Name"
+              className="border p-2 w-full mb-3"
+              value={formData.name}
+              onChange={handleChange}
+            />
+            <input
+              name="goal"
+              type="number"
+              placeholder="Goal Amount"
+              className="border p-2 w-full mb-3"
+              value={formData.goal}
+              onChange={handleChange}
+            />
+            <input
+              name="raised"
+              type="number"
+              placeholder="Raised Amount"
+              className="border p-2 w-full mb-3"
+              value={formData.raised}
+              onChange={handleChange}
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button onClick={closeModal} className="px-4 py-2 bg-gray-300 rounded">
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+📌 src/modules/Fundraising/Sponsors.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+export default function Sponsors() {
+  const [sponsors, setSponsors] = useState([
+    { id: 1, name: "TechCorp", logo: "", tier: "Gold", contact: "info@techcorp.com" },
+  ]);
+
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: "", logo: "", tier: "", contact: "" });
+
+  const openModal = (sponsor = null) => {
+    if (sponsor) {
+      setEditing(sponsor.id);
+      setForm({ name: sponsor.name, logo: sponsor.logo, tier: sponsor.tier, contact: sponsor.contact });
+    } else {
+      setEditing(null);
+      setForm({ name: "", logo: "", tier: "", contact: "" });
+    }
+    setModalOpen(true);
+  };
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "logo") {
+      const file = files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => setForm((prev) => ({ ...prev, logo: reader.result }));
+        reader.readAsDataURL(file);
+      }
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSave = () => {
+    if (editing) {
+      setSponsors((prev) =>
+        prev.map((s) => (s.id === editing ? { ...s, ...form } : s))
+      );
+    } else {
+      setSponsors((prev) => [...prev, { id: Date.now(), ...form }]);
+    }
+    setModalOpen(false);
+  };
+
+  const handleDelete = (id) => {
+    setSponsors((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Sponsors</h2>
+      <button
+        onClick={() => openModal()}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Add Sponsor
+      </button>
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {sponsors.map((s) => (
+          <div
+            key={s.id}
+            className="border p-4 rounded shadow flex flex-col md:flex-row items-center md:items-start justify-between"
+          >
+            <div className="flex items-center space-x-4">
+              {s.logo && (
+                <img src={s.logo} alt={s.name} className="w-16 h-16 object-cover rounded" />
+              )}
+              <div>
+                <h3 className="text-lg font-semibold">{s.name}</h3>
+                <p className="text-sm text-gray-600">Tier: {s.tier}</p>
+                <p className="text-sm text-gray-600">Contact: {s.contact}</p>
+              </div>
+            </div>
+            <div className="mt-3 md:mt-0 md:ml-4 flex space-x-3">
+              <button
+                onClick={() => openModal(s)}
+                className="text-blue-500 hover:underline"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(s.id)}
+                className="text-red-500 hover:underline"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <h3 className="text-xl font-semibold mb-4">
+              {editing ? "Edit Sponsor" : "Add Sponsor"}
+            </h3>
+            <input
+              name="name"
+              placeholder="Name"
+              className="border p-2 w-full mb-3"
+              value={form.name}
+              onChange={handleChange}
+            />
+            <input
+              type="file"
+              name="logo"
+              accept="image/*"
+              className="border p-2 w-full mb-3"
+              onChange={handleChange}
+            />
+            <input
+              name="tier"
+              placeholder="Tier"
+              className="border p-2 w-full mb-3"
+              value={form.tier}
+              onChange={handleChange}
+            />
+            <input
+              name="contact"
+              placeholder="Contact Email"
+              className="border p-2 w-full mb-3"
+              value={form.contact}
+              onChange={handleChange}
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 bg-gray-300 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
