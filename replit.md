@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Users table** with id, username, password, name, and role fields
 - **Registrations table** with player information, contact details, emergency contacts, medical info, and status tracking
 - **Payments table** with registration fee tracking, payment status, and Stripe integration support
+- **Schedule Events table** with training sessions, court bookings, coach assignments, and participant tracking
 - **PostgreSQL dialect** configured for production use
 - **Drizzle ORM** for type-safe database operations
 - **Migration system** for schema changes
@@ -64,6 +65,15 @@ Preferred communication style: Simple, everyday language.
 - **Status workflow** (pending → approved/rejected)
 - **Registration data validation** with comprehensive form handling
 - **Demo payment processing** with mock Stripe integration
+
+#### Module 3: Training & Scheduling System
+- **Calendar view** with day/week/month viewing options
+- **Court management** with 9 courts (7 indoor + 2 beach courts)
+- **Training session scheduling** with conflict detection
+- **Event management** (training, match, tournament, practice)
+- **Coach assignment** and participant tracking
+- **Schedule conflict prevention** with automatic validation
+- **Role-based scheduling access** (admin/manager can create, coach can view)
 
 ## Data Flow
 

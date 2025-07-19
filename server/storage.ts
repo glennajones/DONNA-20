@@ -1,16 +1,19 @@
 import { 
   users, 
   registrations, 
-  payments, 
+  payments,
+  scheduleEvents,
   type User, 
   type InsertUser, 
   type Registration, 
   type InsertRegistration, 
   type Payment, 
-  type InsertPayment 
+  type InsertPayment,
+  type ScheduleEvent,
+  type InsertScheduleEvent
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, gte, lte, ne } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -31,6 +34,14 @@ export interface IStorage {
   getPaymentsByRegistration(registrationId: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePaymentStatus(id: number, status: Payment["status"], stripePaymentIntentId?: string): Promise<Payment | undefined>;
+  
+  // Schedule methods
+  getScheduleEvent(id: number): Promise<ScheduleEvent | undefined>;
+  getScheduleEvents(from?: string, to?: string): Promise<ScheduleEvent[]>;
+  createScheduleEvent(event: InsertScheduleEvent): Promise<ScheduleEvent>;
+  updateScheduleEvent(id: number, event: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined>;
+  deleteScheduleEvent(id: number): Promise<boolean>;
+  checkScheduleConflict(court: string, date: string, time: string, duration: number, excludeId?: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -122,6 +133,101 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payments.id, id))
       .returning();
     return payment || undefined;
+  }
+
+  // Schedule methods
+  async getScheduleEvent(id: number): Promise<ScheduleEvent | undefined> {
+    const [event] = await db.select().from(scheduleEvents).where(eq(scheduleEvents.id, id));
+    return event || undefined;
+  }
+
+  async getScheduleEvents(from?: string, to?: string): Promise<ScheduleEvent[]> {
+    let query = db.select().from(scheduleEvents);
+    
+    if (from && to) {
+      query = query.where(and(
+        gte(scheduleEvents.date, from),
+        lte(scheduleEvents.date, to)
+      )) as any;
+    }
+    
+    return await query;
+  }
+
+  async createScheduleEvent(insertEvent: InsertScheduleEvent): Promise<ScheduleEvent> {
+    // Build the title if not provided
+    const title = insertEvent.title || `${insertEvent.eventType} - ${insertEvent.court}`;
+    
+    const [event] = await db
+      .insert(scheduleEvents)
+      .values({
+        ...insertEvent,
+        title
+      })
+      .returning();
+    return event;
+  }
+
+  async updateScheduleEvent(id: number, eventUpdate: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined> {
+    const [event] = await db
+      .update(scheduleEvents)
+      .set({ 
+        ...eventUpdate, 
+        updatedAt: new Date() 
+      })
+      .where(eq(scheduleEvents.id, id))
+      .returning();
+    return event || undefined;
+  }
+
+  async deleteScheduleEvent(id: number): Promise<boolean> {
+    const result = await db
+      .delete(scheduleEvents)
+      .where(eq(scheduleEvents.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async checkScheduleConflict(
+    court: string, 
+    date: string, 
+    time: string, 
+    duration: number = 120, 
+    excludeId?: number
+  ): Promise<boolean> {
+    // Parse the time to calculate end time
+    const [hours, minutes] = time.split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + duration;
+    
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+
+    let query = db.select().from(scheduleEvents).where(
+      and(
+        eq(scheduleEvents.court, court),
+        eq(scheduleEvents.date, date),
+        excludeId ? ne(scheduleEvents.id, excludeId) : undefined
+      )
+    );
+
+    const existingEvents = await query;
+    
+    // Check for time conflicts
+    for (const event of existingEvents) {
+      const [eventHours, eventMinutes] = event.time.split(':').map(Number);
+      const eventStartMinutes = eventHours * 60 + eventMinutes;
+      const eventEndMinutes = eventStartMinutes + event.duration;
+      
+      // Check if there's an overlap
+      if (
+        (startMinutes < eventEndMinutes && endMinutes > eventStartMinutes)
+      ) {
+        return true; // Conflict found
+      }
+    }
+    
+    return false; // No conflict
   }
 }
 

@@ -1,5 +1,6 @@
 import { db } from "./db";
-import { users, registrations, payments } from "@shared/schema";
+import { users, registrations, payments, scheduleEvents } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 async function seed() {
@@ -125,6 +126,72 @@ async function seed() {
         });
         console.log(`✓ Created payment for: ${registration.name}`);
       }
+    }
+
+    // Create demo schedule events
+    console.log("Creating demo schedule events...");
+    
+    // Get the admin user ID for creating events
+    const [adminUser] = await db.select().from(users).where(eq(users.username, "admin"));
+    const [managerUser] = await db.select().from(users).where(eq(users.username, "manager"));
+    
+    if (!adminUser || !managerUser) {
+      console.log("⚠️ Users not found, skipping schedule events");
+      return;
+    }
+    
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const demoEvents = [
+      {
+        title: "Junior Training Session",
+        court: "Indoor Court 1",
+        date: today.toISOString().split("T")[0],
+        time: "16:00",
+        duration: 120,
+        eventType: "training" as const,
+        participants: ["Emma Wilson", "Alex Johnson", "Maria Garcia"],
+        coach: "Coach Sarah",
+        description: "Basic skills training for junior players",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Advanced Training",
+        court: "Indoor Court 2", 
+        date: tomorrow.toISOString().split("T")[0],
+        time: "18:00",
+        duration: 150,
+        eventType: "training" as const,
+        participants: ["David Brown", "Jessica Lee"],
+        coach: "Coach Mike",
+        description: "Advanced techniques and tactics",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Beach Volleyball Practice",
+        court: "Beach Court 1",
+        date: nextWeek.toISOString().split("T")[0],
+        time: "10:00",
+        duration: 180,
+        eventType: "practice" as const,
+        participants: ["Team A players"],
+        coach: "Coach Alex",
+        description: "Beach volleyball practice session",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
+    ];
+
+    for (const eventData of demoEvents) {
+      await db.insert(scheduleEvents).values(eventData);
+      console.log(`✓ Created schedule event: ${eventData.title}`);
     }
 
     console.log("🎉 Database seeded successfully!");

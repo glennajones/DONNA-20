@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -208,6 +208,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payment: updatedPayment, 
         message: success ? "Payment processed successfully" : "Payment failed" 
       });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Schedule/Calendar routes
+  app.get("/api/schedule", authenticateToken, async (req: any, res) => {
+    try {
+      // Only coaches, managers, and admins can view schedules
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { from, to } = req.query;
+      const events = await storage.getScheduleEvents(from as string, to as string);
+      res.json({ events });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/schedule", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create schedule events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const validatedData = insertScheduleEventSchema.parse(req.body);
+      
+      // Check for schedule conflicts
+      const hasConflict = await storage.checkScheduleConflict(
+        validatedData.court,
+        validatedData.date,
+        validatedData.time,
+        validatedData.duration || 120
+      );
+
+      if (hasConflict) {
+        return res.status(409).json({ 
+          error: "conflict",
+          message: "A scheduling conflict was detected for this court and time slot" 
+        });
+      }
+
+      const event = await storage.createScheduleEvent({
+        ...validatedData,
+        createdBy: req.user.userId
+      });
+
+      res.status(201).json(event);
+    } catch (error: any) {
+      if (error.errors) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/schedule/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update schedule events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // If updating time/date/court, check for conflicts
+      if (updateData.court || updateData.date || updateData.time) {
+        const existingEvent = await storage.getScheduleEvent(parseInt(id));
+        if (!existingEvent) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        const court = updateData.court || existingEvent.court;
+        const date = updateData.date || existingEvent.date;
+        const time = updateData.time || existingEvent.time;
+        const duration = updateData.duration || existingEvent.duration;
+
+        const hasConflict = await storage.checkScheduleConflict(
+          court, date, time, duration, parseInt(id)
+        );
+
+        if (hasConflict) {
+          return res.status(409).json({ 
+            error: "conflict",
+            message: "A scheduling conflict was detected for this court and time slot" 
+          });
+        }
+      }
+
+      const event = await storage.updateScheduleEvent(parseInt(id), updateData);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/schedule/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete schedule events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteScheduleEvent(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      res.json({ message: "Event deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

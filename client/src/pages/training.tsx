@@ -1,10 +1,13 @@
+import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Construction, Calendar, Users, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CalendarView from "@/components/scheduling/CalendarView";
+import CourtManager from "@/components/scheduling/CourtManager";
 
 export default function TrainingPage() {
+  const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
+
   return (
     <ProtectedRoute requiredRoles={["admin", "manager", "coach"]}>
       <div className="min-h-screen bg-gray-50">
@@ -12,65 +15,45 @@ export default function TrainingPage() {
         
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            <h1 className="text-3xl font-bold text-gray-900">Training Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Training & Scheduling</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Manage training sessions, schedules, and attendance.
+              Manage training sessions, court bookings, and view the schedule calendar.
             </p>
           </div>
 
           <div className="px-4 sm:px-0">
-            <Alert className="mb-6">
-              <Construction className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Module in Development</strong>
-                <br />
-                The Training Management module is currently being developed. This will include training session scheduling, attendance tracking, and coach assignment features.
-              </AlertDescription>
-            </Alert>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                    Session Scheduling
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600">
-                    Schedule training sessions, set recurring sessions, and manage court bookings.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="h-5 w-5 mr-2 text-green-500" />
-                    Attendance Tracking
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600">
-                    Track player attendance, manage absences, and generate attendance reports.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-orange-500" />
-                    Session Plans
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600">
-                    Create training plans, drills library, and progress tracking for players.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            <Tabs defaultValue="calendar" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
+                <TabsTrigger value="courts">🏟️ Court Manager</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="calendar" className="space-y-4">
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-sm font-medium">View:</span>
+                  <div className="flex bg-white border rounded-lg">
+                    {(["day", "week", "month"] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setViewType(type)}
+                        className={`px-3 py-1 text-sm capitalize ${
+                          viewType === type
+                            ? "bg-blue-500 text-white"
+                            : "text-gray-600 hover:bg-gray-50"
+                        } first:rounded-l-lg last:rounded-r-lg`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <CalendarView viewType={viewType} />
+              </TabsContent>
+              
+              <TabsContent value="courts">
+                <CourtManager />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

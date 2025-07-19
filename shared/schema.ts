@@ -38,6 +38,23 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const scheduleEvents = pgTable("schedule_events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  court: text("court").notNull(),
+  date: text("date").notNull(), // YYYY-MM-DD format
+  time: text("time").notNull(), // HH:MM format
+  duration: integer("duration").notNull().default(120), // minutes
+  eventType: text("event_type", { enum: ["training", "match", "tournament", "practice"] }).notNull(),
+  participants: text("participants").array().notNull().default([]),
+  coach: text("coach"),
+  description: text("description"),
+  status: text("status", { enum: ["scheduled", "in_progress", "completed", "cancelled"] }).notNull().default("scheduled"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -62,6 +79,18 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({
   paidAt: true,
 });
 
+export const insertScheduleEventSchema = createInsertSchema(scheduleEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  date: z.string().min(1, "Date is required"),
+  time: z.string().min(1, "Time is required"),
+  title: z.string().min(1, "Title is required"),
+  court: z.string().min(1, "Court is required"),
+  eventType: z.enum(["training", "match", "tournament", "practice"]),
+});
+
 export const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -76,3 +105,6 @@ export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+export type ScheduleEvent = typeof scheduleEvents.$inferSelect;
+export type InsertScheduleEvent = z.infer<typeof insertScheduleEventSchema>;
