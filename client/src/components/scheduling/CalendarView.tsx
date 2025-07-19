@@ -382,7 +382,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                         >
                           {eventsInSlot.map((event, index) => (
                             <div key={event.id} className="text-xs mb-1">
-                              <div className="font-medium text-[#56A0D3] truncate">
+                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded truncate">
                                 {event.court} - {event.title}
                               </div>
                             </div>
@@ -445,7 +445,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                     {dayEvents.slice(0, 3).map(event => (
                       <div
                         key={event.id}
-                        className="text-xs p-1 rounded bg-[#56A0D3]/20 text-[#56A0D3] border-l-2 border-[#56A0D3] truncate"
+                        className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate"
                         title={`${event.time} - ${event.title} (${event.court})`}
                       >
                         {event.time} {event.title}

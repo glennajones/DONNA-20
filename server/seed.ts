@@ -388,6 +388,47 @@ async function seed() {
         status: "scheduled" as const,
         createdBy: adminUser.id,
       },
+      
+      // Multi-court events
+      {
+        title: "Regional Tournament",
+        court: "Court 1, Court 2, Court 3",
+        date: "2025-07-05",
+        time: "09:00",
+        duration: 240,
+        eventType: "tournament" as const,
+        participants: ["All Teams"],
+        coach: "All Coaches",
+        description: "Regional volleyball tournament - multiple courts",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Skills Assessment Day",
+        court: "Court 4, Court 5, Court 6",
+        date: "2025-07-14",
+        time: "10:00",
+        duration: 180,
+        eventType: "practice" as const,
+        participants: ["All Players"],
+        coach: "Coach Sarah, Coach Mike",
+        description: "Annual skills assessment across multiple courts",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Beach Championships",
+        court: "Beach 1, Beach 2",
+        date: "2025-07-20",
+        time: "08:30",
+        duration: 300,
+        eventType: "tournament" as const,
+        participants: ["Beach Teams"],
+        coach: "Coach Lisa",
+        description: "Beach volleyball championships on both courts",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
     ];
 
     console.log("Creating July test events...");
