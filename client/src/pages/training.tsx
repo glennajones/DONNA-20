@@ -2,6 +2,7 @@ import { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardNav } from "@/components/ui/dashboard-nav";
 import CalendarView from "@/components/scheduling/CalendarView";
 import CourtManager from "@/components/scheduling/CourtManager";
 
@@ -15,6 +16,8 @@ export default function TrainingPage() {
         
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
+            <DashboardNav title="Training & Scheduling" />
+            
             <h1 className="text-3xl font-bold text-gray-900">Training & Scheduling</h1>
             <p className="mt-1 text-sm text-gray-600">
               Manage training sessions, court bookings, and view the schedule calendar.

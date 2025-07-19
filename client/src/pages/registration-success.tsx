@@ -1,14 +1,20 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { CheckCircle, ArrowLeft, Mail, Calendar } from "lucide-react";
 
 export default function RegistrationSuccessPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="mx-auto h-20 w-20 flex items-center justify-center rounded-full bg-green-100 mb-4">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="container mx-auto">
+        <DashboardNav title="Registration Complete" />
+      </div>
+      
+      <div className="flex items-center justify-center">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="mx-auto h-20 w-20 flex items-center justify-center rounded-full bg-green-100 mb-4">
             <CheckCircle className="h-12 w-12 text-green-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Registration Submitted!</h1>
@@ -81,6 +87,7 @@ export default function RegistrationSuccessPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

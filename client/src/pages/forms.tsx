@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormBuilder } from "@/components/forms/FormBuilder";
 import { FormTemplateManager } from "@/components/forms/FormTemplateManager";
 import { FormResponseDashboard } from "@/components/forms/FormResponseDashboard";
+import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useAuth } from "@/lib/auth";
 import type { FormTemplate } from "@shared/schema";
 
@@ -23,6 +24,8 @@ export default function FormsPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <DashboardNav title="Forms & Checklists" />
+      
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Forms & Checklists

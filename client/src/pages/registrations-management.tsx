@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import Navbar from "@/components/layout/Navbar";
 import RegistrationsList from "@/components/registration/RegistrationsList";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { UserPlus } from "lucide-react";
 
 export default function RegistrationsManagementPage() {
@@ -14,6 +15,8 @@ export default function RegistrationsManagementPage() {
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="px-4 py-6 sm:px-0">
+            <DashboardNav title="Registration Management" />
+            
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
