@@ -243,6 +243,19 @@ function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: s
   });
 }
 
+function isFirstSlotOfEvent(events: ScheduleEvent[], court: string, timeSlot: string): boolean {
+  const event = findEventInTimeSlot(events, court, timeSlot);
+  if (!event) return false;
+  
+  const [eventHours, eventMinutes] = event.time.split(":").map(Number);
+  const eventStartMinutes = eventHours * 60 + eventMinutes;
+  
+  const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
+  const slotTotalMinutes = slotHours * 60 + slotMinutes;
+  
+  return slotTotalMinutes === eventStartMinutes;
+}
+
 function getWeekDays(startDate: string) {
   // Parse date string safely to avoid timezone issues
   const [year, month, day] = startDate.split('-').map(Number);
@@ -358,6 +371,8 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                     </div>
                     {courts.map((court) => {
                       const eventInSlot = findEventInTimeSlot(todayEvents, court, timeSlot);
+                      const isFirstSlot = isFirstSlotOfEvent(todayEvents, court, timeSlot);
+                      
                       return (
                         <div
                           key={`${court}-${timeSlot}`}
@@ -365,11 +380,14 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                             eventInSlot ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
-                          {eventInSlot && (
+                          {eventInSlot && isFirstSlot && (
                             <div 
-                              className="text-xs bg-[#56A0D3] text-white p-1 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center"
+                              className="text-xs bg-[#56A0D3] text-white p-1 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute inset-1 flex flex-col justify-center z-10"
                               onClick={() => setSelectedEvent(eventInSlot)}
-                              title={`${eventInSlot.title} - ${eventInSlot.coach} (${eventInSlot.eventType})`}
+                              title={`${eventInSlot.title} - ${eventInSlot.coach}`}
+                              style={{
+                                height: `${(eventInSlot.duration || 120) / 30 * 40 - 8}px`
+                              }}
                             >
                               <div className="font-medium truncate">
                                 {eventInSlot.title}
@@ -439,6 +457,17 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                         return slotTotalMinutes >= eventStartMinutes && slotTotalMinutes < eventEndMinutes;
                       });
 
+                      // Find events that start in this time slot
+                      const eventsStartingInSlot = eventsInSlot.filter(event => {
+                        const [eventHours, eventMinutes] = event.time.split(":").map(Number);
+                        const eventStartMinutes = eventHours * 60 + eventMinutes;
+                        
+                        const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
+                        const slotTotalMinutes = slotHours * 60 + slotMinutes;
+                        
+                        return slotTotalMinutes === eventStartMinutes;
+                      });
+
                       return (
                         <div
                           key={`${day.date}-${timeSlot}`}
@@ -446,18 +475,19 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                             eventsInSlot.length > 0 ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
-                          {eventsInSlot.slice(0, 1).map((event, index) => (
+                          {eventsStartingInSlot.map((event, index) => (
                             <div 
                               key={event.id} 
-                              className="text-xs h-full cursor-pointer"
+                              className="text-xs cursor-pointer absolute inset-1 z-10"
                               onClick={() => setSelectedEvent(event)}
-                              title={`${event.title} - ${event.court} (${event.eventType})`}
+                              title={`${event.title} - ${event.coach}`}
+                              style={{
+                                height: `${(event.duration || 120) / 30 * 40 - 8}px`
+                              }}
                             >
-                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded truncate hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center">
+                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center">
                                 <div className="truncate">{event.title}</div>
-                                {eventsInSlot.length > 1 && (
-                                  <div className="text-xs opacity-90">+{eventsInSlot.length - 1} more</div>
-                                )}
+                                <div className="text-xs opacity-90 truncate">{event.coach}</div>
                               </div>
                             </div>
                           ))}
