@@ -10,6 +10,7 @@ import Dashboard from "./pages/dashboard";
 import RegistrationPage from "./pages/registration";
 import RegistrationSuccessPage from "./pages/registration-success";
 import RegistrationsManagementPage from "./pages/registrations-management";
+import TrainingPage from "./pages/training";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/registration" component={RegistrationPage} />
       <Route path="/registration/success" component={RegistrationSuccessPage} />
       <Route path="/registrations" component={RegistrationsManagementPage} />
+      <Route path="/training" component={TrainingPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
