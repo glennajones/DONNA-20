@@ -428,7 +428,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                               <div className="font-medium truncate">
                                 {eventInSlot.title}
                               </div>
-                              <div className="text-xs opacity-90 truncate">
+                              <div className="text-xs opacity-90">
                                 {eventInSlot.coach}
                               </div>
                             </div>
@@ -527,7 +527,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                               }}
                             >
                               <div className="font-medium truncate">{event.title}</div>
-                              <div className="text-xs opacity-90 truncate">{abbreviateCourts(event.court)}</div>
+                              <div className="text-xs opacity-90">{abbreviateCourts(event.court)}</div>
                             </div>
                           ))}
                         </div>
