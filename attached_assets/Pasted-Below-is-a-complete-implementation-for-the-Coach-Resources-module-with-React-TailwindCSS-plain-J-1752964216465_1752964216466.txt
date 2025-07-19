@@ -1,0 +1,243 @@
+Below is a complete implementation for the Coach Resources module with React + TailwindCSS + plain JS as requested.
+All three files are provided fully so you can drop them into your project under src/modules/Coach/.
+
+✅ src/modules/Coach/TimeClock.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from "react";
+
+export default function TimeClock() {
+  const [clockedIn, setClockedIn] = useState(false);
+  const [totalHours, setTotalHours] = useState(0);
+  const [lastClockIn, setLastClockIn] = useState(null);
+
+  useEffect(() => {
+    // Optional: fetch today's total from API
+    // For now, we assume initial 0
+  }, []);
+
+  const handleClock = async (action) => {
+    const timestamp = new Date().toISOString();
+    try {
+      await fetch("/api/timeclock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, timestamp }),
+      });
+
+      if (action === "clock-in") {
+        setClockedIn(true);
+        setLastClockIn(Date.now());
+      } else {
+        setClockedIn(false);
+        if (lastClockIn) {
+          const diff = (Date.now() - lastClockIn) / 1000 / 60 / 60; // in hours
+          setTotalHours((prev) => prev + diff);
+        }
+      }
+    } catch (err) {
+      console.error("Clock action failed", err);
+    }
+  };
+
+  return (
+    <div className="p-4 border rounded shadow-md bg-white">
+      <h2 className="text-xl font-bold mb-2">Time Clock</h2>
+      <p className="mb-4">Total Hours Today: {totalHours.toFixed(2)} hrs</p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => handleClock("clock-in")}
+          disabled={clockedIn}
+          className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
+        >
+          Clock In
+        </button>
+        <button
+          onClick={() => handleClock("clock-out")}
+          disabled={!clockedIn}
+          className="px-4 py-2 bg-red-500 text-white rounded disabled:opacity-50"
+        >
+          Clock Out
+        </button>
+      </div>
+    </div>
+  );
+}
+✅ src/modules/Coach/PracticeLibrary.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+export default function PracticeLibrary() {
+  const [plans, setPlans] = useState([]);
+  const [form, setForm] = useState({ title: "", description: "", drills: "" });
+  const [editIndex, setEditIndex] = useState(null);
+
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSave = () => {
+    const drillsArr = form.drills.split(",").map((d) => d.trim()).filter(Boolean);
+    if (editIndex !== null) {
+      const updated = [...plans];
+      updated[editIndex] = { ...form, drills: drillsArr };
+      setPlans(updated);
+      setEditIndex(null);
+    } else {
+      setPlans([...plans, { ...form, drills: drillsArr }]);
+    }
+    setForm({ title: "", description: "", drills: "" });
+  };
+
+  const handleEdit = (idx) => {
+    setEditIndex(idx);
+    const plan = plans[idx];
+    setForm({
+      title: plan.title,
+      description: plan.description,
+      drills: plan.drills.join(", "),
+    });
+  };
+
+  const handleDelete = (idx) => {
+    setPlans(plans.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className="p-4 border rounded shadow-md bg-white mt-4">
+      <h2 className="text-xl font-bold mb-2">Practice Library</h2>
+      <div className="flex flex-col gap-2 mb-4">
+        <input
+          className="border p-2 rounded"
+          name="title"
+          placeholder="Title"
+          value={form.title}
+          onChange={handleChange}
+        />
+        <textarea
+          className="border p-2 rounded"
+          name="description"
+          placeholder="Description"
+          value={form.description}
+          onChange={handleChange}
+        />
+        <input
+          className="border p-2 rounded"
+          name="drills"
+          placeholder="Drills (comma separated)"
+          value={form.drills}
+          onChange={handleChange}
+        />
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          {editIndex !== null ? "Update Plan" : "Add Plan"}
+        </button>
+      </div>
+
+      <ul className="space-y-2">
+        {plans.map((p, i) => (
+          <li key={i} className="p-2 border rounded bg-gray-50">
+            <h3 className="font-semibold">{p.title}</h3>
+            <p>{p.description}</p>
+            <p className="text-sm text-gray-600">Drills: {p.drills.join(", ")}</p>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => handleEdit(i)}
+                className="px-2 py-1 bg-yellow-400 text-black rounded"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(i)}
+                className="px-2 py-1 bg-red-500 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+✅ src/modules/Coach/GameTools.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+export default function GameTools() {
+  const initialPlayers = ["Player 1", "Player 2", "Player 3"];
+  const [lineup, setLineup] = useState(initialPlayers);
+
+  const handleDragStart = (e, idx) => {
+    e.dataTransfer.setData("playerIndex", idx);
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    const dragIndex = e.dataTransfer.getData("playerIndex");
+    if (dragIndex === "") return;
+    const updated = [...lineup];
+    const [moved] = updated.splice(dragIndex, 1);
+    updated.splice(dropIndex, 0, moved);
+    setLineup(updated);
+  };
+
+  const allowDrop = (e) => e.preventDefault();
+
+  return (
+    <div className="p-4 border rounded shadow-md bg-white mt-4">
+      <h2 className="text-xl font-bold mb-2">Game Tools</h2>
+
+      {/* Lineup Cards */}
+      <h3 className="text-lg font-semibold mt-2 mb-2">Lineup</h3>
+      <div className="flex gap-2 mb-4">
+        {lineup.map((p, i) => (
+          <div
+            key={i}
+            draggable
+            onDragStart={(e) => handleDragStart(e, i)}
+            onDrop={(e) => handleDrop(e, i)}
+            onDragOver={allowDrop}
+            className="p-3 border rounded bg-blue-100 cursor-move"
+          >
+            {p}
+          </div>
+        ))}
+      </div>
+
+      {/* Stats Sheet */}
+      <h3 className="text-lg font-semibold mt-2 mb-2">Stats Sheet</h3>
+      <table className="table-auto border-collapse border border-gray-300 w-full">
+        <thead>
+          <tr>
+            <th className="border p-2">Player</th>
+            <th className="border p-2">Points</th>
+            <th className="border p-2">Assists</th>
+            <th className="border p-2">Rebounds</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lineup.map((p, i) => (
+            <tr key={i}>
+              <td className="border p-2">{p}</td>
+              <td className="border p-2">
+                <input type="number" className="border rounded p-1 w-16" />
+              </td>
+              <td className="border p-2">
+                <input type="number" className="border rounded p-1 w-16" />
+              </td>
+              <td className="border p-2">
+                <input type="number" className="border rounded p-1 w-16" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

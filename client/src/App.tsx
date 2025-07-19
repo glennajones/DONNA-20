@@ -19,6 +19,7 @@ import { FundraisingPage } from "./pages/fundraising";
 import PerformancePage from "./pages/performance";
 import IntegrationsPage from "./pages/integrations";
 import PodcastPage from "./pages/podcast";
+import CoachResourcesPage from "./pages/coach-resources";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/performance" component={PerformancePage} />
       <Route path="/integrations" component={IntegrationsPage} />
       <Route path="/podcast" component={PodcastPage} />
+      <Route path="/coach-resources" component={CoachResourcesPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

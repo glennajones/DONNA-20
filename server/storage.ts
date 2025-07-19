@@ -17,6 +17,10 @@ import {
   podcastEpisodes,
   podcastComments,
   podcastPollVotes,
+  timeClockEntries,
+  practicePlans,
+  gameLineups,
+  gameStats,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -50,7 +54,15 @@ import {
   type PodcastComment,
   type InsertPodcastComment,
   type PodcastPollVote,
-  type InsertPodcastPollVote
+  type InsertPodcastPollVote,
+  type TimeClockEntry,
+  type InsertTimeClockEntry,
+  type PracticePlan,
+  type InsertPracticePlan,
+  type GameLineup,
+  type InsertGameLineup,
+  type GameStat,
+  type InsertGameStat
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -161,6 +173,21 @@ export interface IStorage {
   getPodcastPollVote(episodeId: number, userId: number): Promise<PodcastPollVote | undefined>;
   createPodcastPollVote(vote: InsertPodcastPollVote): Promise<PodcastPollVote>;
   updatePodcastPollVote(episodeId: number, userId: number, vote: PodcastPollVote["vote"]): Promise<PodcastPollVote | undefined>;
+
+  // Coach Resources methods
+  createTimeClockEntry(entry: InsertTimeClockEntry): Promise<TimeClockEntry>;
+  getTodayTimeClockEntries(userId: number): Promise<TimeClockEntry[]>;
+  
+  getPracticePlans(): Promise<PracticePlan[]>;
+  createPracticePlan(plan: InsertPracticePlan): Promise<PracticePlan>;
+  updatePracticePlan(id: number, plan: Partial<InsertPracticePlan>): Promise<PracticePlan | undefined>;
+  deletePracticePlan(id: number): Promise<boolean>;
+  
+  getGameLineups(): Promise<GameLineup[]>;
+  createGameLineup(lineup: InsertGameLineup): Promise<GameLineup>;
+  
+  createGameStat(stat: InsertGameStat): Promise<GameStat>;
+  getGameStats(gameId: string): Promise<GameStat[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -769,6 +796,81 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(podcastPollVotes.episodeId, episodeId), eq(podcastPollVotes.userId, userId)))
       .returning();
     return vote || undefined;
+  }
+
+  // Coach Resources methods
+  async createTimeClockEntry(insertEntry: InsertTimeClockEntry): Promise<TimeClockEntry> {
+    const [entry] = await db
+      .insert(timeClockEntries)
+      .values(insertEntry)
+      .returning();
+    return entry;
+  }
+
+  async getTodayTimeClockEntries(userId: number): Promise<TimeClockEntry[]> {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    return await db.select().from(timeClockEntries)
+      .where(and(
+        eq(timeClockEntries.userId, userId),
+        gte(timeClockEntries.timestamp, startOfDay),
+        lte(timeClockEntries.timestamp, endOfDay)
+      ))
+      .orderBy(timeClockEntries.timestamp);
+  }
+
+  async getPracticePlans(): Promise<PracticePlan[]> {
+    return await db.select().from(practicePlans).orderBy(desc(practicePlans.createdAt));
+  }
+
+  async createPracticePlan(insertPlan: InsertPracticePlan): Promise<PracticePlan> {
+    const [plan] = await db
+      .insert(practicePlans)
+      .values(insertPlan)
+      .returning();
+    return plan;
+  }
+
+  async updatePracticePlan(id: number, planData: Partial<InsertPracticePlan>): Promise<PracticePlan | undefined> {
+    const [plan] = await db
+      .update(practicePlans)
+      .set({ ...planData, updatedAt: new Date() })
+      .where(eq(practicePlans.id, id))
+      .returning();
+    return plan || undefined;
+  }
+
+  async deletePracticePlan(id: number): Promise<boolean> {
+    const result = await db.delete(practicePlans).where(eq(practicePlans.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getGameLineups(): Promise<GameLineup[]> {
+    return await db.select().from(gameLineups).orderBy(desc(gameLineups.createdAt));
+  }
+
+  async createGameLineup(insertLineup: InsertGameLineup): Promise<GameLineup> {
+    const [lineup] = await db
+      .insert(gameLineups)
+      .values(insertLineup)
+      .returning();
+    return lineup;
+  }
+
+  async createGameStat(insertStat: InsertGameStat): Promise<GameStat> {
+    const [stat] = await db
+      .insert(gameStats)
+      .values(insertStat)
+      .returning();
+    return stat;
+  }
+
+  async getGameStats(gameId: string): Promise<GameStat[]> {
+    return await db.select().from(gameStats)
+      .where(eq(gameStats.gameId, gameId))
+      .orderBy(gameStats.createdAt);
   }
 }
 

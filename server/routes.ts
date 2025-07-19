@@ -1429,6 +1429,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach Resources Routes
+  
+  // Time Clock Routes
+  app.post('/api/timeclock', authenticateToken, async (req: any, res) => {
+    try {
+      const { action, timestamp } = req.body;
+      
+      await storage.createTimeClockEntry({
+        userId: req.user.userId,
+        action,
+        timestamp: new Date(timestamp)
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Time clock error:', error);
+      res.status(500).json({ error: 'Failed to record time' });
+    }
+  });
+
+  app.get('/api/timeclock/today', authenticateToken, async (req: any, res) => {
+    try {
+      const entries = await storage.getTodayTimeClockEntries(req.user.userId);
+      res.json(entries);
+    } catch (error) {
+      console.error('Get time clock entries error:', error);
+      res.status(500).json({ error: 'Failed to get time entries' });
+    }
+  });
+
+  // Practice Plans Routes
+  app.get('/api/practice-plans', authenticateToken, async (req: any, res) => {
+    try {
+      const plans = await storage.getPracticePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error('Get practice plans error:', error);
+      res.status(500).json({ error: 'Failed to get practice plans' });
+    }
+  });
+
+  app.post('/api/practice-plans', authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { title, description, drills } = req.body;
+      
+      const plan = await storage.createPracticePlan({
+        title,
+        description,
+        drills,
+        createdBy: req.user.userId
+      });
+
+      res.json(plan);
+    } catch (error) {
+      console.error('Create practice plan error:', error);
+      res.status(500).json({ error: 'Failed to create practice plan' });
+    }
+  });
+
+  app.put('/api/practice-plans/:id', authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { id } = req.params;
+      const { title, description, drills } = req.body;
+      
+      const plan = await storage.updatePracticePlan(parseInt(id), {
+        title,
+        description,
+        drills
+      });
+
+      res.json(plan);
+    } catch (error) {
+      console.error('Update practice plan error:', error);
+      res.status(500).json({ error: 'Failed to update practice plan' });
+    }
+  });
+
+  app.delete('/api/practice-plans/:id', authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { id } = req.params;
+      await storage.deletePracticePlan(parseInt(id));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete practice plan error:', error);
+      res.status(500).json({ error: 'Failed to delete practice plan' });
+    }
+  });
+
+  // Game Lineups Routes
+  app.get('/api/game-lineups', authenticateToken, async (req: any, res) => {
+    try {
+      const lineups = await storage.getGameLineups();
+      res.json(lineups);
+    } catch (error) {
+      console.error('Get game lineups error:', error);
+      res.status(500).json({ error: 'Failed to get game lineups' });
+    }
+  });
+
+  app.post('/api/game-lineups', authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { name, players } = req.body;
+      
+      const lineup = await storage.createGameLineup({
+        name,
+        players,
+        createdBy: req.user.userId
+      });
+
+      res.json(lineup);
+    } catch (error) {
+      console.error('Create game lineup error:', error);
+      res.status(500).json({ error: 'Failed to create game lineup' });
+    }
+  });
+
+  // Game Stats Routes
+  app.post('/api/game-stats', authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const { gameId, playerName, points, assists, rebounds } = req.body;
+      
+      const stat = await storage.createGameStat({
+        gameId,
+        playerName,
+        points: parseInt(points) || 0,
+        assists: parseInt(assists) || 0,
+        rebounds: parseInt(rebounds) || 0,
+        createdBy: req.user.userId
+      });
+
+      res.json(stat);
+    } catch (error) {
+      console.error('Create game stat error:', error);
+      res.status(500).json({ error: 'Failed to create game stat' });
+    }
+  });
+
+  app.get('/api/game-stats/:gameId', authenticateToken, async (req: any, res) => {
+    try {
+      const { gameId } = req.params;
+      const stats = await storage.getGameStats(gameId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Get game stats error:', error);
+      res.status(500).json({ error: 'Failed to get game stats' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

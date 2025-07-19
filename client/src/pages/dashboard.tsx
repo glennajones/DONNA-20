@@ -90,6 +90,13 @@ export default function Dashboard() {
       href: "/performance",
     },
     {
+      title: "Coach Resources",
+      icon: UserCog,
+      color: "bg-green-50 hover:bg-green-100 border-green-200 text-green-700",
+      roles: ["admin", "manager", "coach"],
+      href: "/coach-resources",
+    },
+    {
       title: "Volleyball Podcast",
       icon: LinkIcon,
       color: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700",

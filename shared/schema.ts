@@ -463,3 +463,103 @@ export type InsertPodcastComment = z.infer<typeof insertPodcastCommentSchema>;
 export type PodcastComment = typeof podcastComments.$inferSelect;
 export type InsertPodcastPollVote = z.infer<typeof insertPodcastPollVoteSchema>;
 export type PodcastPollVote = typeof podcastPollVotes.$inferSelect;
+
+// Coach Resources Schema
+export const timeClockEntries = pgTable('time_clock_entries', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  action: varchar('action', { length: 20 }).notNull(), // 'clock-in' or 'clock-out'
+  timestamp: timestamp('timestamp').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+export const practicePlans = pgTable('practice_plans', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description'),
+  drills: text('drills').array().notNull().default([]),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const gameLineups = pgTable('game_lineups', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  players: text('players').array().notNull().default([]),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+export const gameStats = pgTable('game_stats', {
+  id: serial('id').primaryKey(),
+  gameId: varchar('game_id', { length: 100 }).notNull(),
+  playerName: varchar('player_name', { length: 100 }).notNull(),
+  points: integer('points').default(0),
+  assists: integer('assists').default(0),
+  rebounds: integer('rebounds').default(0),
+  createdBy: integer('created_by').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+});
+
+// Coach Resources Relations
+export const timeClockEntriesRelations = relations(timeClockEntries, ({ one }) => ({
+  user: one(users, {
+    fields: [timeClockEntries.userId],
+    references: [users.id]
+  })
+}));
+
+export const practicePlansRelations = relations(practicePlans, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [practicePlans.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const gameLineupsRelations = relations(gameLineups, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [gameLineups.createdBy],
+    references: [users.id]
+  })
+}));
+
+export const gameStatsRelations = relations(gameStats, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [gameStats.createdBy],
+    references: [users.id]
+  })
+}));
+
+// Coach Resources Types
+export const insertTimeClockEntrySchema = createInsertSchema(timeClockEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPracticePlanSchema = createInsertSchema(practicePlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGameLineupSchema = createInsertSchema(gameLineups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGameStatSchema = createInsertSchema(gameStats).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTimeClockEntry = z.infer<typeof insertTimeClockEntrySchema>;
+export type TimeClockEntry = typeof timeClockEntries.$inferSelect;
+export type InsertPracticePlan = z.infer<typeof insertPracticePlanSchema>;
+export type PracticePlan = typeof practicePlans.$inferSelect;
+export type InsertGameLineup = z.infer<typeof insertGameLineupSchema>;
+export type GameLineup = typeof gameLineups.$inferSelect;
+export type InsertGameStat = z.infer<typeof insertGameStatSchema>;
+export type GameStat = typeof gameStats.$inferSelect;
