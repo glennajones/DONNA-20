@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Play, Square } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Clock, Play, Square, History, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TimeClock() {
@@ -9,10 +10,13 @@ export default function TimeClock() {
   const [totalHours, setTotalHours] = useState(0);
   const [lastClockIn, setLastClockIn] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [allEntries, setAllEntries] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchTodayEntries();
+    fetchAllEntries();
   }, []);
 
   const fetchTodayEntries = async () => {
@@ -28,6 +32,22 @@ export default function TimeClock() {
       }
     } catch (error) {
       console.error("Failed to fetch time entries:", error);
+    }
+  };
+
+  const fetchAllEntries = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch("/api/timeclock/history", {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
+      
+      if (response.ok) {
+        const entries = await response.json();
+        setAllEntries(entries);
+      }
+    } catch (error) {
+      console.error("Failed to fetch time history:", error);
     }
   };
 
@@ -87,6 +107,10 @@ export default function TimeClock() {
             description: "Your work session has been recorded."
           });
         }
+        
+        // Refresh both today's entries and full history
+        fetchTodayEntries();
+        fetchAllEntries();
       } else {
         throw new Error("Failed to record time");
       }
@@ -102,50 +126,186 @@ export default function TimeClock() {
     }
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const calculateSessionDuration = (clockIn, clockOut) => {
+    const start = new Date(clockIn);
+    const end = new Date(clockOut);
+    const durationMs = end - start;
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const groupEntriesByDate = (entries) => {
+    const grouped = {};
+    
+    for (let i = 0; i < entries.length; i += 2) {
+      const clockIn = entries[i];
+      const clockOut = entries[i + 1];
+      
+      if (clockIn && clockIn.action === 'clock-in') {
+        const date = formatDate(clockIn.timestamp);
+        
+        if (!grouped[date]) {
+          grouped[date] = [];
+        }
+        
+        grouped[date].push({
+          clockIn,
+          clockOut: clockOut && clockOut.action === 'clock-out' ? clockOut : null
+        });
+      }
+    }
+    
+    return grouped;
+  };
+
+  const groupedEntries = groupEntriesByDate(allEntries);
+
   return (
-    <Card className="bg-white dark:bg-gray-800">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-blue-600" />
-          Time Clock
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">
-            {totalHours.toFixed(2)} hrs
+    <div className="space-y-6">
+      <Card className="bg-white dark:bg-gray-800">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600" />
+              Time Clock
+            </div>
+            <Button
+              onClick={() => setShowHistory(!showHistory)}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <History className="h-4 w-4" />
+              {showHistory ? "Hide History" : "View History"}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+              {totalHours.toFixed(2)} hrs
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Hours Today</p>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Hours Today</p>
-        </div>
-        
-        <div className="flex gap-2 justify-center">
-          <Button
-            onClick={() => handleClock("clock-in")}
-            disabled={clockedIn || loading}
-            className="flex items-center gap-2"
-            variant={clockedIn ? "secondary" : "default"}
-          >
-            <Play className="h-4 w-4" />
-            Clock In
-          </Button>
           
-          <Button
-            onClick={() => handleClock("clock-out")}
-            disabled={!clockedIn || loading}
-            variant="destructive"
-            className="flex items-center gap-2"
-          >
-            <Square className="h-4 w-4" />
-            Clock Out
-          </Button>
-        </div>
-        
-        {clockedIn && (
-          <div className="text-center text-sm text-green-600 dark:text-green-400">
-            ● Currently clocked in
+          <div className="flex gap-2 justify-center">
+            <Button
+              onClick={() => handleClock("clock-in")}
+              disabled={clockedIn || loading}
+              className="flex items-center gap-2"
+              variant={clockedIn ? "secondary" : "default"}
+            >
+              <Play className="h-4 w-4" />
+              Clock In
+            </Button>
+            
+            <Button
+              onClick={() => handleClock("clock-out")}
+              disabled={!clockedIn || loading}
+              variant="destructive"
+              className="flex items-center gap-2"
+            >
+              <Square className="h-4 w-4" />
+              Clock Out
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {clockedIn && (
+            <div className="text-center text-sm text-green-600 dark:text-green-400">
+              ● Currently clocked in
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {showHistory && (
+        <Card className="bg-white dark:bg-gray-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Time Clock History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(groupedEntries).length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No time entries recorded yet.</p>
+                <p className="text-sm">Your clock-in and clock-out history will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(groupedEntries)
+                  .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA))
+                  .map(([date, sessions]) => (
+                    <div key={date} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        {date}
+                      </h3>
+                      
+                      <div className="space-y-2">
+                        {sessions.map((session, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-green-600 border-green-600">
+                                  <Play className="h-3 w-3 mr-1" />
+                                  {formatTime(session.clockIn.timestamp)}
+                                </Badge>
+                                {session.clockOut ? (
+                                  <Badge variant="outline" className="text-red-600 border-red-600">
+                                    <Square className="h-3 w-3 mr-1" />
+                                    {formatTime(session.clockOut.timestamp)}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                                    In Progress
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="text-right">
+                              {session.clockOut ? (
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {calculateSessionDuration(session.clockIn.timestamp, session.clockOut.timestamp)}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-yellow-600 dark:text-yellow-400">
+                                  Currently Active
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

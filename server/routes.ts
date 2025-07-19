@@ -1459,6 +1459,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/timeclock/history', authenticateToken, async (req: any, res) => {
+    try {
+      const entries = await storage.getAllTimeClockEntries(req.user.userId);
+      res.json(entries);
+    } catch (error) {
+      console.error('Get time clock history error:', error);
+      res.status(500).json({ error: 'Failed to get time history' });
+    }
+  });
+
   // Practice Plans Routes
   app.get('/api/practice-plans', authenticateToken, async (req: any, res) => {
     try {

@@ -173,6 +173,7 @@ export interface IStorage {
   // Coach Resources methods
   createTimeClockEntry(entry: InsertTimeClockEntry): Promise<TimeClockEntry>;
   getTodayTimeClockEntries(userId: number): Promise<TimeClockEntry[]>;
+  getAllTimeClockEntries(userId: number): Promise<TimeClockEntry[]>;
   
   getPracticePlans(): Promise<PracticePlan[]>;
   createPracticePlan(plan: InsertPracticePlan): Promise<PracticePlan>;
@@ -811,6 +812,12 @@ export class DatabaseStorage implements IStorage {
         lte(timeClockEntries.timestamp, endOfDay)
       ))
       .orderBy(timeClockEntries.timestamp);
+  }
+
+  async getAllTimeClockEntries(userId: number): Promise<TimeClockEntry[]> {
+    return await db.select().from(timeClockEntries)
+      .where(eq(timeClockEntries.userId, userId))
+      .orderBy(desc(timeClockEntries.timestamp));
   }
 
   async getPracticePlans(): Promise<PracticePlan[]> {
