@@ -42,41 +42,31 @@ export function Navbar() {
             </div>
             
             <div className="hidden md:ml-10 md:flex md:space-x-8">
-              <Link href="/dashboard">
-                <a className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-medium">
-                  Dashboard
-                </a>
+              <Link href="/dashboard" className="text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 border-primary text-sm font-medium">
+                Dashboard
               </Link>
               
               {hasRole(["admin", "manager"]) && (
-                <Link href="/registrations">
-                  <a className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                    Registrations
-                  </a>
+                <Link href="/registrations" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Registrations
                 </Link>
               )}
               
               {hasRole(["admin", "manager"]) && (
-                <Link href="/members">
-                  <a className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                    Members
-                  </a>
+                <Link href="/members" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Members
                 </Link>
               )}
               
               {hasRole(["admin", "manager", "coach"]) && (
-                <Link href="/training">
-                  <a className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                    Training
-                  </a>
+                <Link href="/training" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Training
                 </Link>
               )}
               
               {hasRole("admin") && (
-                <Link href="/admin">
-                  <a className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                    Admin Panel
-                  </a>
+                <Link href="/admin" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Admin Panel
                 </Link>
               )}
             </div>

@@ -52,9 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await apiRequest("POST", "/api/auth/login", {
-        username,
-        password,
+      const response = await apiRequest("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
