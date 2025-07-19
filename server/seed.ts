@@ -8,6 +8,7 @@ async function seed() {
 
   try {
     // Clear existing data (optional - only for development)
+    await db.delete(scheduleEvents);
     await db.delete(payments);
     await db.delete(registrations);
     await db.delete(users);
@@ -192,6 +193,207 @@ async function seed() {
     for (const eventData of demoEvents) {
       await db.insert(scheduleEvents).values(eventData);
       console.log(`✓ Created schedule event: ${eventData.title}`);
+    }
+
+    // Add July 2025 test events for calendar testing
+    const julyEvents = [
+      // Week 1 - July 1-6
+      {
+        title: "Junior Training Session",
+        court: "Court 1",
+        date: "2025-07-01",
+        time: "09:00",
+        duration: 120,
+        eventType: "training" as const,
+        participants: ["Emma Wilson", "Jake Thompson"],
+        coach: "Coach Sarah",
+        description: "Basic skills training for junior players",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Advanced Skills Workshop",
+        court: "Court 3",
+        date: "2025-07-02",
+        time: "14:30",
+        duration: 90,
+        eventType: "training" as const,
+        participants: ["Alex Chen", "Maria Garcia"],
+        coach: "Coach Mike",
+        description: "Advanced spiking and blocking techniques",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Beach Volleyball Practice",
+        court: "Beach 1",
+        date: "2025-07-03",
+        time: "10:00",
+        duration: 90,
+        eventType: "practice" as const,
+        participants: ["Sam Rodriguez", "Taylor Kim"],
+        coach: "Coach Lisa",
+        description: "Beach volleyball fundamentals",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
+      
+      // Week 2 - July 7-13
+      {
+        title: "Team Scrimmage",
+        court: "Court 2",
+        date: "2025-07-08",
+        time: "18:00",
+        duration: 150,
+        eventType: "match" as const,
+        participants: ["Team A vs Team B"],
+        coach: "Coach Sarah",
+        description: "Internal team scrimmage",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Serving Clinic",
+        court: "Court 5",
+        date: "2025-07-10",
+        time: "16:00",
+        duration: 60,
+        eventType: "training" as const,
+        participants: ["Beginner Group"],
+        coach: "Coach Mike",
+        description: "Focus on serving techniques",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Beach Tournament Prep",
+        court: "Beach 2",
+        date: "2025-07-12",
+        time: "08:00",
+        duration: 180,
+        eventType: "training" as const,
+        participants: ["Tournament Team"],
+        coach: "Coach Lisa",
+        description: "Preparation for upcoming beach tournament",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
+      
+      // Week 3 - July 14-20
+      {
+        title: "Youth Development",
+        court: "Court 4",
+        date: "2025-07-15",
+        time: "15:00",
+        duration: 90,
+        eventType: "training" as const,
+        participants: ["Youth Team"],
+        coach: "Coach Sarah",
+        description: "Youth development program",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Setting Workshop",
+        court: "Court 6",
+        date: "2025-07-17",
+        time: "19:00",
+        duration: 120,
+        eventType: "training" as const,
+        participants: ["Intermediate Players"],
+        coach: "Coach Mike",
+        description: "Advanced setting techniques",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Mixed Doubles Practice",
+        court: "Beach 1",
+        date: "2025-07-19",
+        time: "11:30",
+        duration: 120,
+        eventType: "practice" as const,
+        participants: ["Mixed Teams"],
+        coach: "Coach Lisa",
+        description: "Mixed doubles strategy and play",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
+      
+      // Week 4 - July 21-27
+      {
+        title: "Competition Prep",
+        court: "Court 7",
+        date: "2025-07-22",
+        time: "17:30",
+        duration: 150,
+        eventType: "training" as const,
+        participants: ["Competition Team"],
+        coach: "Coach Sarah",
+        description: "Final preparation for regional competition",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Defensive Drills",
+        court: "Court 1",
+        date: "2025-07-24",
+        time: "13:00",
+        duration: 90,
+        eventType: "training" as const,
+        participants: ["Defense Squad"],
+        coach: "Coach Mike",
+        description: "Intensive defensive training",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Beach Skills Session",
+        court: "Beach 2",
+        date: "2025-07-26",
+        time: "09:30",
+        duration: 120,
+        eventType: "training" as const,
+        participants: ["Beach Team"],
+        coach: "Coach Lisa",
+        description: "Beach-specific skills development",
+        status: "scheduled" as const,
+        createdBy: managerUser.id,
+      },
+      
+      // Week 5 - July 28-31
+      {
+        title: "Monthly Evaluation",
+        court: "Court 3",
+        date: "2025-07-29",
+        time: "16:30",
+        duration: 120,
+        eventType: "practice" as const,
+        participants: ["All Teams"],
+        coach: "Coach Sarah",
+        description: "Monthly skill evaluation and feedback",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+      {
+        title: "Summer Camp Session",
+        court: "Court 2",
+        date: "2025-07-31",
+        time: "10:00",
+        duration: 180,
+        eventType: "training" as const,
+        participants: ["Summer Camp Kids"],
+        coach: "Coach Mike",
+        description: "Final summer camp training session",
+        status: "scheduled" as const,
+        createdBy: adminUser.id,
+      },
+    ];
+
+    console.log("Creating July test events...");
+    for (const eventData of julyEvents) {
+      await db.insert(scheduleEvents).values(eventData);
+      console.log(`✓ Created July event: ${eventData.title} on ${eventData.date}`);
     }
 
     console.log("🎉 Database seeded successfully!");
