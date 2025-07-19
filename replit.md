@@ -66,7 +66,7 @@ Preferred communication style: Simple, everyday language.
 - **Registration data validation** with comprehensive form handling
 - **Demo payment processing** with mock Stripe integration
 
-#### Module 3: Training & Scheduling System
+#### Module 3: Training & Scheduling System (Current Focus)
 - **Calendar view** with day/week/month viewing options
 - **Court management** with 9 courts (7 indoor + 2 beach courts)
 - **Training session scheduling** with conflict detection
@@ -74,6 +74,9 @@ Preferred communication style: Simple, everyday language.
 - **Coach assignment** and participant tracking
 - **Schedule conflict prevention** with automatic validation
 - **Role-based scheduling access** (admin/manager can create, coach can view)
+- **Multi-court event support** with comma-separated court assignments
+- **Unified event data source** across all calendar views
+- **Authentic calendar dates** with proper timezone handling (July 2025)
 
 ## Data Flow
 

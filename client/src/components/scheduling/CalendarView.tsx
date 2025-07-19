@@ -174,7 +174,9 @@ function formatTime(timeSlot: string): string {
 
 function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: string): ScheduleEvent | undefined {
   return events.find((event) => {
-    if (event.court !== court) return false;
+    // Handle multi-court events (comma-separated court names)
+    const eventCourts = event.court.split(',').map(c => c.trim());
+    if (!eventCourts.includes(court)) return false;
     
     const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
     const slotTotalMinutes = slotHours * 60 + slotMinutes;
@@ -393,7 +395,10 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                           {eventsInSlot.map((event, index) => (
                             <div key={event.id} className="text-xs mb-1">
                               <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded truncate">
-                                {event.court} - {event.title}
+                                {event.title}
+                              </div>
+                              <div className="text-xs opacity-90 text-gray-600">
+                                {event.court}
                               </div>
                             </div>
                           ))}
