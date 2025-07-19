@@ -472,7 +472,9 @@ function getDateRange(viewType: "day" | "week" | "month", currentDate: Date) {
   let to = new Date(currentDate);
 
   if (viewType === "week") {
-    from.setDate(currentDate.getDate() - currentDate.getDay());
+    // Ensure week starts on Sunday (0)
+    const dayOfWeek = currentDate.getDay();
+    from.setDate(currentDate.getDate() - dayOfWeek);
     to.setDate(from.getDate() + 6);
   } else if (viewType === "month") {
     from = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -495,8 +497,10 @@ function getDisplayTitle(viewType: "day" | "week" | "month", currentDate: Date):
       day: 'numeric' 
     });
   } else if (viewType === "week") {
+    // Ensure week starts on Sunday
     const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    const dayOfWeek = currentDate.getDay();
+    startOfWeek.setDate(currentDate.getDate() - dayOfWeek);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
