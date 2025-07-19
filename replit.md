@@ -80,7 +80,7 @@ Preferred communication style: Simple, everyday language.
 - **Court abbreviations in week view** (C1, B1, etc.)
 - **Text wrapping for coach names** in event cards
 
-#### Module 4: Player & Parent Management (Current Focus)
+#### Module 4: Player & Parent Management (Completed)
 - **Player management** with comprehensive profile system
 - **Parent management** with child linking functionality
 - **Communication preferences** tracking (Email, SMS, GroupMe)
@@ -92,6 +92,17 @@ Preferred communication style: Simple, everyday language.
 - **Database integration** with PostgreSQL and Drizzle ORM
 - **Role-based access control** (admin/manager can manage, coach can view)
 - **CRUD operations** with proper validation and error handling
+
+#### Module 5: Communication System (Current Focus)
+- **Real-time messaging** with Pusher WebSocket integration
+- **Team-wide communication** with instant message broadcasting
+- **Delivery status tracking** per player and communication channel
+- **Multi-channel support** (Email, SMS, GroupMe mock delivery)
+- **Communication preferences** integration with player profiles
+- **Fallback messaging** system for offline scenarios
+- **Role-based communication** (admin/manager can send messages)
+- **Message history** with timestamps and sender identification
+- **Live delivery confirmations** with recipient details
 
 ## Data Flow
 
