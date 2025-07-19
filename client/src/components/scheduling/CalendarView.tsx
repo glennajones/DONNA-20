@@ -224,6 +224,21 @@ function formatTime(timeSlot: string): string {
   return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
+function abbreviateCourts(courtString: string): string {
+  return courtString
+    .split(',')
+    .map(court => court.trim())
+    .map(court => {
+      if (court.startsWith('Court ')) {
+        return 'C' + court.replace('Court ', '');
+      } else if (court.startsWith('Beach ')) {
+        return 'B' + court.replace('Beach ', '');
+      }
+      return court;
+    })
+    .join(', ');
+}
+
 function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: string): ScheduleEvent | undefined {
   return events.find((event) => {
     // Handle multi-court events (comma-separated court names)
@@ -512,7 +527,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                               }}
                             >
                               <div className="font-medium truncate">{event.title}</div>
-                              <div className="text-xs opacity-90 truncate">{event.coach}</div>
+                              <div className="text-xs opacity-90 truncate">{abbreviateCourts(event.court)}</div>
                             </div>
                           ))}
                         </div>
