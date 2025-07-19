@@ -538,6 +538,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Twilio SMS Webhook for incoming replies
+  app.post("/api/webhook/sms", async (req, res) => {
+    try {
+      // Twilio sends data as x-www-form-urlencoded
+      const from = req.body.From;
+      const body = req.body.Body;
+      const messageSid = req.body.MessageSid;
+
+      console.log(`[INBOUND SMS] from ${from}: ${body}`);
+
+      // Build a reply message object
+      const replyMessage = {
+        id: Date.now().toString(),
+        from: `SMS: ${from}`,
+        text: body,
+        date: new Date().toISOString(),
+        source: "sms_reply",
+        messageSid,
+      };
+
+      // Broadcast to Pusher so frontend updates in real time
+      try {
+        await pusher.trigger("global-chat", "message", replyMessage);
+        await pusher.trigger("notifications", "sms_reply", replyMessage);
+        console.log("SMS reply broadcast successful");
+      } catch (pusherError) {
+        console.error("Pusher error for SMS reply:", pusherError);
+      }
+
+      // Twilio expects valid XML response
+      res.status(200).send("<Response></Response>");
+    } catch (error) {
+      console.error("SMS webhook error:", error);
+      res.status(200).send("<Response></Response>"); // Still respond to Twilio
+    }
+  });
+
+  // SendGrid Email Webhook for incoming email replies
+  app.post("/api/webhook/email", async (req, res) => {
+    try {
+      // SendGrid inbound parse webhook
+      const from = req.body.from;
+      const subject = req.body.subject;
+      const text = req.body.text;
+
+      console.log(`[INBOUND EMAIL] from ${from}: ${subject}`);
+
+      const replyMessage = {
+        id: Date.now().toString(),
+        from: `Email: ${from}`,
+        text: `Subject: ${subject}\n\n${text}`,
+        date: new Date().toISOString(),
+        source: "email_reply",
+      };
+
+      // Broadcast to Pusher
+      try {
+        await pusher.trigger("global-chat", "message", replyMessage);
+        await pusher.trigger("notifications", "email_reply", replyMessage);
+        console.log("Email reply broadcast successful");
+      } catch (pusherError) {
+        console.error("Pusher error for email reply:", pusherError);
+      }
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("Email webhook error:", error);
+      res.status(200).send("OK");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { pusher } from "@/lib/pusher";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+import NotificationBell from "./NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,9 +163,12 @@ export function ChatRoom() {
     <div className="h-full flex flex-col">
       <Card className="flex-1 flex flex-col">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-[#56A0D3]" />
-            Team Communication
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-[#56A0D3]" />
+              Team Communication
+            </div>
+            <NotificationBell user={user} />
           </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0">
