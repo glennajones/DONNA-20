@@ -150,6 +150,28 @@ Preferred communication style: Simple, everyday language.
 - **Real-time budget updates** during event creation process
 - **Navigation integration** with main application menu
 
+#### Module 8: Fundraising & Sponsorship (Completed)
+- **Campaign management system** with fundraising goal tracking and progress visualization
+- **Sponsor management** with tier system (Bronze, Silver, Gold, Platinum, Diamond)
+- **Database integration** with campaigns and sponsors tables using PostgreSQL and Drizzle ORM
+- **Full CRUD operations** for both campaigns and sponsors with proper validation
+- **Role-based access control** (admin/manager can create/manage, all roles can view)
+- **Modern UI components** using shadcn/ui for consistent user experience
+- **Progress tracking** with visual indicators for campaign goal achievement
+- **Contact management** for sponsors with comprehensive contact information storage
+- **Status management** for campaigns (active, completed, cancelled)
+- **Dashboard navigation integration** with fundraising quick access button
+
+#### Module 9: Performance Tracking (In Progress - Schema Complete)
+- **Database schema implemented** with evaluations and team assignments tables
+- **Player evaluation system** with 8 performance categories (Serving, Serve Receive, Setting, Blocking, Attacking, Leadership, Communication, Coachability)
+- **Position-based weighting system** for category scores with composite score calculation
+- **Team assignment tracking** with automatic team formation capabilities
+- **PostgreSQL integration** with proper foreign key relationships to players and users
+- **Performance data types** with 1-5 rating scale validation using Zod schemas
+- **Backend API structure** ready for evaluation submission and team auto-formation endpoints
+- **Components planned**: EvaluationForm for player ratings, Scoreboard for score visualization and team formation
+
 ## Data Flow
 
 1. **Authentication Flow**:

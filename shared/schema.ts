@@ -293,3 +293,55 @@ export const insertSponsorSchema = createInsertSchema(sponsors).omit({
 });
 export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
 export type Sponsor = typeof sponsors.$inferSelect;
+
+// Performance Tracking Schema
+export const evaluations = pgTable("evaluations", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").references(() => players.id).notNull(),
+  evaluatorId: integer("evaluator_id").references(() => users.id).notNull(),
+  position: text("position").notNull(), // volleyball position
+  serving: integer("serving").notNull(), // 1-5 rating
+  serveReceive: integer("serve_receive").notNull(), // 1-5 rating
+  setting: integer("setting").notNull(), // 1-5 rating
+  blocking: integer("blocking").notNull(), // 1-5 rating
+  attacking: integer("attacking").notNull(), // 1-5 rating
+  leadership: integer("leadership").notNull(), // 1-5 rating
+  communication: integer("communication").notNull(), // 1-5 rating
+  coachability: integer("coachability").notNull(), // 1-5 rating
+  weights: json("weights").notNull(), // position-based category weights
+  compositeScore: decimal("composite_score", { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const teamAssignments = pgTable("team_assignments", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").references(() => players.id).notNull(),
+  teamName: text("team_name").notNull(),
+  position: text("position"),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+  assignedBy: integer("assigned_by").references(() => users.id),
+});
+
+// Types for Performance Tracking
+export const insertEvaluationSchema = createInsertSchema(evaluations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  compositeScore: true, // calculated on server
+}).extend({
+  playerId: z.number().min(1, "Player is required"),
+  position: z.string().min(1, "Position is required"),
+  serving: z.number().min(1).max(5),
+  serveReceive: z.number().min(1).max(5),
+  setting: z.number().min(1).max(5),
+  blocking: z.number().min(1).max(5),
+  attacking: z.number().min(1).max(5),
+  leadership: z.number().min(1).max(5),
+  communication: z.number().min(1).max(5),
+  coachability: z.number().min(1).max(5),
+});
+
+export type InsertEvaluation = z.infer<typeof insertEvaluationSchema>;
+export type Evaluation = typeof evaluations.$inferSelect;
+export type TeamAssignment = typeof teamAssignments.$inferSelect;
