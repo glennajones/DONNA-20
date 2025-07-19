@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pusher } from "./pusher";
 import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
@@ -475,6 +476,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Parent deleted successfully" });
     } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Communication routes
+  app.post("/api/chat/send", authenticateToken, async (req: any, res) => {
+    try {
+      const { text, senderId } = req.body;
+
+      if (!text || !text.trim()) {
+        return res.status(400).json({ message: "Message text is required" });
+      }
+
+      const players = await storage.getPlayers();
+      const message = {
+        id: Date.now().toString(),
+        from: senderId || req.user.username,
+        text: text.trim(),
+        date: new Date().toISOString(),
+      };
+
+      // Broadcast message event
+      await pusher.trigger("global-chat", "message", message);
+
+      // Mock send to each player via their communication preference
+      const deliveryResults: any[] = [];
+      for (const player of players) {
+        const channel = player.communicationPreference || "Email";
+        console.log(`[MOCK SEND] to ${player.name} via ${channel}: ${text}`);
+        deliveryResults.push({ 
+          playerId: player.id, 
+          playerName: player.name,
+          channel, 
+          status: "delivered" 
+        });
+
+        // Send individual delivery status updates
+        await pusher.trigger("global-chat", "delivery_status", {
+          playerId: player.id,
+          playerName: player.name,
+          channel,
+          status: "delivered",
+          messageId: message.id,
+        });
+      }
+
+      res.json({ ok: true, message, deliveryResults });
+    } catch (error) {
+      console.error("Chat send error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
