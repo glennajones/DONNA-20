@@ -54,6 +54,15 @@ export function ChatRoom() {
       
       channel.bind("delivery_status", (data: DeliveryStatus) => {
         setDeliveryStatuses((prev) => {
+          // Check if this exact delivery status already exists
+          const exists = prev.some(status => 
+            status.playerId === data.playerId && 
+            status.messageId === data.messageId && 
+            status.channel === data.channel
+          );
+          
+          if (exists) return prev;
+          
           // Remove old status for same player/message combo and add new one
           const filtered = prev.filter(
             (status) => !(status.playerId === data.playerId && status.messageId === data.messageId)
@@ -90,11 +99,14 @@ export function ChatRoom() {
       
       const result = await response.json();
       
-      // Add message locally if real-time isn't working
-      if (result.message) {
-        setMessages(prev => [...prev, result.message]);
+      // Add message locally only if real-time isn't working
+      if (result.message && !import.meta.env.VITE_PUSHER_KEY) {
+        setMessages(prev => {
+          const exists = prev.some(msg => msg.id === result.message.id);
+          return exists ? prev : [...prev, result.message];
+        });
         
-        // Add delivery statuses locally
+        // Add delivery statuses locally only if Pusher isn't working
         if (result.deliveryResults) {
           const newDeliveryStatuses = result.deliveryResults.map((delivery: any) => ({
             playerId: delivery.playerId,
@@ -103,14 +115,19 @@ export function ChatRoom() {
             status: delivery.status,
             messageId: result.message.id,
           }));
-          setDeliveryStatuses(prev => [...prev, ...newDeliveryStatuses]);
+          setDeliveryStatuses(prev => {
+            // Remove duplicates before adding new ones
+            const filtered = prev.filter(status => status.messageId !== result.message.id);
+            return [...filtered, ...newDeliveryStatuses];
+          });
         }
       }
       
       setInput("");
+      const uniqueRecipients = new Set(result.deliveryResults?.map((d: any) => d.playerName) || []).size;
       toast({
         title: "Message sent",
-        description: `Your message has been broadcast to ${result.deliveryResults?.length || 0} players`,
+        description: `Your message has been broadcast to ${uniqueRecipients} players`,
       });
     } catch (error) {
       console.error("Send message error:", error);
@@ -158,8 +175,8 @@ export function ChatRoom() {
                   No messages yet. Send the first message to communicate with all team members!
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className="space-y-2">
+                messages.map((msg, msgIndex) => (
+                  <div key={`${msg.id}-${msgIndex}`} className="space-y-2">
                     <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -174,11 +191,13 @@ export function ChatRoom() {
                       <div className="ml-4 p-2 bg-green-50 dark:bg-green-900/20 rounded border-l-2 border-green-200">
                         <div className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400 mb-1">
                           <CheckCircle className="h-3 w-3" />
-                          Delivered to {groupedDeliveryStatuses[msg.id].length} recipients
+                          Delivered to {Array.from(new Set(groupedDeliveryStatuses[msg.id].map(s => s.playerName))).length} recipients
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {groupedDeliveryStatuses[msg.id].map((status, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
+                          {Array.from(new Map(groupedDeliveryStatuses[msg.id].map(status => 
+                            [`${status.playerId}-${status.channel}`, status]
+                          )).values()).map((status, idx) => (
+                            <Badge key={`${status.playerId}-${status.channel}-${idx}`} variant="secondary" className="text-xs">
                               {status.playerName} ({status.channel})
                             </Badge>
                           ))}
