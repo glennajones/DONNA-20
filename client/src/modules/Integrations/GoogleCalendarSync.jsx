@@ -185,9 +185,16 @@ export default function GoogleCalendarSync() {
       return;
     }
 
+    // Add timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      setError('Import timed out. Please try again.');
+      setSyncing(false);
+    }, 30000); // 30 second timeout
+
     try {
       // Get a fresh token for API calls since we need the actual access token
       if (!tokenClient) {
+        clearTimeout(timeoutId);
         setError('Google authentication not ready. Please refresh the page and reconnect.');
         setSyncing(false);
         return;
@@ -197,13 +204,16 @@ export default function GoogleCalendarSync() {
       tokenClient.requestAccessToken({ 
         prompt: '',
         callback: async (tokenResponse) => {
-          if (tokenResponse.error) {
-            setError(`Authentication failed: ${tokenResponse.error}`);
-            setSyncing(false);
-            return;
-          }
-
           try {
+            if (tokenResponse.error) {
+              console.error('Token error:', tokenResponse.error);
+              clearTimeout(timeoutId);
+              setError(`Authentication failed: ${tokenResponse.error}`);
+              setSyncing(false);
+              return;
+            }
+            
+            console.log('Fresh token received for import:', tokenResponse.access_token ? 'Yes' : 'No');
             // Set access token for API calls
             window.gapi.client.setToken({access_token: tokenResponse.access_token});
 
@@ -211,6 +221,7 @@ export default function GoogleCalendarSync() {
             const timeMin = new Date().toISOString();
             const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
             
+            console.log('Fetching events from Google Calendar...');
             const response = await window.gapi.client.calendar.events.list({
               calendarId: 'primary',
               timeMin: timeMin,
@@ -220,7 +231,9 @@ export default function GoogleCalendarSync() {
               orderBy: 'startTime'
             });
 
+            console.log('Google Calendar API response:', response);
             const googleEvents = response.result.items || [];
+            console.log(`Found ${googleEvents.length} events in Google Calendar`);
             
             if (googleEvents.length === 0) {
               alert('No upcoming events found in your Google Calendar');
@@ -271,18 +284,27 @@ export default function GoogleCalendarSync() {
               }
             }
 
+            clearTimeout(timeoutId);
             alert(`✅ Imported ${importedCount} of ${googleEvents.length} events from Google Calendar to club schedule`);
             setSyncing(false);
           } catch (err) {
             console.error("Sync error:", err);
+            clearTimeout(timeoutId);
             setError("Failed to import events from Google Calendar. Please check your connection and try again.");
             setSyncing(false);
           }
+        },
+        error_callback: (error) => {
+          console.error('Token request error:', error);
+          clearTimeout(timeoutId);
+          setError(`Authentication failed: ${error.type || 'Unknown error'}`);
+          setSyncing(false);
         }
       });
 
     } catch (err) {
       console.error("Sync error:", err);
+      clearTimeout(timeoutId);
       setError("Failed to import events from Google Calendar. Please check your connection and try again.");
       setSyncing(false);
     }
