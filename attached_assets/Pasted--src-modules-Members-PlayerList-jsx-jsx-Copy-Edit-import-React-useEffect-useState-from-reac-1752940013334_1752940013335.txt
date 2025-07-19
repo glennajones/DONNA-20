@@ -1,0 +1,313 @@
+📂 src/modules/Members/PlayerList.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from "react";
+
+export default function PlayerList({ onEdit }) {
+  const [players, setPlayers] = useState([]);
+
+  const fetchPlayers = async () => {
+    try {
+      const res = await fetch("/api/players");
+      const data = await res.json();
+      setPlayers(data);
+    } catch (err) {
+      console.error("Failed to fetch players", err);
+    }
+  };
+
+  const deletePlayer = async (id) => {
+    if (!window.confirm("Delete this player?")) return;
+    try {
+      await fetch(`/api/players/${id}`, { method: "DELETE" });
+      fetchPlayers();
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlayers();
+  }, []);
+
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Players</h1>
+      <table className="min-w-full bg-white border">
+        <thead>
+          <tr className="bg-gray-100 text-left">
+            <th className="p-2 border">Name</th>
+            <th className="p-2 border">Age</th>
+            <th className="p-2 border">Teams</th>
+            <th className="p-2 border">Status</th>
+            <th className="p-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p) => (
+            <tr key={p.id} className="hover:bg-gray-50">
+              <td className="p-2 border">{p.name}</td>
+              <td className="p-2 border">{p.age}</td>
+              <td className="p-2 border">{p.teams?.join(", ")}</td>
+              <td className="p-2 border">{p.status}</td>
+              <td className="p-2 border space-x-2">
+                <button
+                  onClick={() => onEdit(p)}
+                  className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deletePlayer(p.id)}
+                  className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+          {players.length === 0 && (
+            <tr>
+              <td colSpan="5" className="p-4 text-center text-gray-500">
+                No players found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+📂 src/modules/Members/PlayerForm.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from "react";
+
+export default function PlayerForm({ player, onSaved }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    dob: "",
+    contact: "",
+    photo: "",
+    communicationPreference: [],
+  });
+
+  useEffect(() => {
+    if (player) {
+      setFormData({
+        name: player.name || "",
+        dob: player.dob || "",
+        contact: player.contact || "",
+        photo: player.photo || "",
+        communicationPreference: player.communicationPreference || [],
+      });
+    }
+  }, [player]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((f) => ({ ...f, [name]: value }));
+  };
+
+  const handleCheckboxChange = (channel) => {
+    setFormData((f) => {
+      const exists = f.communicationPreference.includes(channel);
+      return {
+        ...f,
+        communicationPreference: exists
+          ? f.communicationPreference.filter((c) => c !== channel)
+          : [...f.communicationPreference, channel],
+      };
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const method = player ? "PUT" : "POST";
+    const url = player ? `/api/players/${player.id}` : "/api/players";
+
+    try {
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      onSaved();
+    } catch (err) {
+      console.error("Save failed", err);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 max-w-lg space-y-4 bg-white shadow rounded">
+      <h2 className="text-xl font-bold">{player ? "Edit Player" : "Add Player"}</h2>
+      <input
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        placeholder="Name"
+        className="w-full border p-2 rounded"
+        required
+      />
+      <input
+        type="date"
+        name="dob"
+        value={formData.dob}
+        onChange={handleChange}
+        className="w-full border p-2 rounded"
+        required
+      />
+      <input
+        name="contact"
+        value={formData.contact}
+        onChange={handleChange}
+        placeholder="Contact Info (email/phone)"
+        className="w-full border p-2 rounded"
+      />
+      <input
+        name="photo"
+        value={formData.photo}
+        onChange={handleChange}
+        placeholder="Profile Photo URL"
+        className="w-full border p-2 rounded"
+      />
+      <div>
+        <label className="block font-medium mb-1">Communication Preference</label>
+        {["Email", "SMS", "GroupMe"].map((c) => (
+          <label key={c} className="inline-flex items-center mr-4">
+            <input
+              type="checkbox"
+              checked={formData.communicationPreference.includes(c)}
+              onChange={() => handleCheckboxChange(c)}
+              className="mr-1"
+            />
+            {c}
+          </label>
+        ))}
+      </div>
+      <button
+        type="submit"
+        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+      >
+        {player ? "Save Changes" : "Add Player"}
+      </button>
+    </form>
+  );
+}
+📂 src/modules/Members/ParentForm.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from "react";
+
+export default function ParentForm({ parent, players, onSaved }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    children: [],
+  });
+
+  useEffect(() => {
+    if (parent) {
+      setFormData({
+        name: parent.name || "",
+        email: parent.email || "",
+        phone: parent.phone || "",
+        children: parent.children || [],
+      });
+    }
+  }, [parent]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((f) => ({ ...f, [name]: value }));
+  };
+
+  const toggleChild = (id) => {
+    setFormData((f) => {
+      const exists = f.children.includes(id);
+      return {
+        ...f,
+        children: exists ? f.children.filter((c) => c !== id) : [...f.children, id],
+      };
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const method = parent ? "PUT" : "POST";
+    const url = parent ? `/api/parents/${parent.id}` : "/api/parents`;
+
+    try {
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      onSaved();
+    } catch (err) {
+      console.error("Save failed", err);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 max-w-lg space-y-4 bg-white shadow rounded">
+      <h2 className="text-xl font-bold">{parent ? "Edit Parent" : "Add Parent"}</h2>
+      <input
+        name="name"
+        value={formData.name}
+        onChange={handleChange}
+        placeholder="Parent Name"
+        className="w-full border p-2 rounded"
+        required
+      />
+      <input
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="Email"
+        className="w-full border p-2 rounded"
+      />
+      <input
+        name="phone"
+        value={formData.phone}
+        onChange={handleChange}
+        placeholder="Phone"
+        className="w-full border p-2 rounded"
+      />
+      <div>
+        <label className="block font-medium mb-1">Children</label>
+        <div className="space-y-1">
+          {players.map((p) => (
+            <label key={p.id} className="block">
+              <input
+                type="checkbox"
+                checked={formData.children.includes(p.id)}
+                onChange={() => toggleChild(p.id)}
+                className="mr-1"
+              />
+              {p.name}
+            </label>
+          ))}
+        </div>
+      </div>
+      <button
+        type="submit"
+        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        {parent ? "Save Changes" : "Add Parent"}
+      </button>
+    </form>
+  );
+}
+✅ What you have now
+✅ A PlayerList table with edit/delete buttons.
+✅ A PlayerForm to add/edit players with contact preferences (this will feed directly into your Communication module later!).
+✅ A ParentForm to add/edit parents and link them to players.
+
+💡 Next steps
+👉 Hook these up in your app’s routing or a parent component.
+👉 Implement /api/players and /api/parents endpoints (or mock them for now).

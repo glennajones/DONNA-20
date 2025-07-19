@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -330,6 +330,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ message: "Event deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Player routes
+  app.get("/api/players", authenticateToken, async (req: any, res) => {
+    try {
+      const players = await storage.getPlayers();
+      res.json(players);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/players", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create players
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const validatedData = insertPlayerSchema.parse(req.body);
+      const player = await storage.createPlayer(validatedData);
+      res.status(201).json(player);
+    } catch (error: any) {
+      if (error.errors) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/players/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update players
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      const player = await storage.updatePlayer(parseInt(id), updateData);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      res.json(player);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/players/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete players
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deletePlayer(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      res.json({ message: "Player deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Parent routes
+  app.get("/api/parents", authenticateToken, async (req: any, res) => {
+    try {
+      const parents = await storage.getParents();
+      res.json(parents);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/parents", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create parents
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const validatedData = insertParentSchema.parse(req.body);
+      const parent = await storage.createParent(validatedData);
+      res.status(201).json(parent);
+    } catch (error: any) {
+      if (error.errors) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/parents/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update parents
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      const parent = await storage.updateParent(parseInt(id), updateData);
+      if (!parent) {
+        return res.status(404).json({ message: "Parent not found" });
+      }
+
+      res.json(parent);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/parents/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete parents
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteParent(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Parent not found" });
+      }
+
+      res.json({ message: "Parent deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

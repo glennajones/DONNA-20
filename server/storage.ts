@@ -3,6 +3,8 @@ import {
   registrations, 
   payments,
   scheduleEvents,
+  players,
+  parents,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -10,7 +12,11 @@ import {
   type Payment, 
   type InsertPayment,
   type ScheduleEvent,
-  type InsertScheduleEvent
+  type InsertScheduleEvent,
+  type Player,
+  type InsertPlayer,
+  type Parent,
+  type InsertParent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne } from "drizzle-orm";
@@ -42,6 +48,20 @@ export interface IStorage {
   updateScheduleEvent(id: number, event: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined>;
   deleteScheduleEvent(id: number): Promise<boolean>;
   checkScheduleConflict(court: string, date: string, time: string, duration: number, excludeId?: number): Promise<boolean>;
+  
+  // Player methods
+  getPlayer(id: number): Promise<Player | undefined>;
+  getPlayers(): Promise<Player[]>;
+  createPlayer(player: InsertPlayer): Promise<Player>;
+  updatePlayer(id: number, player: Partial<InsertPlayer>): Promise<Player | undefined>;
+  deletePlayer(id: number): Promise<boolean>;
+  
+  // Parent methods
+  getParent(id: number): Promise<Parent | undefined>;
+  getParents(): Promise<Parent[]>;
+  createParent(parent: InsertParent): Promise<Parent>;
+  updateParent(id: number, parent: Partial<InsertParent>): Promise<Parent | undefined>;
+  deleteParent(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -228,6 +248,70 @@ export class DatabaseStorage implements IStorage {
     }
     
     return false; // No conflict
+  }
+
+  // Player methods
+  async getPlayer(id: number): Promise<Player | undefined> {
+    const [player] = await db.select().from(players).where(eq(players.id, id));
+    return player || undefined;
+  }
+
+  async getPlayers(): Promise<Player[]> {
+    return await db.select().from(players);
+  }
+
+  async createPlayer(insertPlayer: InsertPlayer): Promise<Player> {
+    const [player] = await db
+      .insert(players)
+      .values(insertPlayer)
+      .returning();
+    return player;
+  }
+
+  async updatePlayer(id: number, playerUpdate: Partial<InsertPlayer>): Promise<Player | undefined> {
+    const [player] = await db
+      .update(players)
+      .set({ ...playerUpdate, updatedAt: new Date() })
+      .where(eq(players.id, id))
+      .returning();
+    return player || undefined;
+  }
+
+  async deletePlayer(id: number): Promise<boolean> {
+    const result = await db.delete(players).where(eq(players.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Parent methods
+  async getParent(id: number): Promise<Parent | undefined> {
+    const [parent] = await db.select().from(parents).where(eq(parents.id, id));
+    return parent || undefined;
+  }
+
+  async getParents(): Promise<Parent[]> {
+    return await db.select().from(parents);
+  }
+
+  async createParent(insertParent: InsertParent): Promise<Parent> {
+    const [parent] = await db
+      .insert(parents)
+      .values(insertParent)
+      .returning();
+    return parent;
+  }
+
+  async updateParent(id: number, parentUpdate: Partial<InsertParent>): Promise<Parent | undefined> {
+    const [parent] = await db
+      .update(parents)
+      .set({ ...parentUpdate, updatedAt: new Date() })
+      .where(eq(parents.id, id))
+      .returning();
+    return parent || undefined;
+  }
+
+  async deleteParent(id: number): Promise<boolean> {
+    const result = await db.delete(parents).where(eq(parents.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

@@ -8,10 +8,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Volleyball, LogOut, User, Settings } from "lucide-react";
+import { Volleyball, LogOut, User, Settings, Users } from "lucide-react";
 import { Link } from "wouter";
 
-export default function Navbar() {
+export function Navbar() {
   const { user, logout, hasRole } = useAuth();
 
   const getRoleBadgeVariant = (role: string) => {
@@ -57,9 +57,9 @@ export default function Navbar() {
               )}
               
               {hasRole(["admin", "manager"]) && (
-                <Link href="/players">
+                <Link href="/members">
                   <a className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                    Players
+                    Members
                   </a>
                 </Link>
               )}
@@ -120,3 +120,5 @@ export default function Navbar() {
     </nav>
   );
 }
+
+export default Navbar;

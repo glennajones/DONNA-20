@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
   requiredRoles?: string | string[];
 }
 
-export default function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -57,3 +57,5 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
 
   return <>{children}</>;
 }
+
+export default ProtectedRoute;

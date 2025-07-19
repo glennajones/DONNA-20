@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -55,6 +56,29 @@ export const scheduleEvents = pgTable("schedule_events", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const players = pgTable("players", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  dateOfBirth: text("date_of_birth").notNull(), // YYYY-MM-DD format
+  contact: text("contact"), // email or phone
+  photo: text("photo"), // profile photo URL
+  communicationPreference: text("communication_preference").array().notNull().default([]), // ["Email", "SMS", "GroupMe"]
+  teams: text("teams").array().notNull().default([]), // team assignments
+  status: text("status", { enum: ["active", "inactive", "suspended"] }).notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const parents = pgTable("parents", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  children: integer("children").array().notNull().default([]), // array of player IDs
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -72,6 +96,46 @@ export const insertRegistrationSchema = createInsertSchema(registrations).omit({
   phone: z.string().min(10, "Please enter a valid phone number"),
   name: z.string().min(2, "Name must be at least 2 characters"),
 });
+
+export const insertPlayerSchema = createInsertSchema(players).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  contact: z.string().optional(),
+});
+
+export const insertParentSchema = createInsertSchema(parents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email().optional(),
+});
+
+// Relations
+export const playersRelations = relations(players, ({ many }) => ({
+  parentChildren: many(parents),
+}));
+
+export const parentsRelations = relations(parents, ({ many }) => ({
+  children: many(players),
+}));
+
+// Type exports
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Registration = typeof registrations.$inferSelect;
+export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type ScheduleEvent = typeof scheduleEvents.$inferSelect;
+export type Player = typeof players.$inferSelect;
+export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
+export type Parent = typeof parents.$inferSelect;
+export type InsertParent = z.infer<typeof insertParentSchema>;
 
 export const insertPaymentSchema = createInsertSchema(payments).omit({
   id: true,

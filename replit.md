@@ -66,7 +66,7 @@ Preferred communication style: Simple, everyday language.
 - **Registration data validation** with comprehensive form handling
 - **Demo payment processing** with mock Stripe integration
 
-#### Module 3: Training & Scheduling System (Current Focus)
+#### Module 3: Training & Scheduling System (Completed)
 - **Calendar view** with day/week/month viewing options
 - **Court management** with 9 courts (Court 1-7 + Beach 1-2) - CRITICAL: Court names must be exactly "Court 1", "Court 2", etc. and "Beach 1", "Beach 2" only
 - **Training session scheduling** with conflict detection
@@ -77,6 +77,21 @@ Preferred communication style: Simple, everyday language.
 - **Multi-court event support** with comma-separated court assignments
 - **Unified event data source** across all calendar views
 - **Authentic calendar dates** with proper timezone handling (July 2025)
+- **Court abbreviations in week view** (C1, B1, etc.)
+- **Text wrapping for coach names** in event cards
+
+#### Module 4: Player & Parent Management (Current Focus)
+- **Player management** with comprehensive profile system
+- **Parent management** with child linking functionality
+- **Communication preferences** tracking (Email, SMS, GroupMe)
+- **Team assignments** with multiple team support
+- **Age calculation** from date of birth
+- **Status tracking** (active, inactive, suspended)
+- **Contact information** management
+- **Profile photo** URL support
+- **Database integration** with PostgreSQL and Drizzle ORM
+- **Role-based access control** (admin/manager can manage, coach can view)
+- **CRUD operations** with proper validation and error handling
 
 ## Data Flow
 
