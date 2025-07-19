@@ -216,3 +216,33 @@ export const insertFormResponseSchema = createInsertSchema(formResponses).omit({
 });
 export type InsertFormResponse = z.infer<typeof insertFormResponseSchema>;
 export type FormResponse = typeof formResponses.$inferSelect;
+
+// Events & Budgeting Schema
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  startDate: text("start_date").notNull(), // YYYY-MM-DD format
+  endDate: text("end_date").notNull(), // YYYY-MM-DD format
+  location: text("location").notNull(),
+  players: integer("players").notNull().default(0),
+  courts: integer("courts").notNull().default(0),
+  coaches: integer("coaches").notNull().default(0),
+  feePerPlayer: decimal("fee_per_player", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  coachRates: json("coach_rates").notNull().default([]), // array of {profile: string, rate: number}
+  miscExpenses: json("misc_expenses").notNull().default([]), // array of {item: string, cost: number}
+  projectedRevenue: decimal("projected_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  actualRevenue: decimal("actual_revenue", { precision: 10, scale: 2 }).default("0.00"),
+  status: text("status", { enum: ["planning", "active", "completed", "cancelled"] }).notNull().default("planning"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Types for events
+export const insertEventSchema = createInsertSchema(events).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertEvent = z.infer<typeof insertEventSchema>;
+export type Event = typeof events.$inferSelect;

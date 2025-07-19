@@ -1,0 +1,277 @@
+Here’s a full implementation for your Events & Budgeting Module with React, TailwindCSS, and plain JavaScript logic.
+Everything is self-contained and ready to drop into your src/modules/Events/ folder.
+
+📌 src/modules/Events/EventWizard.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+const EventWizard = () => {
+  const [step, setStep] = useState(1);
+
+  // STEP 1: Basic info
+  const [basic, setBasic] = useState({
+    name: "",
+    startDate: "",
+    endDate: "",
+    location: "",
+  });
+
+  // STEP 2: Court & Coach Estimation
+  const [players, setPlayers] = useState(0);
+  const courts = Math.ceil(players / 6);
+  const coaches = Math.ceil(players / 12);
+
+  // STEP 3: Budget & Pricing
+  const [feePerPlayer, setFeePerPlayer] = useState(0);
+  const [coachRates, setCoachRates] = useState([{ profile: "", rate: 0 }]);
+  const [misc, setMisc] = useState([{ item: "", cost: 0 }]);
+  const projectedRevenue = players * feePerPlayer;
+
+  // STEP 4: Submission
+  const handleSubmit = async () => {
+    const payload = {
+      ...basic,
+      players,
+      courts,
+      coaches,
+      feePerPlayer,
+      coachRates,
+      misc,
+      projectedRevenue,
+    };
+    try {
+      await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      alert("✅ Event Published!");
+      setStep(1);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to publish event.");
+    }
+  };
+
+  // Helpers for dynamic lists
+  const updateCoachRate = (i, field, val) => {
+    const arr = [...coachRates];
+    arr[i][field] = field === "rate" ? Number(val) : val;
+    setCoachRates(arr);
+  };
+  const addCoachRate = () => setCoachRates([...coachRates, { profile: "", rate: 0 }]);
+
+  const updateMisc = (i, field, val) => {
+    const arr = [...misc];
+    arr[i][field] = field === "cost" ? Number(val) : val;
+    setMisc(arr);
+  };
+  const addMisc = () => setMisc([...misc, { item: "", cost: 0 }]);
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto bg-white shadow rounded">
+      <h1 className="text-2xl font-bold mb-4">Event Wizard (Step {step}/4)</h1>
+
+      {step === 1 && (
+        <div className="space-y-3">
+          <input
+            className="input input-bordered w-full"
+            placeholder="Event Name"
+            value={basic.name}
+            onChange={(e) => setBasic({ ...basic, name: e.target.value })}
+          />
+          <input
+            type="date"
+            className="input input-bordered w-full"
+            value={basic.startDate}
+            onChange={(e) => setBasic({ ...basic, startDate: e.target.value })}
+          />
+          <input
+            type="date"
+            className="input input-bordered w-full"
+            value={basic.endDate}
+            onChange={(e) => setBasic({ ...basic, endDate: e.target.value })}
+          />
+          <input
+            className="input input-bordered w-full"
+            placeholder="Location"
+            value={basic.location}
+            onChange={(e) => setBasic({ ...basic, location: e.target.value })}
+          />
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="space-y-3">
+          <input
+            type="number"
+            className="input input-bordered w-full"
+            placeholder="Expected # Players"
+            value={players}
+            onChange={(e) => setPlayers(Number(e.target.value))}
+          />
+          <div className="p-3 bg-gray-100 rounded">
+            <p>Estimated Courts: <strong>{courts}</strong></p>
+            <p>Estimated Coaches: <strong>{coaches}</strong></p>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-6">
+          <div>
+            <label className="font-medium">Fee per Player ($)</label>
+            <input
+              type="number"
+              className="input input-bordered w-full"
+              value={feePerPlayer}
+              onChange={(e) => setFeePerPlayer(Number(e.target.value))}
+            />
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Coach Rates</h3>
+            {coachRates.map((c, i) => (
+              <div key={i} className="flex gap-2 mb-2">
+                <input
+                  className="input input-bordered flex-1"
+                  placeholder="Profile"
+                  value={c.profile}
+                  onChange={(e) => updateCoachRate(i, "profile", e.target.value)}
+                />
+                <input
+                  type="number"
+                  className="input input-bordered w-24"
+                  placeholder="$"
+                  value={c.rate}
+                  onChange={(e) => updateCoachRate(i, "rate", e.target.value)}
+                />
+              </div>
+            ))}
+            <button onClick={addCoachRate} className="btn btn-sm btn-outline">+ Add Coach Rate</button>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Misc Expenses</h3>
+            {misc.map((m, i) => (
+              <div key={i} className="flex gap-2 mb-2">
+                <input
+                  className="input input-bordered flex-1"
+                  placeholder="Item"
+                  value={m.item}
+                  onChange={(e) => updateMisc(i, "item", e.target.value)}
+                />
+                <input
+                  type="number"
+                  className="input input-bordered w-24"
+                  placeholder="$"
+                  value={m.cost}
+                  onChange={(e) => updateMisc(i, "cost", e.target.value)}
+                />
+              </div>
+            ))}
+            <button onClick={addMisc} className="btn btn-sm btn-outline">+ Add Misc</button>
+          </div>
+          <div className="p-3 bg-gray-100 rounded">
+            <p>Projected Revenue: <strong>${projectedRevenue}</strong></p>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-4">
+          <h3 className="font-medium text-lg">Review</h3>
+          <pre className="bg-gray-100 p-2 rounded text-sm">{JSON.stringify({ basic, players, courts, coaches, feePerPlayer, coachRates, misc, projectedRevenue }, null, 2)}</pre>
+          <button onClick={handleSubmit} className="btn btn-primary w-full">Publish Event</button>
+        </div>
+      )}
+
+      <div className="flex justify-between mt-6">
+        <button
+          className="btn"
+          disabled={step === 1}
+          onClick={() => setStep(step - 1)}
+        >
+          Back
+        </button>
+        <button
+          className="btn btn-primary"
+          disabled={step === 4}
+          onClick={() => setStep(step + 1)}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default EventWizard;
+📌 src/modules/Events/EventList.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from "react";
+
+const EventList = () => {
+  const [events, setEvents] = useState([]);
+
+  useEffect(() => {
+    // Fetch events from API
+    fetch("/api/events")
+      .then((res) => res.json())
+      .then(setEvents)
+      .catch(console.error);
+  }, []);
+
+  const calcNet = (ev) => {
+    const proj = ev.projectedRevenue || 0;
+    const actual = ev.actualRevenue || 0;
+    const net = actual - proj;
+    const pct = proj > 0 ? ((net / proj) * 100).toFixed(1) : 0;
+    return { net, pct };
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto bg-white shadow rounded">
+      <h1 className="text-2xl font-bold mb-4">Events</h1>
+      <table className="table w-full">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Date Range</th>
+            <th>Projected Revenue</th>
+            <th>Actual Revenue</th>
+            <th>Net Profit ($ / %)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((ev) => {
+            const { net, pct } = calcNet(ev);
+            return (
+              <tr key={ev.id} className="hover">
+                <td>{ev.name}</td>
+                <td>{ev.startDate} → {ev.endDate}</td>
+                <td>${ev.projectedRevenue || 0}</td>
+                <td>${ev.actualRevenue || 0}</td>
+                <td>
+                  ${net} / {pct}%
+                </td>
+                <td className="space-x-2">
+                  <button className="btn btn-xs btn-outline">View</button>
+                  <button className="btn btn-xs btn-primary">Edit</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default EventList;
+✅ Both components use Tailwind classes (like btn, input, table—ensure you have Tailwind + DaisyUI or your preferred style config installed).
+✅ EventWizard handles multi-step state and POSTs to /api/events.
+✅ EventList fetches events and shows the net profit with $ and %.

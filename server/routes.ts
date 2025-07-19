@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -778,6 +778,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(response);
     } catch (error) {
       console.error("Submit response error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Events Routes
+  app.get("/api/events", authenticateToken, async (req: any, res) => {
+    try {
+      const events = await storage.getEvents();
+      res.json(events);
+    } catch (error) {
+      console.error("Get events error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const event = await storage.getEvent(parseInt(id));
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      console.error("Get event error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/events", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const eventData = insertEventSchema.parse({
+        ...req.body,
+        createdBy: req.user.userId
+      });
+
+      const event = await storage.createEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Create event error:", error);
+      res.status(400).json({ message: "Invalid event data" });
+    }
+  });
+
+  app.put("/api/events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const eventData = req.body;
+      
+      const updatedEvent = await storage.updateEvent(parseInt(id), eventData);
+      
+      if (!updatedEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      res.json(updatedEvent);
+    } catch (error) {
+      console.error("Update event error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete events
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteEvent(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      res.json({ message: "Event deleted successfully" });
+    } catch (error) {
+      console.error("Delete event error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

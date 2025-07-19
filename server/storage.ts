@@ -7,6 +7,7 @@ import {
   parents,
   formTemplates,
   formResponses,
+  events,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -22,7 +23,9 @@ import {
   type FormTemplate,
   type InsertFormTemplate,
   type FormResponse,
-  type InsertFormResponse
+  type InsertFormResponse,
+  type Event,
+  type InsertEvent
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -79,6 +82,13 @@ export interface IStorage {
   getFormResponse(id: number): Promise<FormResponse | undefined>;
   getFormResponses(templateId: number): Promise<FormResponse[]>;
   createFormResponse(response: InsertFormResponse): Promise<FormResponse>;
+
+  // Event methods
+  getEvent(id: number): Promise<Event | undefined>;
+  getEvents(): Promise<Event[]>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
+  deleteEvent(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -383,6 +393,38 @@ export class DatabaseStorage implements IStorage {
       .values(response)
       .returning();
     return newResponse;
+  }
+
+  // Event methods
+  async getEvent(id: number): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    return event || undefined;
+  }
+
+  async getEvents(): Promise<Event[]> {
+    return await db.select().from(events).orderBy(desc(events.createdAt));
+  }
+
+  async createEvent(insertEvent: InsertEvent): Promise<Event> {
+    const [event] = await db
+      .insert(events)
+      .values(insertEvent)
+      .returning();
+    return event;
+  }
+
+  async updateEvent(id: number, eventUpdate: Partial<InsertEvent>): Promise<Event | undefined> {
+    const [event] = await db
+      .update(events)
+      .set({ ...eventUpdate, updatedAt: new Date() })
+      .where(eq(events.id, id))
+      .returning();
+    return event || undefined;
+  }
+
+  async deleteEvent(id: number): Promise<boolean> {
+    const result = await db.delete(events).where(eq(events.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
