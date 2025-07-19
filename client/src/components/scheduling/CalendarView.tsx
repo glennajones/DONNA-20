@@ -11,7 +11,7 @@ interface CalendarViewProps {
 }
 
 export default function CalendarView({ viewType }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // July 1, 2025
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
 
   useEffect(() => {
