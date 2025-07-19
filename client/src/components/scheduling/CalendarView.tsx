@@ -346,9 +346,9 @@ function formatMonthYear(dateString: string): string {
 function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent) => void) {
   const timeSlots = generateTimeSlots();
   const courts = [
-    ...Array.from({ length: 7 }, (_, i) => `Court ${i + 1}`),
-    "Beach 1",
-    "Beach 2",
+    "Court 1", "Court 2", "Court 3", "Court 4", "Court 5", "Court 6", "Court 7",
+    "Indoor Court 1", "Indoor Court 2",
+    "Beach 1", "Beach 2", "Beach Court 1",
   ];
 
   const todayEvents = events.filter((e: ScheduleEvent) => e.date === dateRange.from);
@@ -365,7 +365,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
           <div className="overflow-x-auto">
             <div className="min-w-full">
               {/* Header row with courts */}
-              <div className="grid grid-cols-10 gap-px bg-gray-200 rounded-t-lg overflow-hidden">
+              <div className="grid gap-px bg-gray-200 rounded-t-lg overflow-hidden" style={{gridTemplateColumns: `80px repeat(${courts.length}, 1fr)`}}>
                 <div className="bg-gray-100 p-3 font-medium text-center text-sm">Time</div>
                 {courts.map((court) => (
                   <div key={court} className="bg-gray-100 p-3 font-medium text-center text-xs">
@@ -375,7 +375,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
               </div>
 
               {/* Time slots grid */}
-              <div className="grid grid-cols-10 gap-px bg-gray-200">
+              <div className="grid gap-px bg-gray-200" style={{gridTemplateColumns: `80px repeat(${courts.length}, 1fr)`}}>
 {timeSlots.map((timeSlot, timeIndex) => (
                   <div key={timeSlot} className="contents">
                     <div className="bg-gray-50 p-2 text-xs font-medium text-gray-600 flex items-center justify-center border-r">
