@@ -351,7 +351,15 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
     "Beach 1", "Beach 2", "Beach Court 1",
   ];
 
-  const todayEvents = events.filter((e: ScheduleEvent) => e.date === dateRange.from);
+  const todayEvents = events
+    .filter((e: ScheduleEvent) => e.date === dateRange.from)
+    .sort((a, b) => {
+      const [aHours, aMinutes] = a.time.split(':').map(Number);
+      const [bHours, bMinutes] = b.time.split(':').map(Number);
+      const aTimeMinutes = aHours * 60 + aMinutes;
+      const bTimeMinutes = bHours * 60 + bMinutes;
+      return aTimeMinutes - bTimeMinutes;
+    });
 
   return (
     <div className="space-y-4">
@@ -460,7 +468,15 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                       {formatTime(timeSlot)}
                     </div>
                     {weekDays.map((day) => {
-                      const dayEvents = events.filter(e => e.date === day.date);
+                      const dayEvents = events
+                        .filter(e => e.date === day.date)
+                        .sort((a, b) => {
+                          const [aHours, aMinutes] = a.time.split(':').map(Number);
+                          const [bHours, bMinutes] = b.time.split(':').map(Number);
+                          const aTimeMinutes = aHours * 60 + aMinutes;
+                          const bTimeMinutes = bHours * 60 + bMinutes;
+                          return aTimeMinutes - bTimeMinutes;
+                        });
                       const eventsInSlot = dayEvents.filter(event => {
                         const [eventHours, eventMinutes] = event.time.split(":").map(Number);
                         const eventStartMinutes = eventHours * 60 + eventMinutes;
@@ -558,7 +574,15 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                   </div>
                   
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map(event => (
+                    {dayEvents
+                      .sort((a, b) => {
+                        const [aHours, aMinutes] = a.time.split(':').map(Number);
+                        const [bHours, bMinutes] = b.time.split(':').map(Number);
+                        const aTimeMinutes = aHours * 60 + aMinutes;
+                        const bTimeMinutes = bHours * 60 + bMinutes;
+                        return aTimeMinutes - bTimeMinutes;
+                      })
+                      .slice(0, 3).map(event => (
                       <div
                         key={event.id}
                         className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate cursor-pointer hover:bg-[#4A8BC2] transition-colors"
@@ -571,7 +595,16 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                     {dayEvents.length > 3 && (
                       <div 
                         className="text-xs text-gray-500 cursor-pointer hover:text-gray-700"
-                        onClick={() => setSelectedEvent(dayEvents[3])}
+                        onClick={() => {
+                          const sortedEvents = dayEvents.sort((a, b) => {
+                            const [aHours, aMinutes] = a.time.split(':').map(Number);
+                            const [bHours, bMinutes] = b.time.split(':').map(Number);
+                            const aTimeMinutes = aHours * 60 + aMinutes;
+                            const bTimeMinutes = bHours * 60 + bMinutes;
+                            return aTimeMinutes - bTimeMinutes;
+                          });
+                          setSelectedEvent(sortedEvents[3]);
+                        }}
                       >
                         +{dayEvents.length - 3} more
                       </div>
