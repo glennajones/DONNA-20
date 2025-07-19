@@ -5,6 +5,8 @@ import {
   scheduleEvents,
   players,
   parents,
+  formTemplates,
+  formResponses,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -16,7 +18,11 @@ import {
   type Player,
   type InsertPlayer,
   type Parent,
-  type InsertParent
+  type InsertParent,
+  type FormTemplate,
+  type InsertFormTemplate,
+  type FormResponse,
+  type InsertFormResponse
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne } from "drizzle-orm";
@@ -62,6 +68,17 @@ export interface IStorage {
   createParent(parent: InsertParent): Promise<Parent>;
   updateParent(id: number, parent: Partial<InsertParent>): Promise<Parent | undefined>;
   deleteParent(id: number): Promise<boolean>;
+  
+  // Form Template methods
+  getFormTemplate(id: number): Promise<FormTemplate | undefined>;
+  getFormTemplates(): Promise<FormTemplate[]>;
+  createFormTemplate(template: InsertFormTemplate): Promise<FormTemplate>;
+  deleteFormTemplate(id: number): Promise<boolean>;
+  
+  // Form Response methods
+  getFormResponse(id: number): Promise<FormResponse | undefined>;
+  getFormResponses(templateId: number): Promise<FormResponse[]>;
+  createFormResponse(response: InsertFormResponse): Promise<FormResponse>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -312,6 +329,51 @@ export class DatabaseStorage implements IStorage {
   async deleteParent(id: number): Promise<boolean> {
     const result = await db.delete(parents).where(eq(parents.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Form Template methods
+  async getFormTemplate(id: number): Promise<FormTemplate | undefined> {
+    const [template] = await db.select().from(formTemplates).where(eq(formTemplates.id, id));
+    return template || undefined;
+  }
+
+  async getFormTemplates(): Promise<FormTemplate[]> {
+    return await db.select().from(formTemplates).where(eq(formTemplates.isActive, true)).orderBy(desc(formTemplates.createdAt));
+  }
+
+  async createFormTemplate(template: InsertFormTemplate): Promise<FormTemplate> {
+    const [newTemplate] = await db
+      .insert(formTemplates)
+      .values(template)
+      .returning();
+    return newTemplate;
+  }
+
+  async deleteFormTemplate(id: number): Promise<boolean> {
+    const result = await db.update(formTemplates)
+      .set({ isActive: false })
+      .where(eq(formTemplates.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Form Response methods
+  async getFormResponse(id: number): Promise<FormResponse | undefined> {
+    const [response] = await db.select().from(formResponses).where(eq(formResponses.id, id));
+    return response || undefined;
+  }
+
+  async getFormResponses(templateId: number): Promise<FormResponse[]> {
+    return await db.select().from(formResponses)
+      .where(eq(formResponses.templateId, templateId))
+      .orderBy(desc(formResponses.submittedAt));
+  }
+
+  async createFormResponse(response: InsertFormResponse): Promise<FormResponse> {
+    const [newResponse] = await db
+      .insert(formResponses)
+      .values(response)
+      .returning();
+    return newResponse;
   }
 }
 

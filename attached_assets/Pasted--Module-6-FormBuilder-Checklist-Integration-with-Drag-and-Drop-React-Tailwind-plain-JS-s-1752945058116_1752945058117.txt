@@ -1,0 +1,221 @@
+// Module 6: FormBuilder & Checklist Integration with Drag-and-Drop
+// React + Tailwind + plain-JS scaffolds
+
+// =========================
+// src/modules/FormBuilder/formApi.js
+// =========================
+export async function fetchTemplates() {
+  return [
+    { id: '1', name: 'Equipment Checklist', fields: [{ id: 'f1', type: 'checkbox', label: 'Bring ball' }] },
+    { id: '2', name: 'Medical Clearance', fields: [{ id: 'f2', type: 'text', label: 'Doctor Name' }] }
+  ];
+}
+
+export async function saveTemplate(template) {
+  console.log('Saving template to backend', template);
+  return { success: true, id: Date.now().toString() };
+}
+
+export async function fetchResponses(formId) {
+  console.log('Fetching responses for', formId);
+  return [
+    { responder: 'John Doe', answers: { f1: true } },
+    { responder: 'Jane Smith', answers: { f1: false } }
+  ];
+}
+
+export async function submitResponse(formId, data) {
+  console.log('Submitting response', formId, data);
+  return { success: true };
+}
+
+// =========================
+// src/modules/FormBuilder/FormBuilder.jsx
+// =========================
+import React, { useState } from 'react';
+import { saveTemplate } from './formApi';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
+export default function FormBuilder() {
+  const [fields, setFields] = useState([]);
+  const [name, setName] = useState('');
+
+  const addField = (type) => {
+    setFields([...fields, { id: Date.now().toString(), type, label: 'New Field' }]);
+  };
+
+  const updateLabel = (id, newLabel) => {
+    setFields(fields.map(f => f.id === id ? { ...f, label: newLabel } : f));
+  };
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const reordered = Array.from(fields);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+    setFields(reordered);
+  };
+
+  const handleSave = async () => {
+    await saveTemplate({ name, fields });
+    alert('Template saved!');
+    setName('');
+    setFields([]);
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="text-2xl font-bold">Form Builder</h2>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Form Name" className="border p-1 w-full" />
+      <div className="space-x-2">
+        <button className="bg-blue-500 text-white px-3 py-1" onClick={() => addField('text')}>Add Text</button>
+        <button className="bg-blue-500 text-white px-3 py-1" onClick={() => addField('checkbox')}>Add Checkbox</button>
+        <button className="bg-blue-500 text-white px-3 py-1" onClick={() => addField('date')}>Add Date</button>
+      </div>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="fields">
+          {(provided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+              {fields.map((f, index) => (
+                <Draggable key={f.id} draggableId={f.id} index={index}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className="border p-2 flex items-center space-x-2 bg-white"
+                    >
+                      <input value={f.label} onChange={(e) => updateLabel(f.id, e.target.value)} className="border p-1 flex-1" />
+                      <span className="text-gray-500 text-sm">({f.type})</span>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+      <button className="bg-green-600 text-white px-3 py-1" onClick={handleSave}>Save Template</button>
+    </div>
+  );
+}
+
+// =========================
+// src/modules/FormBuilder/FormTemplateManager.jsx
+// =========================
+import React, { useEffect, useState } from 'react';
+import { fetchTemplates } from './formApi';
+
+export default function FormTemplateManager({ onAttach }) {
+  const [templates, setTemplates] = useState([]);
+
+  useEffect(() => {
+    fetchTemplates().then(setTemplates);
+  }, []);
+
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="text-2xl font-bold">Form Templates</h2>
+      <ul className="space-y-2">
+        {templates.map(t => (
+          <li key={t.id} className="border p-2 flex justify-between items-center">
+            <span>{t.name}</span>
+            <button className="bg-blue-500 text-white px-3 py-1" onClick={() => onAttach && onAttach(t)}>Attach</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// =========================
+// src/modules/FormBuilder/FormResponseDashboard.jsx
+// =========================
+import React, { useEffect, useState } from 'react';
+import { fetchTemplates, fetchResponses } from './formApi';
+
+export default function FormResponseDashboard() {
+  const [templates, setTemplates] = useState([]);
+  const [selectedForm, setSelectedForm] = useState(null);
+  const [responses, setResponses] = useState([]);
+
+  useEffect(() => {
+    fetchTemplates().then(setTemplates);
+  }, []);
+
+  const loadResponses = async (formId) => {
+    const res = await fetchResponses(formId);
+    setResponses(res);
+    setSelectedForm(formId);
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="text-2xl font-bold">Form Responses</h2>
+      <div className="space-x-2">
+        {templates.map(t => (
+          <button key={t.id} className="bg-gray-200 px-3 py-1" onClick={() => loadResponses(t.id)}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+      {selectedForm && (
+        <div className="mt-4">
+          <h3 className="text-xl font-semibold">Responses for Form {selectedForm}</h3>
+          <table className="table-auto border-collapse border border-gray-300 mt-2">
+            <thead>
+              <tr>
+                <th className="border px-2 py-1">Responder</th>
+                <th className="border px-2 py-1">Answers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {responses.map((r, idx) => (
+                <tr key={idx}>
+                  <td className="border px-2 py-1">{r.responder}</td>
+                  <td className="border px-2 py-1">{JSON.stringify(r.answers)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =========================
+// Mock Server (for dev): server/routes/formRoutes.js
+// =========================
+import express from 'express';
+const router = express.Router();
+
+let templates = [
+  { id: '1', name: 'Equipment Checklist', fields: [{ id: 'f1', type: 'checkbox', label: 'Bring ball' }] },
+];
+let responses = {};
+
+router.get('/forms/templates', (req, res) => {
+  res.json(templates);
+});
+
+router.post('/forms/templates', (req, res) => {
+  const newTemplate = { id: Date.now().toString(), ...req.body };
+  templates.push(newTemplate);
+  res.json({ success: true, id: newTemplate.id });
+});
+
+router.get('/forms/:id/responses', (req, res) => {
+  const formId = req.params.id;
+  res.json(responses[formId] || []);
+});
+
+router.post('/forms/:id/responses', (req, res) => {
+  const formId = req.params.id;
+  if (!responses[formId]) responses[formId] = [];
+  responses[formId].push(req.body);
+  res.json({ success: true });
+});
+
+export default router;

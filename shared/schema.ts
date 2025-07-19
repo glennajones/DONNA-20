@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, varchar, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -175,3 +175,44 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type ScheduleEvent = typeof scheduleEvents.$inferSelect;
 export type InsertScheduleEvent = z.infer<typeof insertScheduleEventSchema>;
+
+// Communication preferences type
+export type CommunicationPreference = "Email" | "SMS" | "GroupMe";
+
+// Form Builder Schema
+export const formTemplates = pgTable("form_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  fields: json("fields").notNull(),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const formResponses = pgTable("form_responses", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => formTemplates.id).notNull(),
+  responderId: integer("responder_id").references(() => players.id),
+  responderName: varchar("responder_name", { length: 100 }).notNull(),
+  responderEmail: varchar("responder_email", { length: 100 }),
+  answers: json("answers").notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  status: varchar("status", { length: 20 }).default("completed").notNull(),
+});
+
+// Types for form templates
+export const insertFormTemplateSchema = createInsertSchema(formTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertFormTemplate = z.infer<typeof insertFormTemplateSchema>;
+export type FormTemplate = typeof formTemplates.$inferSelect;
+
+// Types for form responses
+export const insertFormResponseSchema = createInsertSchema(formResponses).omit({
+  id: true,
+  submittedAt: true,
+});
+export type InsertFormResponse = z.infer<typeof insertFormResponseSchema>;
+export type FormResponse = typeof formResponses.$inferSelect;

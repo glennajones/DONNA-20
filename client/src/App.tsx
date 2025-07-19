@@ -13,6 +13,7 @@ import RegistrationsManagementPage from "./pages/registrations-management";
 import TrainingPage from "./pages/training";
 import MembersPage from "./pages/members";
 import CommunicationPage from "./pages/communication";
+import FormsPage from "./pages/forms";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/training" component={TrainingPage} />
       <Route path="/members" component={MembersPage} />
       <Route path="/communication" component={CommunicationPage} />
+      <Route path="/forms" component={FormsPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

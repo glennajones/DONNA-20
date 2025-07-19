@@ -646,6 +646,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Form Templates Routes
+  app.get("/api/forms/templates", authenticateToken, async (req: any, res) => {
+    try {
+      const templates = await storage.getFormTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Get templates error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/forms/templates", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { name, description, fields } = req.body;
+
+      if (!name || !fields || !Array.isArray(fields)) {
+        return res.status(400).json({ message: "Name and fields are required" });
+      }
+
+      const template = await storage.createFormTemplate({
+        name: name.trim(),
+        description: description?.trim() || null,
+        fields,
+        createdBy: req.user.id,
+        isActive: true
+      });
+
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Create template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/forms/templates/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteFormTemplate(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      res.json({ message: "Template deleted successfully" });
+    } catch (error) {
+      console.error("Delete template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/forms/templates/:id/responses", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const responses = await storage.getFormResponses(parseInt(id));
+      res.json(responses);
+    } catch (error) {
+      console.error("Get responses error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/forms/templates/:id/responses", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { responderName, responderEmail, answers } = req.body;
+
+      if (!responderName || !answers) {
+        return res.status(400).json({ message: "Responder name and answers are required" });
+      }
+
+      const response = await storage.createFormResponse({
+        templateId: parseInt(id),
+        responderName: responderName.trim(),
+        responderEmail: responderEmail?.trim() || null,
+        answers,
+        status: "completed"
+      });
+
+      res.status(201).json(response);
+    } catch (error) {
+      console.error("Submit response error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
