@@ -10,6 +10,8 @@ import {
   events,
   campaigns,
   sponsors,
+  evaluations,
+  teamAssignments,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -31,7 +33,10 @@ import {
   type Campaign,
   type InsertCampaign,
   type Sponsor,
-  type InsertSponsor
+  type InsertSponsor,
+  type Evaluation,
+  type InsertEvaluation,
+  type TeamAssignment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -109,6 +114,14 @@ export interface IStorage {
   createSponsor(sponsor: InsertSponsor): Promise<Sponsor>;
   updateSponsor(id: number, sponsor: Partial<InsertSponsor>): Promise<Sponsor | undefined>;
   deleteSponsor(id: number): Promise<boolean>;
+
+  // Performance Tracking methods
+  getEvaluation(id: number): Promise<Evaluation | undefined>;
+  getEvaluations(): Promise<Evaluation[]>;
+  createEvaluation(evaluation: InsertEvaluation): Promise<Evaluation>;
+  
+  getTeamAssignments(): Promise<TeamAssignment[]>;
+  createTeamAssignments(assignments: Omit<TeamAssignment, 'id' | 'assignedAt'>[]): Promise<TeamAssignment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -509,6 +522,67 @@ export class DatabaseStorage implements IStorage {
   async deleteSponsor(id: number): Promise<boolean> {
     const result = await db.delete(sponsors).where(eq(sponsors.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Performance Tracking methods
+  async getEvaluation(id: number): Promise<Evaluation | undefined> {
+    const [evaluation] = await db.select().from(evaluations).where(eq(evaluations.id, id));
+    return evaluation || undefined;
+  }
+
+  async getEvaluations(): Promise<Evaluation[]> {
+    return await db.select().from(evaluations).orderBy(desc(evaluations.createdAt));
+  }
+
+  async createEvaluation(insertEvaluation: InsertEvaluation): Promise<Evaluation> {
+    // Calculate composite score based on scores and weights
+    const scores = {
+      serving: insertEvaluation.serving,
+      serveReceive: insertEvaluation.serveReceive,
+      setting: insertEvaluation.setting,
+      blocking: insertEvaluation.blocking,
+      attacking: insertEvaluation.attacking,
+      leadership: insertEvaluation.leadership,
+      communication: insertEvaluation.communication,
+      coachability: insertEvaluation.coachability,
+    };
+    
+    const weights = insertEvaluation.weights as any;
+    let totalWeighted = 0;
+    let totalWeight = 0;
+    
+    Object.entries(scores).forEach(([category, score]) => {
+      const weight = weights[category] || 1;
+      totalWeighted += score * weight;
+      totalWeight += weight;
+    });
+    
+    const compositeScore = totalWeight > 0 ? totalWeighted / totalWeight : 0;
+    
+    const [evaluation] = await db
+      .insert(evaluations)
+      .values({
+        ...insertEvaluation,
+        compositeScore: compositeScore.toString(),
+      })
+      .returning();
+    return evaluation;
+  }
+
+  async getTeamAssignments(): Promise<TeamAssignment[]> {
+    return await db.select().from(teamAssignments).orderBy(desc(teamAssignments.assignedAt));
+  }
+
+  async createTeamAssignments(assignments: Omit<TeamAssignment, 'id' | 'assignedAt'>[]): Promise<TeamAssignment[]> {
+    const results = [];
+    for (const assignment of assignments) {
+      const [teamAssignment] = await db
+        .insert(teamAssignments)
+        .values(assignment)
+        .returning();
+      results.push(teamAssignment);
+    }
+    return results;
   }
 }
 

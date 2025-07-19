@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -1011,6 +1011,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Sponsor deleted successfully" });
     } catch (error) {
       console.error("Delete sponsor error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Performance Tracking routes
+  app.get("/api/evaluations", authenticateToken, async (req: any, res) => {
+    try {
+      const evaluations = await storage.getEvaluations();
+      
+      // Format data for the Scoreboard component
+      const formatted = evaluations.map(evaluation => ({
+        name: evaluation.playerName,
+        composite: parseFloat(evaluation.compositeScore),
+        scores: {
+          "Serving": evaluation.serving,
+          "Serve Receive": evaluation.serveReceive,
+          "Setting": evaluation.setting,
+          "Blocking": evaluation.blocking,
+          "Attacking": evaluation.attacking,
+          "Leadership": evaluation.leadership,
+          "Communication": evaluation.communication,
+          "Coachability": evaluation.coachability,
+        }
+      }));
+      
+      res.json(formatted);
+    } catch (error) {
+      console.error("Get evaluations error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/evaluations", authenticateToken, async (req: any, res) => {
+    try {
+      const { position, scores, weights } = req.body;
+      
+      if (!position || !scores || !weights) {
+        return res.status(400).json({ message: "Position, scores, and weights are required" });
+      }
+
+      // Create evaluation object matching schema
+      const evaluationData = {
+        playerName: `Player ${Date.now()}`, // Placeholder since no player selection in form
+        evaluatorId: req.user.userId,
+        position,
+        serving: scores.Serving || 3,
+        serveReceive: scores["Serve Receive"] || 3,
+        setting: scores.Setting || 3,
+        blocking: scores.Blocking || 3,
+        attacking: scores.Attacking || 3,
+        leadership: scores.Leadership || 3,
+        communication: scores.Communication || 3,
+        coachability: scores.Coachability || 3,
+        weights: weights,
+      };
+      
+      const evaluation = await storage.createEvaluation(evaluationData);
+      res.json(evaluation);
+    } catch (error) {
+      console.error("Create evaluation error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/teams/auto", authenticateToken, async (req: any, res) => {
+    try {
+      // Get all evaluations to form teams
+      const evaluations = await storage.getEvaluations();
+      
+      if (evaluations.length === 0) {
+        return res.json({ message: "No evaluations found", teams: [] });
+      }
+
+      // Simple auto-team formation algorithm
+      // Sort players by composite score and distribute evenly
+      const sortedPlayers = evaluations
+        .map(evaluation => ({
+          name: evaluation.playerName,
+          score: parseFloat(evaluation.compositeScore),
+          position: evaluation.position
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      const numTeams = Math.min(4, Math.ceil(sortedPlayers.length / 6)); // Max 4 teams, ~6 players each
+      const teams: any = {};
+      
+      for (let i = 0; i < numTeams; i++) {
+        teams[`Team ${String.fromCharCode(65 + i)}`] = [];
+      }
+      
+      // Distribute players in round-robin fashion
+      sortedPlayers.forEach((player, index) => {
+        const teamIndex = index % numTeams;
+        const teamName = `Team ${String.fromCharCode(65 + teamIndex)}`;
+        teams[teamName].push(player);
+      });
+
+      // Save team assignments to database
+      const assignments = [];
+      for (const [teamName, players] of Object.entries(teams)) {
+        for (const player of players as any[]) {
+          assignments.push({
+            playerName: player.name,
+            teamName,
+            position: player.position
+          });
+        }
+      }
+      
+      await storage.createTeamAssignments(assignments);
+      
+      res.json(teams);
+    } catch (error) {
+      console.error("Auto-form teams error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

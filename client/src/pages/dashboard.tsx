@@ -17,7 +17,8 @@ import {
   BarChart3,
   UserCog,
   TriangleAlert,
-  Heart
+  Heart,
+  TrendingUp
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -79,6 +80,13 @@ export default function Dashboard() {
       color: "bg-pink-50 hover:bg-pink-100 border-pink-200 text-pink-700",
       roles: ["admin", "manager"],
       href: "/fundraising",
+    },
+    {
+      title: "Performance Tracking",
+      icon: TrendingUp,
+      color: "bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700",
+      roles: ["admin", "manager", "coach"],
+      href: "/performance",
     },
     {
       title: "System Settings",

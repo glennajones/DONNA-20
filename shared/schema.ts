@@ -293,3 +293,53 @@ export const insertSponsorSchema = createInsertSchema(sponsors).omit({
 });
 export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
 export type Sponsor = typeof sponsors.$inferSelect;
+
+// Performance Tracking Schema
+export const evaluations = pgTable("evaluations", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").references(() => players.id),
+  playerName: text("player_name").notNull(),
+  evaluatorId: integer("evaluator_id").references(() => users.id).notNull(),
+  position: text("position").notNull(),
+  serving: integer("serving").notNull(),
+  serveReceive: integer("serve_receive").notNull(),
+  setting: integer("setting").notNull(),
+  blocking: integer("blocking").notNull(),
+  attacking: integer("attacking").notNull(),
+  leadership: integer("leadership").notNull(),
+  communication: integer("communication").notNull(),
+  coachability: integer("coachability").notNull(),
+  weights: json("weights").notNull(),
+  compositeScore: decimal("composite_score", { precision: 5, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const teamAssignments = pgTable("team_assignments", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").references(() => players.id),
+  playerName: text("player_name").notNull(),
+  teamName: text("team_name").notNull(),
+  position: text("position"),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+});
+
+// Types for Performance Tracking
+export const insertEvaluationSchema = createInsertSchema(evaluations).omit({
+  id: true,
+  createdAt: true,
+  compositeScore: true,
+}).extend({
+  position: z.string().min(1, "Position is required"),
+  serving: z.number().min(1).max(5),
+  serveReceive: z.number().min(1).max(5),
+  setting: z.number().min(1).max(5),
+  blocking: z.number().min(1).max(5),
+  attacking: z.number().min(1).max(5),
+  leadership: z.number().min(1).max(5),
+  communication: z.number().min(1).max(5),
+  coachability: z.number().min(1).max(5),
+});
+
+export type InsertEvaluation = z.infer<typeof insertEvaluationSchema>;
+export type Evaluation = typeof evaluations.$inferSelect;
+export type TeamAssignment = typeof teamAssignments.$inferSelect;
