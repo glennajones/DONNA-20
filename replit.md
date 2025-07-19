@@ -136,7 +136,8 @@ Preferred communication style: Simple, everyday language.
 
 #### Module 7: Events & Budgeting (Completed)
 - **Multi-step event creation wizard** with 4-step process (basic info, resources, budget, review)
-- **Automatic resource estimation** calculating courts and coaches based on player count
+- **Configurable resource ratios** with players per court and players per coach input fields
+- **Automatic resource estimation** calculating courts and coaches based on custom ratios
 - **Budget calculation system** with projected revenue, costs, and profit analysis
 - **Financial tracking** with actual revenue input and profit/loss comparison
 - **Event management dashboard** displaying all events with financial summaries
