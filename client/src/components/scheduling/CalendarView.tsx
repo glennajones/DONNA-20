@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
@@ -13,6 +14,7 @@ interface CalendarViewProps {
 export default function CalendarView({ viewType }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
+  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
 
   useEffect(() => {
     setDateRange(getDateRange(viewType, currentDate));
@@ -128,28 +130,79 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     </div>
   );
 
-  if (viewType === "day") {
-    return (
-      <div>
-        {navigationHeader}
-        {renderDayView(events, dateRange)}
-      </div>
-    );
-  } else if (viewType === "week") {
-    return (
-      <div>
-        {navigationHeader}
-        {renderWeekView(events, dateRange)}
-      </div>
-    );
-  } else {
-    return (
-      <div>
-        {navigationHeader}
-        {renderMonthView(events, dateRange)}
-      </div>
-    );
-  }
+  return (
+    <div>
+      {navigationHeader}
+      {viewType === "day" && renderDayView(events, dateRange, setSelectedEvent)}
+      {viewType === "week" && renderWeekView(events, dateRange, setSelectedEvent)}
+      {viewType === "month" && renderMonthView(events, dateRange, setSelectedEvent)}
+      
+      {/* Event Details Modal */}
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Event Details</DialogTitle>
+          </DialogHeader>
+          {selectedEvent && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg text-[#56A0D3]">
+                  {selectedEvent.title}
+                </h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">Date:</span>
+                  <p>{new Date(selectedEvent.date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium text-gray-600">Time:</span>
+                  <p>{selectedEvent.time} - {(() => {
+                    const [hours, minutes] = selectedEvent.time.split(':').map(Number);
+                    const endMinutes = hours * 60 + minutes + (selectedEvent.duration || 120);
+                    const endHours = Math.floor(endMinutes / 60);
+                    const endMins = endMinutes % 60;
+                    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+                  })()}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium text-gray-600">Court(s):</span>
+                  <p>{selectedEvent.court}</p>
+                </div>
+                
+                <div>
+                  <span className="font-medium text-gray-600">Type:</span>
+                  <p className="capitalize">{selectedEvent.eventType}</p>
+                </div>
+                
+                {selectedEvent.coach && (
+                  <div className="col-span-2">
+                    <span className="font-medium text-gray-600">Coach:</span>
+                    <p>{selectedEvent.coach}</p>
+                  </div>
+                )}
+                
+                {selectedEvent.description && (
+                  <div className="col-span-2">
+                    <span className="font-medium text-gray-600">Description:</span>
+                    <p>{selectedEvent.description}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 // Helper functions
@@ -265,7 +318,7 @@ function formatMonthYear(dateString: string): string {
   });
 }
 
-function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: string }) {
+function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent) => void) {
   const timeSlots = generateTimeSlots();
   const courts = [
     ...Array.from({ length: 7 }, (_, i) => `Court ${i + 1}`),
@@ -308,20 +361,21 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                       return (
                         <div
                           key={`${court}-${timeSlot}`}
-                          className={`bg-white p-1 min-h-[40px] relative ${
+                          className={`bg-white p-1 h-[40px] relative overflow-hidden ${
                             eventInSlot ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
                           {eventInSlot && (
-                            <div className="text-xs bg-[#56A0D3] text-white p-1 rounded">
+                            <div 
+                              className="text-xs bg-[#56A0D3] text-white p-1 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center"
+                              onClick={() => setSelectedEvent(eventInSlot)}
+                              title={`${eventInSlot.title} - ${eventInSlot.coach} (${eventInSlot.eventType})`}
+                            >
                               <div className="font-medium truncate">
                                 {eventInSlot.title}
                               </div>
-                              <div className="truncate opacity-90">
+                              <div className="text-xs opacity-90 truncate">
                                 {eventInSlot.coach}
-                              </div>
-                              <div className="text-xs opacity-80">
-                                {eventInSlot.eventType}
                               </div>
                             </div>
                           )}
@@ -339,7 +393,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
   );
 }
 
-function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: string }) {
+function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent) => void) {
   const weekDays = getWeekDays(dateRange.from);
   const timeSlots = generateTimeSlots();
 
@@ -388,17 +442,22 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                       return (
                         <div
                           key={`${day.date}-${timeSlot}`}
-                          className={`bg-white p-1 min-h-[40px] relative ${
+                          className={`bg-white p-1 h-[40px] relative overflow-hidden ${
                             eventsInSlot.length > 0 ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
-                          {eventsInSlot.map((event, index) => (
-                            <div key={event.id} className="text-xs mb-1">
-                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded truncate">
-                                {event.title}
-                              </div>
-                              <div className="text-xs opacity-90 text-gray-600">
-                                {event.court}
+                          {eventsInSlot.slice(0, 1).map((event, index) => (
+                            <div 
+                              key={event.id} 
+                              className="text-xs h-full cursor-pointer"
+                              onClick={() => setSelectedEvent(event)}
+                              title={`${event.title} - ${event.court} (${event.eventType})`}
+                            >
+                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded truncate hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center">
+                                <div className="truncate">{event.title}</div>
+                                {eventsInSlot.length > 1 && (
+                                  <div className="text-xs opacity-90">+{eventsInSlot.length - 1} more</div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -416,7 +475,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
   );
 }
 
-function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to: string }) {
+function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent) => void) {
   const monthDays = getMonthDays(dateRange.from);
   const today = new Date().toISOString().split('T')[0];
   
@@ -462,14 +521,18 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                     {dayEvents.slice(0, 3).map(event => (
                       <div
                         key={event.id}
-                        className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate"
+                        className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate cursor-pointer hover:bg-[#4A8BC2] transition-colors"
                         title={`${event.time} - ${event.title} (${event.court})`}
+                        onClick={() => setSelectedEvent(event)}
                       >
                         {event.time} {event.title}
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
-                      <div className="text-xs text-gray-500">
+                      <div 
+                        className="text-xs text-gray-500 cursor-pointer hover:text-gray-700"
+                        onClick={() => setSelectedEvent(dayEvents[3])}
+                      >
                         +{dayEvents.length - 3} more
                       </div>
                     )}
