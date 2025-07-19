@@ -162,16 +162,6 @@ Preferred communication style: Simple, everyday language.
 - **Status management** for campaigns (active, completed, cancelled)
 - **Dashboard navigation integration** with fundraising quick access button
 
-#### Module 9: Performance Tracking (In Progress - Schema Complete)
-- **Database schema implemented** with evaluations and team assignments tables
-- **Player evaluation system** with 8 performance categories (Serving, Serve Receive, Setting, Blocking, Attacking, Leadership, Communication, Coachability)
-- **Position-based weighting system** for category scores with composite score calculation
-- **Team assignment tracking** with automatic team formation capabilities
-- **PostgreSQL integration** with proper foreign key relationships to players and users
-- **Performance data types** with 1-5 rating scale validation using Zod schemas
-- **Backend API structure** ready for evaluation submission and team auto-formation endpoints
-- **Components planned**: EvaluationForm for player ratings, Scoreboard for score visualization and team formation
-
 ## Data Flow
 
 1. **Authentication Flow**:
