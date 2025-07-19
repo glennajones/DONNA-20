@@ -2,7 +2,7 @@
 
 ## Overview
 
-VolleyClub Pro is a modern web application for managing volleyball club operations. It's built as a full-stack application with a React frontend and Express backend, featuring role-based authentication and a clean, responsive user interface using Tailwind CSS and shadcn/ui components.
+VolleyClub Pro is a modern web application for managing volleyball club operations. It's built as a full-stack application with a React frontend and Express backend, featuring role-based authentication, player registration system with payment tracking, and a clean, responsive user interface using Tailwind CSS and shadcn/ui components.
 
 ## User Preferences
 
@@ -43,9 +43,27 @@ Preferred communication style: Simple, everyday language.
 
 ### Database Schema
 - **Users table** with id, username, password, name, and role fields
+- **Registrations table** with player information, contact details, emergency contacts, medical info, and status tracking
+- **Payments table** with registration fee tracking, payment status, and Stripe integration support
 - **PostgreSQL dialect** configured for production use
 - **Drizzle ORM** for type-safe database operations
 - **Migration system** for schema changes
+
+### Module Architecture
+
+#### Module 1: Authentication & User Management
+- **JWT-based authentication** with secure login/logout
+- **Role-based access control** (Admin, Manager, Coach)
+- **Protected routes** with automatic redirects
+- **User profile management**
+
+#### Module 2: Registration & Payment System
+- **Public registration form** for new players and parents
+- **Registration management dashboard** for admins/managers
+- **Payment tracking** with fee calculation
+- **Status workflow** (pending → approved/rejected)
+- **Registration data validation** with comprehensive form handling
+- **Demo payment processing** with mock Stripe integration
 
 ## Data Flow
 

@@ -1,0 +1,211 @@
+Below is a full implementation for your module 2 with React + Tailwind + plain JS (no TypeScript), following best practices.
+All components are functional, ready to plug into your app.
+
+📂 src/modules/Registration/RegisterForm.jsx
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function RegisterForm() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    dob: '',
+    role: 'player',
+    paymentMethod: 'card',
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed');
+      
+      // Suppose backend sends { registrationId, amountDue }
+      if (data.amountDue && data.amountDue > 0) {
+        // Create payment session
+        const payRes = await fetch('/api/payments/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registrationId: data.registrationId }),
+        });
+        const payData = await payRes.json();
+        if (!payRes.ok) throw new Error(payData.message || 'Payment failed');
+
+        // Stripe redirect
+        const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+        await stripe.redirectToCheckout({ sessionId: payData.sessionId });
+      } else {
+        navigate('/thank-you');
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg mx-auto p-6 bg-white rounded-md shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Register</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          className="w-full border px-3 py-2 rounded"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="Full Name"
+          required
+        />
+        <input
+          className="w-full border px-3 py-2 rounded"
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Email"
+          required
+        />
+        <input
+          className="w-full border px-3 py-2 rounded"
+          type="tel"
+          name="phone"
+          value={formData.phone}
+          onChange={handleChange}
+          placeholder="Phone"
+          required
+        />
+        <input
+          className="w-full border px-3 py-2 rounded"
+          type="date"
+          name="dob"
+          value={formData.dob}
+          onChange={handleChange}
+          required
+        />
+        <select
+          className="w-full border px-3 py-2 rounded"
+          name="role"
+          value={formData.role}
+          onChange={handleChange}
+        >
+          <option value="player">Player</option>
+          <option value="parent">Parent</option>
+        </select>
+        <select
+          className="w-full border px-3 py-2 rounded"
+          name="paymentMethod"
+          value={formData.paymentMethod}
+          onChange={handleChange}
+        >
+          <option value="card">Card</option>
+          <option value="cash">Cash</option>
+        </select>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
+          {loading ? 'Submitting...' : 'Register'}
+        </button>
+      </form>
+    </div>
+  );
+}
+📂 src/modules/Registration/PaymentHistory.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+
+export default function PaymentHistory({ user }) {
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPayments() {
+      try {
+        const res = await fetch(`/api/payments?userId=${user.id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to load payments');
+        setPayments(data);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (user?.id) fetchPayments();
+  }, [user]);
+
+  return (
+    <div className="max-w-3xl mx-auto mt-6">
+      <h2 className="text-xl font-bold mb-4">Payment History</h2>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <table className="min-w-full border text-left">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="p-2 border">Date</th>
+              <th className="p-2 border">Amount</th>
+              <th className="p-2 border">Status</th>
+              <th className="p-2 border">Method</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payments.map((p) => (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="p-2 border">{new Date(p.date).toLocaleDateString()}</td>
+                <td className="p-2 border">${p.amount.toFixed(2)}</td>
+                <td className="p-2 border">{p.status}</td>
+                <td className="p-2 border">{p.method}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+📂 src/modules/Registration/discountUtils.js
+js
+Copy
+Edit
+// Future: tiered discount calculation based on team size or role
+export function calculateDiscount(baseAmount, userRole) {
+  // Stub logic
+  console.warn('calculateDiscount is not yet implemented');
+  return baseAmount;
+}
+✅ All ready!
+💡 Notes:
+
+Install Stripe JS in your index.html or load via npm:
+
+html
+Copy
+Edit
+<script src="https://js.stripe.com/v3/"></script>
+Make sure VITE_STRIPE_PUBLIC_KEY is set in .env.
+
+TailwindCSS classes are included for styling.
+
+PaymentHistory expects user prop with { id }.

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { loginSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -72,6 +72,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Registration routes
+  app.get("/api/registrations", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin and manager can view all registrations
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const registrations = await storage.getRegistrations();
+      res.json(registrations);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/registrations", async (req, res) => {
+    try {
+      const validatedData = insertRegistrationSchema.parse(req.body);
+      
+      const registration = await storage.createRegistration(validatedData);
+      
+      // Create initial payment record if registration fee > 0
+      if (parseFloat(registration.registrationFee) > 0) {
+        await storage.createPayment({
+          registrationId: registration.id,
+          amount: registration.registrationFee,
+          paymentMethod: "card", // Default for online registrations
+          status: "pending",
+        });
+      }
+
+      res.status(201).json({
+        registration,
+        message: "Registration submitted successfully",
+      });
+    } catch (error: any) {
+      if (error.errors) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/registrations/:id/status", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin and manager can update registration status
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const registration = await storage.updateRegistrationStatus(parseInt(id), status);
+      if (!registration) {
+        return res.status(404).json({ message: "Registration not found" });
+      }
+
+      res.json(registration);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Payment routes
+  app.get("/api/payments", authenticateToken, async (req: any, res) => {
+    try {
+      const { registrationId } = req.query;
+      
+      let payments;
+      if (registrationId) {
+        payments = await storage.getPaymentsByRegistration(parseInt(registrationId));
+      } else {
+        // For now, just return empty array for global payments
+        // In real implementation, you'd have getAllPayments method
+        payments = [];
+      }
+
+      res.json(payments);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payments", authenticateToken, async (req: any, res) => {
+    try {
+      const validatedData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(validatedData);
+      res.status(201).json(payment);
+    } catch (error: any) {
+      if (error.errors) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Mock payment processing endpoint (for demo purposes)
+  app.post("/api/payments/:id/process", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const payment = await storage.getPayment(parseInt(id));
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      // Simulate payment processing
+      const success = Math.random() > 0.1; // 90% success rate for demo
+      const status = success ? "completed" : "failed";
+      
+      const updatedPayment = await storage.updatePaymentStatus(
+        parseInt(id), 
+        status,
+        success ? `mock_intent_${Date.now()}` : undefined
+      );
+
+      res.json({ 
+        payment: updatedPayment, 
+        message: success ? "Payment processed successfully" : "Payment failed" 
+      });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

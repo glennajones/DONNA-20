@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,11 +10,56 @@ export const users = pgTable("users", {
   role: text("role", { enum: ["admin", "manager", "coach"] }).notNull(),
 });
 
+export const registrations = pgTable("registrations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  dateOfBirth: text("date_of_birth").notNull(),
+  playerType: text("player_type", { enum: ["player", "parent"] }).notNull(),
+  emergencyContact: text("emergency_contact"),
+  emergencyPhone: text("emergency_phone"),
+  medicalInfo: text("medical_info"),
+  status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  registrationFee: decimal("registration_fee", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  registrationId: integer("registration_id").references(() => registrations.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status", { enum: ["pending", "completed", "failed", "refunded"] }).notNull().default("pending"),
+  paymentMethod: text("payment_method", { enum: ["card", "cash", "bank_transfer"] }).notNull(),
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   name: true,
   role: true,
+});
+
+export const insertRegistrationSchema = createInsertSchema(registrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(10, "Please enter a valid phone number"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  id: true,
+  createdAt: true,
+  paidAt: true,
 });
 
 export const loginSchema = z.object({
@@ -25,3 +70,9 @@ export const loginSchema = z.object({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type LoginRequest = z.infer<typeof loginSchema>;
+
+export type Registration = typeof registrations.$inferSelect;
+export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;

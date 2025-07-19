@@ -2,6 +2,7 @@ import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/layout/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import { 
   Users, 
   Calendar, 
@@ -52,21 +53,23 @@ export default function Dashboard() {
 
   const quickActions = [
     {
-      title: "Add New Player",
+      title: "New Registration",
       icon: UserPlus,
       color: "bg-primary/10 hover:bg-primary/20 border-primary/20 text-primary",
+      href: "/registration",
+    },
+    {
+      title: "Manage Registrations",
+      icon: FileText,
+      color: "bg-green-50 hover:bg-green-100 border-green-200 text-green-700",
+      roles: ["admin", "manager"],
+      href: "/registrations",
     },
     {
       title: "Schedule Training",
       icon: CalendarPlus,
       color: "bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700",
       roles: ["admin", "coach"],
-    },
-    {
-      title: "Generate Report",
-      icon: FileText,
-      color: "bg-green-50 hover:bg-green-100 border-green-200 text-green-700",
-      roles: ["admin", "manager"],
     },
     {
       title: "System Settings",
@@ -216,7 +219,7 @@ export default function Dashboard() {
                   if (action.roles && !hasRole(action.roles)) return null;
                   
                   const Icon = action.icon;
-                  return (
+                  const ActionButton = (
                     <Button
                       key={action.title}
                       variant="outline"
@@ -231,6 +234,16 @@ export default function Dashboard() {
                       </svg>
                     </Button>
                   );
+
+                  if (action.href) {
+                    return (
+                      <Link key={action.title} href={action.href}>
+                        {ActionButton}
+                      </Link>
+                    );
+                  }
+
+                  return ActionButton;
                 })}
               </div>
             </CardContent>
