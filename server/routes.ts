@@ -497,9 +497,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: new Date().toISOString(),
       };
 
-      // Broadcast message event
-      await pusher.trigger("global-chat", "message", message);
-
       // Mock send to each player via their communication preference
       const deliveryResults: any[] = [];
       for (const player of players) {
@@ -511,15 +508,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channel, 
           status: "delivered" 
         });
+      }
 
-        // Send individual delivery status updates
-        await pusher.trigger("global-chat", "delivery_status", {
-          playerId: player.id,
-          playerName: player.name,
-          channel,
-          status: "delivered",
-          messageId: message.id,
-        });
+      // Try to broadcast message event, but don't fail if Pusher has issues
+      try {
+        console.log("Attempting to broadcast message:", message.id);
+        await pusher.trigger("global-chat", "message", message);
+        console.log("Message broadcast successful");
+
+        // Send delivery status updates
+        for (const result of deliveryResults) {
+          await pusher.trigger("global-chat", "delivery_status", {
+            playerId: result.playerId,
+            playerName: result.playerName,
+            channel: result.channel,
+            status: result.status,
+            messageId: message.id,
+          });
+        }
+      } catch (pusherError) {
+        console.error("Pusher error (continuing without real-time updates):", pusherError);
+        // Continue without real-time updates - the API call will still succeed
       }
 
       res.json({ ok: true, message, deliveryResults });
