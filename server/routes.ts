@@ -1206,31 +1206,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API endpoint to get upcoming events for calendar sync
+  // This endpoint is no longer needed since we're importing FROM Google Calendar, not TO it
+  // Keeping it for potential future bidirectional sync
   app.get("/api/events/upcoming", authenticateToken, async (req: any, res) => {
     try {
-      // Use schedule events instead of the events table which might have issues
-      const allScheduleEvents = await storage.getScheduleEvents();
-      
-      // Filter events that are in the future (next 30 days)
-      const now = new Date();
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(now.getDate() + 30);
-      
-      const upcomingEvents = allScheduleEvents
-        .filter(event => {
-          const eventDate = new Date(event.date);
-          return eventDate >= now && eventDate <= thirtyDaysFromNow;
-        })
-        .map(event => ({
-          title: event.title,
-          description: event.notes || `${event.eventType} at ${event.court}`,
-          start: `${event.date}T${event.startTime || '09:00'}:00Z`,
-          end: `${event.date}T${event.endTime || '17:00'}:00Z`,
-          location: `Court: ${event.court}`
-        }));
-
-      res.json(upcomingEvents);
+      res.json([]);
     } catch (error) {
       console.error("Get upcoming events error:", error);
       res.status(500).json({ message: "Internal server error" });

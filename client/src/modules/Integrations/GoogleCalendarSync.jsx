@@ -178,44 +178,68 @@ export default function GoogleCalendarSync() {
     }
 
     try {
-      // 👉 Fetch upcoming club events from backend
-      const eventsRes = await fetch("/api/events/upcoming", {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const events = await eventsRes.json();
+      // Set access token for API calls
+      window.gapi.client.setToken({access_token: accessToken});
 
-      if (events.length === 0) {
-        alert('No upcoming events found to sync');
+      // Get upcoming events from Google Calendar
+      const timeMin = new Date().toISOString();
+      const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
+      
+      const response = await window.gapi.client.calendar.events.list({
+        calendarId: 'primary',
+        timeMin: timeMin,
+        timeMax: timeMax,
+        maxResults: 50,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+
+      const googleEvents = response.result.items || [];
+      
+      if (googleEvents.length === 0) {
+        alert('No upcoming events found in your Google Calendar');
         setSyncing(false);
         return;
       }
 
-      let syncedCount = 0;
-      // Set access token for API calls
-      window.gapi.client.setToken({access_token: accessToken});
-
-      for (let evt of events) {
+      // Import Google Calendar events to club system
+      let importedCount = 0;
+      for (let googleEvent of googleEvents) {
         try {
-          await window.gapi.client.calendar.events.insert({
-            calendarId: 'primary',
-            resource: {
-              summary: evt.title,
-              description: evt.description,
-              start: { dateTime: evt.start, timeZone: 'UTC' },
-              end: { dateTime: evt.end, timeZone: 'UTC' },
-              location: evt.location,
+          const eventData = {
+            title: googleEvent.summary || 'Untitled Event',
+            date: googleEvent.start.date || googleEvent.start.dateTime?.split('T')[0],
+            startTime: googleEvent.start.dateTime ? 
+              new Date(googleEvent.start.dateTime).toTimeString().slice(0, 5) : '09:00',
+            endTime: googleEvent.end.dateTime ? 
+              new Date(googleEvent.end.dateTime).toTimeString().slice(0, 5) : '10:00',
+            court: 'Court 1', // Default court assignment
+            eventType: 'imported',
+            notes: googleEvent.description || 'Imported from Google Calendar',
+            coach: 'TBD'
+          };
+
+          const response = await fetch("/api/schedule", {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
             },
+            body: JSON.stringify(eventData)
           });
-          syncedCount++;
+
+          if (response.ok) {
+            importedCount++;
+          }
         } catch (eventErr) {
-          console.error(`Failed to sync event: ${evt.title}`, eventErr);
+          console.error(`Failed to import event: ${googleEvent.summary}`, eventErr);
         }
       }
 
-      alert(`✅ Synced ${syncedCount} of ${events.length} events to Google Calendar`);
+      alert(`✅ Imported ${importedCount} of ${googleEvents.length} events from Google Calendar to club schedule`);
     } catch (err) {
       console.error("Sync error:", err);
-      setError("Failed to sync events. Please check your connection and try again.");
+      setError("Failed to import events from Google Calendar. Please check your connection and try again.");
     }
     setSyncing(false);
   };
@@ -281,7 +305,7 @@ export default function GoogleCalendarSync() {
               } text-white px-4 py-2 rounded font-medium`}
               disabled={syncing}
             >
-              {syncing ? 'Syncing Events...' : 'Sync Upcoming Events'}
+              {syncing ? 'Importing Events...' : 'Import Events from Google Calendar'}
             </button>
             
             <button
@@ -295,8 +319,8 @@ export default function GoogleCalendarSync() {
       </div>
 
       <div className="mt-4 text-sm text-gray-600">
-        <p>This integration syncs upcoming club events to your Google Calendar.</p>
-        <p className="mt-1">Events from the next 30 days will be synchronized.</p>
+        <p>This integration imports upcoming events from your Google Calendar into the club's scheduling system.</p>
+        <p className="mt-1">Events from the next 30 days will be imported and assigned to Court 1 by default.</p>
       </div>
     </div>
   );
