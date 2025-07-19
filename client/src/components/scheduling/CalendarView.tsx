@@ -64,6 +64,17 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     );
   }
 
+  // Generate time slots from 7:00 AM to 8:30 PM every 30 minutes
+  const timeSlots = generateTimeSlots();
+
+  // Filter events for today (or selected date range)
+  const todayEvents = events.filter((e: ScheduleEvent) => {
+    if (viewType === "day") {
+      return e.date === new Date().toISOString().split("T")[0];
+    }
+    return true; // For week/month view, show all events in range
+  });
+
   return (
     <div className="space-y-4">
       <Card>
@@ -76,81 +87,70 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Embedded Google Calendar placeholder */}
-          <div className="mb-6 p-4 bg-gray-50 border rounded-lg">
+          {/* Schedule Grid */}
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              {/* Header row with courts */}
+              <div className="grid grid-cols-10 gap-px bg-gray-200 rounded-t-lg overflow-hidden">
+                <div className="bg-gray-100 p-3 font-medium text-center text-sm">
+                  Time
+                </div>
+                {courts.map((court) => (
+                  <div key={court} className="bg-gray-100 p-3 font-medium text-center text-xs">
+                    {court.replace("Court ", "")}
+                  </div>
+                ))}
+              </div>
+
+              {/* Time slots grid */}
+              <div className="grid grid-cols-10 gap-px bg-gray-200">
+                {timeSlots.map((timeSlot) => (
+                  <div key={timeSlot} className="contents">
+                    {/* Time column */}
+                    <div className="bg-gray-50 p-2 text-xs font-medium text-gray-600 flex items-center justify-center border-r">
+                      {formatTime(timeSlot)}
+                    </div>
+                    
+                    {/* Court columns */}
+                    {courts.map((court) => {
+                      const eventInSlot = findEventInTimeSlot(todayEvents, court, timeSlot);
+                      return (
+                        <div
+                          key={`${court}-${timeSlot}`}
+                          className={`bg-white p-1 min-h-[40px] relative ${
+                            eventInSlot ? "bg-blue-50" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          {eventInSlot && (
+                            <div className="text-xs">
+                              <div className="font-medium text-blue-900 truncate">
+                                {eventInSlot.title}
+                              </div>
+                              <div className="text-blue-600 truncate">
+                                {eventInSlot.coach}
+                              </div>
+                              <div className="text-xs text-blue-500">
+                                {eventInSlot.eventType}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Google Calendar Integration note */}
+          <div className="mt-6 p-4 bg-gray-50 border rounded-lg">
             <p className="text-sm text-gray-600 mb-2">
               📌 <strong>Google Calendar Integration</strong>
             </p>
             <p className="text-xs text-gray-500">
-              To display your Google Calendar here, you'll need to:
-              <br />
-              1. Create a Google Calendar for your volleyball club
-              <br />
-              2. Get the embed code from Google Calendar settings
-              <br />
-              3. Replace the placeholder with your calendar's embed URL
+              The grid above shows your club's schedule. To sync with Google Calendar, you can export this data or integrate with Google Calendar API.
             </p>
-          </div>
-
-          {/* Events by Court */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm border">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border px-3 py-2 text-left font-medium">Court</th>
-                  <th className="border px-3 py-2 text-left font-medium">Scheduled Events</th>
-                </tr>
-              </thead>
-              <tbody>
-                {courts.map((court) => {
-                  const courtEvents = events.filter((e: ScheduleEvent) => e.court === court);
-                  return (
-                    <tr key={court} className="hover:bg-gray-50">
-                      <td className="border px-3 py-2 font-medium text-gray-900">
-                        {court}
-                      </td>
-                      <td className="border px-3 py-2">
-                        {courtEvents.length > 0 ? (
-                          <div className="space-y-2">
-                            {courtEvents.map((event: ScheduleEvent) => (
-                              <div
-                                key={event.id}
-                                className="p-2 bg-blue-50 border-l-4 border-blue-400 rounded"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-blue-900">
-                                    {event.title}
-                                  </span>
-                                  <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                                    {event.eventType}
-                                  </span>
-                                </div>
-                                <div className="text-sm text-blue-700 mt-1">
-                                  📅 {event.date} at {event.time}
-                                  {event.duration && ` (${event.duration} min)`}
-                                </div>
-                                {event.coach && (
-                                  <div className="text-sm text-blue-600 mt-1">
-                                    👨‍🏫 Coach: {event.coach}
-                                  </div>
-                                )}
-                                {event.participants && event.participants.length > 0 && (
-                                  <div className="text-sm text-blue-600 mt-1">
-                                    👥 Participants: {event.participants.join(", ")}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic">No events scheduled</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
 
           {events.length === 0 && (
@@ -185,4 +185,39 @@ function getDateRange(viewType: "day" | "week" | "month") {
     from: from.toISOString().split("T")[0], // YYYY-MM-DD format
     to: to.toISOString().split("T")[0],
   };
+}
+
+function generateTimeSlots(): string[] {
+  const slots = [];
+  for (let hour = 7; hour <= 20; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      if (hour === 20 && minute > 30) break; // Stop at 8:30 PM
+      const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+      slots.push(timeString);
+    }
+  }
+  return slots;
+}
+
+function formatTime(timeSlot: string): string {
+  const [hours, minutes] = timeSlot.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
+function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: string): ScheduleEvent | undefined {
+  return events.find((event) => {
+    if (event.court !== court) return false;
+    
+    const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
+    const slotTotalMinutes = slotHours * 60 + slotMinutes;
+    
+    const [eventHours, eventMinutes] = event.time.split(":").map(Number);
+    const eventStartMinutes = eventHours * 60 + eventMinutes;
+    const eventEndMinutes = eventStartMinutes + (event.duration || 120);
+    
+    // Check if the time slot falls within the event duration
+    return slotTotalMinutes >= eventStartMinutes && slotTotalMinutes < eventEndMinutes;
+  });
 }
