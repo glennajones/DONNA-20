@@ -68,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 
 #### Module 3: Training & Scheduling System (Current Focus)
 - **Calendar view** with day/week/month viewing options
-- **Court management** with 9 courts (7 indoor + 2 beach courts)
+- **Court management** with 9 courts (Court 1-7 + Beach 1-2) - CRITICAL: Court names must be exactly "Court 1", "Court 2", etc. and "Beach 1", "Beach 2" only
 - **Training session scheduling** with conflict detection
 - **Event management** (training, match, tournament, practice)
 - **Coach assignment** and participant tracking

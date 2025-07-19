@@ -151,7 +151,7 @@ async function seed() {
     const demoEvents = [
       {
         title: "Junior Training Session",
-        court: "Indoor Court 1",
+        court: "Court 1",
         date: today.toISOString().split("T")[0],
         time: "16:00",
         duration: 120,
@@ -164,7 +164,7 @@ async function seed() {
       },
       {
         title: "Advanced Training",
-        court: "Indoor Court 2", 
+        court: "Court 2", 
         date: tomorrow.toISOString().split("T")[0],
         time: "18:00",
         duration: 150,
@@ -177,7 +177,7 @@ async function seed() {
       },
       {
         title: "Beach Volleyball Practice",
-        court: "Beach Court 1",
+        court: "Beach 1",
         date: nextWeek.toISOString().split("T")[0],
         time: "10:00",
         duration: 180,

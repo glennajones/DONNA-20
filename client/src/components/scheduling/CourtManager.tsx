@@ -29,11 +29,10 @@ export default function CourtManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Available courts: 7 indoor + 2 beach
+  // Available courts: 7 indoor + 2 beach (must match CalendarView courts exactly)
   const courts = [
-    ...Array.from({ length: 7 }, (_, i) => `Indoor Court ${i + 1}`),
-    "Beach Court 1", 
-    "Beach Court 2",
+    "Court 1", "Court 2", "Court 3", "Court 4", "Court 5", "Court 6", "Court 7",
+    "Beach 1", "Beach 2",
   ];
 
   // Fetch current schedule to check court availability
