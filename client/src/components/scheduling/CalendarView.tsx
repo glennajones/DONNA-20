@@ -243,17 +243,29 @@ function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: s
   });
 }
 
-function isFirstSlotOfEvent(events: ScheduleEvent[], court: string, timeSlot: string): boolean {
-  const event = findEventInTimeSlot(events, court, timeSlot);
-  if (!event) return false;
+function findFirstSlotForEvent(events: ScheduleEvent[], court: string, timeSlots: string[]): string | null {
+  // Find any event in this court (or 'any' for week view)
+  const event = court === 'any' ? events[0] : events.find(e => {
+    const eventCourts = e.court.split(',').map(c => c.trim());
+    return eventCourts.includes(court);
+  });
   
+  if (!event) return null;
+  
+  // Find the first time slot that contains this event
   const [eventHours, eventMinutes] = event.time.split(":").map(Number);
   const eventStartMinutes = eventHours * 60 + eventMinutes;
   
-  const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
-  const slotTotalMinutes = slotHours * 60 + slotMinutes;
+  for (const slot of timeSlots) {
+    const [slotHours, slotMinutes] = slot.split(":").map(Number);
+    const slotMinutesTotal = slotHours * 60 + slotMinutes;
+    
+    if (slotMinutesTotal >= eventStartMinutes) {
+      return slot;
+    }
+  }
   
-  return slotTotalMinutes === eventStartMinutes;
+  return null;
 }
 
 function getWeekDays(startDate: string) {
@@ -364,21 +376,23 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
 
               {/* Time slots grid */}
               <div className="grid grid-cols-10 gap-px bg-gray-200">
-                {timeSlots.map((timeSlot) => (
+{timeSlots.map((timeSlot, timeIndex) => (
                   <div key={timeSlot} className="contents">
                     <div className="bg-gray-50 p-2 text-xs font-medium text-gray-600 flex items-center justify-center border-r">
                       {formatTime(timeSlot)}
                     </div>
                     {courts.map((court) => {
                       const eventInSlot = findEventInTimeSlot(todayEvents, court, timeSlot);
-                      const isFirstSlot = isFirstSlotOfEvent(todayEvents, court, timeSlot);
+                      const firstEventSlot = findFirstSlotForEvent(todayEvents, court, timeSlots);
+                      const isFirstSlot = timeSlot === firstEventSlot;
                       
                       return (
                         <div
                           key={`${court}-${timeSlot}`}
-                          className={`bg-white p-1 h-[40px] relative overflow-hidden ${
+                          className={`bg-white p-1 h-[40px] relative ${
                             eventInSlot ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
+                          style={{ overflow: isFirstSlot ? 'visible' : 'hidden' }}
                         >
                           {eventInSlot && isFirstSlot && (
                             <div 
@@ -460,13 +474,8 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
 
                       // Find events that start in this time slot
                       const eventsStartingInSlot = eventsInSlot.filter(event => {
-                        const [eventHours, eventMinutes] = event.time.split(":").map(Number);
-                        const eventStartMinutes = eventHours * 60 + eventMinutes;
-                        
-                        const [slotHours, slotMinutes] = timeSlot.split(":").map(Number);
-                        const slotTotalMinutes = slotHours * 60 + slotMinutes;
-                        
-                        return slotTotalMinutes === eventStartMinutes;
+                        const firstEventSlot = findFirstSlotForEvent([event], 'any', timeSlots);
+                        return timeSlot === firstEventSlot;
                       });
 
                       return (
