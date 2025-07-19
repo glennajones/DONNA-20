@@ -55,7 +55,7 @@ export default function EpisodeList({ onSelectEpisode }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Volleyball Podcast</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Listen to coaching tips, player stories, and club updates</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Click any episode to visit the United Volleyball Club podcast</p>
         </div>
         <Badge variant="secondary" className="text-sm">
           {episodes.length} Episode{episodes.length !== 1 ? 's' : ''}
@@ -76,7 +76,7 @@ export default function EpisodeList({ onSelectEpisode }) {
             <Card 
               key={episode.id} 
               className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
-              onClick={() => onSelectEpisode(episode)}
+              onClick={() => window.open('https://www.unitedvolleyball.club/pages/better-together-a-united-podcast', '_blank')}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
