@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, Calendar, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Play, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 export default function EpisodeList({ onSelectEpisode }) {
   const [episodes, setEpisodes] = useState([]);
@@ -53,9 +55,17 @@ export default function EpisodeList({ onSelectEpisode }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Volleyball Podcast</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Click any episode to visit the United Volleyball Club podcast</p>
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Return to Dashboard
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Volleyball Podcast</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Click any episode to visit the United Volleyball Club podcast</p>
+          </div>
         </div>
         <Badge variant="secondary" className="text-sm">
           {episodes.length} Episode{episodes.length !== 1 ? 's' : ''}
