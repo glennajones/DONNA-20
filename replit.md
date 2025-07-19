@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express.js with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: JWT tokens with bcrypt password hashing
-- **Storage**: Currently using in-memory storage with plans for PostgreSQL
+- **Storage**: PostgreSQL database with proper connection pooling
 - **API**: RESTful endpoints with proper error handling
 
 ## Key Components
@@ -113,7 +113,7 @@ Preferred communication style: Simple, everyday language.
 ### Development Environment
 - **Vite dev server** for frontend hot reloading
 - **tsx** for running TypeScript backend directly
-- **In-memory storage** for rapid development
+- **PostgreSQL database** with demo data seeding
 - **Environment variables** for configuration
 
 ### Production Build
