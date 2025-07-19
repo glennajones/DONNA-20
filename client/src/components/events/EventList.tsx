@@ -17,13 +17,16 @@ export function EventList() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [actualRevenue, setActualRevenue] = useState<number>(0);
 
-  const { data: events = [], isLoading, error } = useQuery({
+  const { data: events, isLoading, error } = useQuery({
     queryKey: ["/api/events"],
     queryFn: async () => {
       const response = await apiRequest("/api/events");
       return response as Event[];
     }
   });
+
+  // Ensure events is always an array
+  const eventsList = Array.isArray(events) ? events : [];
 
   const deleteEvent = useMutation({
     mutationFn: async (id: number) => {
@@ -130,7 +133,7 @@ export function EventList() {
 
   return (
     <div className="space-y-4">
-      {events.length === 0 ? (
+      {eventsList.length === 0 ? (
         <Card>
           <CardContent className="flex justify-center py-8">
             <div className="text-center">
@@ -142,7 +145,7 @@ export function EventList() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {events.map((event) => {
+          {eventsList.map((event) => {
             const { net, pct } = calcNet(event);
             const isOverBudget = parseFloat(net) < 0;
             
