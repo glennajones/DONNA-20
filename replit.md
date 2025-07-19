@@ -134,6 +134,21 @@ Preferred communication style: Simple, everyday language.
 - **Real-time UI updates** with optimistic updates and proper error handling
 - **Confirmation dialogs** for destructive actions with accessible AlertDialog components
 
+#### Module 7: Events & Budgeting (Completed)
+- **Multi-step event creation wizard** with 4-step process (basic info, resources, budget, review)
+- **Automatic resource estimation** calculating courts and coaches based on player count
+- **Budget calculation system** with projected revenue, costs, and profit analysis
+- **Financial tracking** with actual revenue input and profit/loss comparison
+- **Event management dashboard** displaying all events with financial summaries
+- **Role-based access control** (admin/manager can create/manage events, coaches can view)
+- **Dynamic cost calculation** with coach rates and miscellaneous expenses
+- **Event status tracking** (planning, active, completed, cancelled)
+- **CRUD operations** with proper validation and error handling
+- **PostgreSQL database integration** with events schema and API endpoints
+- **Responsive design** optimized for event planning workflow
+- **Real-time budget updates** during event creation process
+- **Navigation integration** with main application menu
+
 ## Data Flow
 
 1. **Authentication Flow**:

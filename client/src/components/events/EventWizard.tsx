@@ -413,7 +413,7 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
             <Button
               onClick={() => setStep(step + 1)}
               disabled={
-                (step === 1 && (!basic.name || !basic.startDate || !basic.endDate || !basic.location)) ||
+                (step === 1 && (!basic.name.trim() || !basic.startDate.trim() || !basic.endDate.trim() || !basic.location.trim())) ||
                 (step === 2 && players <= 0)
               }
               className="bg-[#56A0D3] hover:bg-[#4A90C2]"
