@@ -1,0 +1,145 @@
+Let’s build this Google Calendar Integration module step by step!
+Below is a fully working React component (src/modules/Integrations/GoogleCalendarSync.jsx) using React + Tailwind CSS + plain JS fetch calls.
+It handles:
+✅ Google OAuth sign‑in via client library.
+✅ “Connect Google Calendar” button.
+✅ On success, POST tokens to /api/integrations/calendar.
+✅ A sync function that would push upcoming events.
+
+📂 File: src/modules/Integrations/GoogleCalendarSync.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from 'react';
+
+// 👉 Replace with your Google OAuth client ID
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/calendar.events";
+
+export default function GoogleCalendarSync() {
+  const [gapiLoaded, setGapiLoaded] = useState(false);
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [authInstance, setAuthInstance] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Load GAPI script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = initClient;
+    document.body.appendChild(script);
+  }, []);
+
+  const initClient = () => {
+    window.gapi.load('client:auth2', async () => {
+      await window.gapi.client.init({
+        clientId: GOOGLE_CLIENT_ID,
+        scope: SCOPES,
+      });
+      const auth = window.gapi.auth2.getAuthInstance();
+      setAuthInstance(auth);
+      setIsSignedIn(auth.isSignedIn.get());
+      auth.isSignedIn.listen(setIsSignedIn);
+      setGapiLoaded(true);
+    });
+  };
+
+  const handleConnect = async () => {
+    if (!authInstance) return;
+    try {
+      const user = await authInstance.signIn();
+      const authResponse = user.getAuthResponse(true); // includes access_token, id_token
+      console.log("Google OAuth Success:", authResponse);
+
+      // ✅ Save tokens to backend
+      await fetch("/api/integrations/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: authResponse.access_token,
+          id_token: authResponse.id_token,
+          expires_at: authResponse.expires_at,
+        }),
+      });
+
+      alert("Google Calendar connected successfully!");
+    } catch (err) {
+      console.error("OAuth Error:", err);
+      alert("Failed to connect Google Calendar.");
+    }
+  };
+
+  const handleSyncEvents = async () => {
+    setSyncing(true);
+    try {
+      // 👉 Fetch upcoming club events from your backend
+      const eventsRes = await fetch("/api/events/upcoming");
+      const events = await eventsRes.json();
+
+      for (let evt of events) {
+        await window.gapi.client.request({
+          path: '/calendar/v3/calendars/primary/events',
+          method: 'POST',
+          body: {
+            summary: evt.title,
+            description: evt.description,
+            start: { dateTime: evt.start, timeZone: 'UTC' },
+            end: { dateTime: evt.end, timeZone: 'UTC' },
+          },
+        });
+      }
+
+      alert(`✅ Synced ${events.length} events to Google Calendar`);
+    } catch (err) {
+      console.error("Sync error:", err);
+      alert("Failed to sync events.");
+    }
+    setSyncing(false);
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow-md max-w-lg mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Google Calendar Integration</h1>
+      {!isSignedIn ? (
+        <button
+          onClick={handleConnect}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          disabled={!gapiLoaded}
+        >
+          Connect Google Calendar
+        </button>
+      ) : (
+        <div>
+          <p className="text-green-600 mb-4">✅ Connected to Google Calendar!</p>
+          <button
+            onClick={handleSyncEvents}
+            className={`${
+              syncing ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'
+            } text-white px-4 py-2 rounded`}
+            disabled={syncing}
+          >
+            {syncing ? 'Syncing…' : 'Sync Upcoming Events'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+💡 How to use
+Put your real GOOGLE_CLIENT_ID in the code.
+
+Ensure /api/integrations/calendar (POST) stores the tokens server‑side.
+
+Ensure /api/events/upcoming returns events in JSON like:
+
+json
+Copy
+Edit
+[
+  {
+    "title": "Club Meeting",
+    "description": "Monthly planning",
+    "start": "2025-07-22T14:00:00Z",
+    "end": "2025-07-22T15:00:00Z"
+  }
+]

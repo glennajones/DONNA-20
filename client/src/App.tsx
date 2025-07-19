@@ -17,6 +17,7 @@ import FormsPage from "./pages/forms";
 import EventsPage from "./pages/events";
 import { FundraisingPage } from "./pages/fundraising";
 import PerformancePage from "./pages/performance";
+import IntegrationsPage from "./pages/integrations";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/events" component={EventsPage} />
       <Route path="/fundraising" component={FundraisingPage} />
       <Route path="/performance" component={PerformancePage} />
+      <Route path="/integrations" component={IntegrationsPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

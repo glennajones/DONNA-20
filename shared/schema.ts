@@ -343,3 +343,37 @@ export const insertEvaluationSchema = createInsertSchema(evaluations).omit({
 export type InsertEvaluation = z.infer<typeof insertEvaluationSchema>;
 export type Evaluation = typeof evaluations.$inferSelect;
 export type TeamAssignment = typeof teamAssignments.$inferSelect;
+
+// Google Calendar Integration Schema
+export const googleCalendarTokens = pgTable("google_calendar_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  expiresAt: timestamp("expires_at").notNull(),
+  scope: text("scope"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const calendarSyncLogs = pgTable("calendar_sync_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  eventId: integer("event_id").references(() => events.id),
+  googleEventId: text("google_event_id"),
+  status: text("status", { enum: ["synced", "failed", "updated"] }).notNull(),
+  errorMessage: text("error_message"),
+  syncedAt: timestamp("synced_at").defaultNow().notNull(),
+});
+
+// Types for Google Calendar Integration
+export const insertGoogleCalendarTokenSchema = createInsertSchema(googleCalendarTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertGoogleCalendarToken = z.infer<typeof insertGoogleCalendarTokenSchema>;
+export type GoogleCalendarToken = typeof googleCalendarTokens.$inferSelect;
+export type CalendarSyncLog = typeof calendarSyncLogs.$inferSelect;

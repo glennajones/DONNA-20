@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -1125,6 +1125,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(teams);
     } catch (error) {
       console.error("Auto-form teams error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Google Calendar Integration routes
+  app.post("/api/integrations/calendar", authenticateToken, async (req: any, res) => {
+    try {
+      const { access_token, id_token, expires_at, refresh_token } = req.body;
+      
+      if (!access_token || !expires_at) {
+        return res.status(400).json({ message: "Access token and expires_at are required" });
+      }
+
+      const tokenData = {
+        userId: req.user.userId,
+        accessToken: access_token,
+        refreshToken: refresh_token || null,
+        idToken: id_token || null,
+        expiresAt: new Date(expires_at),
+        scope: "https://www.googleapis.com/auth/calendar.events"
+      };
+
+      // Check if token already exists for this user
+      const existingToken = await storage.getGoogleCalendarToken(req.user.userId);
+      let token;
+      
+      if (existingToken) {
+        token = await storage.updateGoogleCalendarToken(req.user.userId, tokenData);
+      } else {
+        token = await storage.createGoogleCalendarToken(tokenData);
+      }
+
+      res.json({ 
+        message: "Google Calendar connected successfully",
+        token: {
+          id: token?.id,
+          expiresAt: token?.expiresAt
+        }
+      });
+    } catch (error) {
+      console.error("Google Calendar connection error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/integrations/calendar/status", authenticateToken, async (req: any, res) => {
+    try {
+      const token = await storage.getGoogleCalendarToken(req.user.userId);
+      
+      if (!token) {
+        return res.json({ connected: false });
+      }
+
+      const isExpired = new Date() > new Date(token.expiresAt);
+      
+      res.json({ 
+        connected: !isExpired,
+        expiresAt: token.expiresAt,
+        expired: isExpired
+      });
+    } catch (error) {
+      console.error("Calendar status check error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/integrations/calendar", authenticateToken, async (req: any, res) => {
+    try {
+      const success = await storage.deleteGoogleCalendarToken(req.user.userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "No Google Calendar connection found" });
+      }
+
+      res.json({ message: "Google Calendar disconnected successfully" });
+    } catch (error) {
+      console.error("Google Calendar disconnect error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // API endpoint to get upcoming events for calendar sync
+  app.get("/api/events/upcoming", authenticateToken, async (req: any, res) => {
+    try {
+      const allEvents = await storage.getEvents();
+      
+      // Filter events that are in the future (next 30 days)
+      const now = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(now.getDate() + 30);
+      
+      const upcomingEvents = allEvents
+        .filter(event => {
+          const eventDate = new Date(event.startDate);
+          return eventDate >= now && eventDate <= thirtyDaysFromNow;
+        })
+        .map(event => ({
+          title: event.name,
+          description: event.description || `Event at ${event.location}`,
+          start: `${event.startDate}T09:00:00Z`, // Default start time
+          end: `${event.endDate}T17:00:00Z`, // Default end time
+          location: event.location
+        }));
+
+      res.json(upcomingEvents);
+    } catch (error) {
+      console.error("Get upcoming events error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/integrations/calendar/logs", authenticateToken, async (req: any, res) => {
+    try {
+      const logs = await storage.getCalendarSyncLogs(req.user.userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get calendar sync logs error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
