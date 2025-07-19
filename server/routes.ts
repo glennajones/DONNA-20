@@ -54,11 +54,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Access token required" });
     }
 
-    jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
       if (err) {
+        console.error("JWT verification error:", err);
         return res.status(403).json({ message: "Invalid or expired token" });
       }
-      req.user = user;
+      
+      // JWT should contain userId, username, role
+      if (!decoded.userId || !decoded.username || !decoded.role) {
+        console.error("Invalid JWT payload:", decoded);
+        return res.status(403).json({ message: "Invalid token payload" });
+      }
+      
+      req.user = decoded;
       next();
     });
   };
@@ -649,7 +657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Form Templates Routes
   app.get("/api/forms/templates", authenticateToken, async (req: any, res) => {
     try {
+      console.log("GET /api/forms/templates called, user:", req.user);
       const templates = await storage.getFormTemplates();
+      console.log("Found templates:", templates.length);
       res.json(templates);
     } catch (error) {
       console.error("Get templates error:", error);

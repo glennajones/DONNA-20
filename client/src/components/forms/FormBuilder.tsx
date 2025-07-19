@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, X, Type, CheckSquare, Calendar, FileText } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface FormField {
   id: string;
@@ -118,6 +118,9 @@ export function FormBuilder() {
         title: "Success",
         description: "Form template saved successfully"
       });
+
+      // Invalidate templates query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/forms/templates"] });
 
       // Reset form
       setTemplate({ name: "", description: "", fields: [] });

@@ -21,13 +21,21 @@ export function FormTemplateManager({ onSendToPlayers }: FormTemplateManagerProp
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: templates, isLoading } = useQuery({
+  const { data: templates, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/forms/templates"],
     queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      console.log("Making request with token:", token ? "exists" : "missing");
       const response = await apiRequest("/api/forms/templates");
       return response.json();
-    }
+    },
+    enabled: !!user // Only run query if user is authenticated
   });
+
+  // Debug logging
+  if (error) {
+    console.error("Templates query error:", error);
+  }
 
   const deleteTemplate = useMutation({
     mutationFn: async (templateId: number) => {
@@ -62,6 +70,25 @@ export function FormTemplateManager({ onSendToPlayers }: FormTemplateManagerProp
       <Card>
         <CardContent className="p-6">
           <div className="text-center text-gray-500">Loading templates...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-500">
+            <p>Error loading templates. Let me try refreshing this for you.</p>
+            <Button 
+              onClick={() => refetch()} 
+              className="mt-2"
+              variant="outline"
+            >
+              Refresh Templates
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

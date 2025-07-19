@@ -19,6 +19,8 @@ export default function FormsPage() {
 
   const canCreateForms = user?.role === "admin" || user?.role === "manager";
 
+  console.log("Forms page - current user:", user);
+
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
@@ -38,9 +40,15 @@ export default function FormsPage() {
         </TabsList>
 
         <TabsContent value="templates" className="mt-6">
-          <FormTemplateManager 
-            onSendToPlayers={handleSendToPlayers}
-          />
+          {user ? (
+            <FormTemplateManager 
+              onSendToPlayers={handleSendToPlayers}
+            />
+          ) : (
+            <div className="text-center py-8">
+              <p>Please log in to access forms.</p>
+            </div>
+          )}
         </TabsContent>
 
         {canCreateForms && (
