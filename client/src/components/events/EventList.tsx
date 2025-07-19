@@ -21,7 +21,8 @@ export function EventList() {
     queryKey: ["/api/events"],
     queryFn: async () => {
       const response = await apiRequest("/api/events");
-      return response as Event[];
+      const data = await response.json();
+      return data as Event[];
     }
   });
 
