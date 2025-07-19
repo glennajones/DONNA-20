@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { X, UserPlus } from "lucide-react";
 
@@ -31,6 +32,7 @@ export function ParentForm({ parent, onSaved, onCancel }: ParentFormProps) {
       name: parent?.name || "",
       email: parent?.email || "",
       phone: parent?.phone || "",
+      communicationPreference: parent?.communicationPreference || "Email",
       children: parent?.children || [],
     },
   });
@@ -64,6 +66,8 @@ export function ParentForm({ parent, onSaved, onCancel }: ParentFormProps) {
   const onSubmit = (data: InsertParent) => {
     saveMutation.mutate(data);
   };
+
+  const communicationOptions = ["Email", "SMS", "GroupMe"];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -125,6 +129,31 @@ export function ParentForm({ parent, onSaved, onCancel }: ParentFormProps) {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="communicationPreference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Communication Preference</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select preference" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {communicationOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

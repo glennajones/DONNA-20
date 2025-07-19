@@ -75,6 +75,7 @@ export const parents = pgTable("parents", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
+  communicationPreference: text("communication_preference", { enum: ["Email", "SMS", "GroupMe"] }).default("Email"),
   children: integer("children").array().notNull().default([]), // array of player IDs
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
