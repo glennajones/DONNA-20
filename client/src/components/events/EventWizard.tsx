@@ -36,8 +36,8 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
   const [players, setPlayers] = useState(0);
   const [playersPerCourt, setPlayersPerCourt] = useState(6);
   const [playersPerCoach, setPlayersPerCoach] = useState(12);
-  const courts = (players > 0 && playersPerCourt > 0) ? Math.ceil(players / playersPerCourt) : 0;
-  const coaches = (players > 0 && playersPerCoach > 0) ? Math.ceil(players / playersPerCoach) : 0;
+  const courts = playersPerCourt > 0 ? Math.ceil(players / playersPerCourt) : 0;
+  const coaches = playersPerCoach > 0 ? Math.ceil(players / playersPerCoach) : 0;
 
   // STEP 3: Budget & Pricing
   const [feePerPlayer, setFeePerPlayer] = useState(0);
@@ -197,12 +197,12 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
                 id="players"
                 type="number"
                 placeholder="24"
-                value={players || ""}
-                onChange={(e) => setPlayers(Number(e.target.value))}
+                value={players}
+                onChange={(e) => setPlayers(Number(e.target.value) || 0)}
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="playersPerCourt">Players per Court Ratio</Label>
                 <Input
