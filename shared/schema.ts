@@ -478,6 +478,9 @@ export const practicePlans = pgTable('practice_plans', {
   title: varchar('title', { length: 200 }).notNull(),
   description: text('description'),
   drills: text('drills').array().notNull().default([]),
+  pdfFileName: text('pdf_file_name'),
+  pdfFileSize: integer('pdf_file_size'),
+  pdfUploadedAt: timestamp('pdf_uploaded_at'),
   createdBy: integer('created_by').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow()

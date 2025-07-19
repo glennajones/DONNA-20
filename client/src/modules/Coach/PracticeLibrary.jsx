@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Edit, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Edit, Trash2, Upload, FileText, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PracticeLibrary() {
@@ -12,6 +12,9 @@ export default function PracticeLibrary() {
   const [form, setForm] = useState({ title: "", description: "", drills: "" });
   const [editIndex, setEditIndex] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,6 +39,70 @@ export default function PracticeLibrary() {
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid File",
+          description: "Please select a PDF file.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "File Too Large",
+          description: "PDF file must be less than 10MB.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const uploadPDF = async (planId) => {
+    if (!selectedFile) return null;
+    
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('pdf', selectedFile);
+    formData.append('planId', planId.toString());
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/practice-plans/upload-pdf', {
+        method: 'POST',
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: formData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "PDF Uploaded",
+          description: "PDF file has been attached to the practice plan."
+        });
+        return result;
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('PDF upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload PDF. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.title.trim()) {
@@ -71,9 +138,18 @@ export default function PracticeLibrary() {
 
         if (response.ok) {
           const updatedPlan = await response.json();
-          const updatedPlans = [...plans];
-          updatedPlans[editIndex] = updatedPlan;
-          setPlans(updatedPlans);
+          
+          // Upload PDF if one is selected for the edit
+          if (selectedFile) {
+            await uploadPDF(updatedPlan.id);
+            // Refresh plans to get updated data with PDF info
+            await fetchPlans();
+          } else {
+            const updatedPlans = [...plans];
+            updatedPlans[editIndex] = updatedPlan;
+            setPlans(updatedPlans);
+          }
+          
           setEditIndex(null);
           toast({
             title: "Success",
@@ -97,7 +173,16 @@ export default function PracticeLibrary() {
 
         if (response.ok) {
           const newPlan = await response.json();
-          setPlans([newPlan, ...plans]);
+          
+          // Upload PDF if one is selected
+          if (selectedFile) {
+            await uploadPDF(newPlan.id);
+            // Refresh plans to get updated data with PDF info
+            await fetchPlans();
+          } else {
+            setPlans([newPlan, ...plans]);
+          }
+          
           toast({
             title: "Success",
             description: "Practice plan created successfully."
@@ -106,6 +191,10 @@ export default function PracticeLibrary() {
       }
       
       setForm({ title: "", description: "", drills: "" });
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (error) {
       console.error("Failed to save practice plan:", error);
       toast({
@@ -191,6 +280,30 @@ export default function PracticeLibrary() {
             value={form.drills}
             onChange={handleChange}
           />
+          
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <label className="block text-sm font-medium mb-2">
+              Attach PDF (Optional)
+            </label>
+            <div className="flex items-center gap-2">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="flex-1"
+              />
+              {selectedFile && (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  {selectedFile.name}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Maximum file size: 10MB. Only PDF files are allowed.
+            </p>
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={handleSave}
@@ -224,9 +337,17 @@ export default function PracticeLibrary() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                        {plan.title}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                          {plan.title}
+                        </h3>
+                        {plan.pdfFileName && (
+                          <Badge variant="outline" className="flex items-center gap-1 text-blue-600 border-blue-600">
+                            <FileText className="h-3 w-3" />
+                            PDF
+                          </Badge>
+                        )}
+                      </div>
                       {plan.description && (
                         <p className="text-gray-600 dark:text-gray-300 mt-1">
                           {plan.description}
@@ -242,8 +363,23 @@ export default function PracticeLibrary() {
                           ))}
                         </div>
                       </div>
+                      {plan.pdfFileName && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          Attached: {plan.pdfFileName} ({Math.round(plan.pdfFileSize / 1024)}KB)
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 ml-4">
+                      {plan.pdfFileName && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(`/api/practice-plans/${plan.id}/download-pdf`, '_blank')}
+                          title="Download PDF"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button
                         onClick={() => handleEdit(i)}
                         size="sm"

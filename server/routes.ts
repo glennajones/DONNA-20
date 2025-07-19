@@ -4,8 +4,31 @@ import { storage } from "./storage";
 import { pusher } from "./pusher";
 import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
+
+// Configure multer for PDF uploads
+const uploadsDir = path.join(process.cwd(), 'uploads', 'pdfs');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const upload = multer({
+  dest: uploadsDir,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -1531,12 +1554,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
+      
+      // Get the plan first to check for PDF file
+      const plan = await storage.getPracticePlan(parseInt(id));
+      if (plan && plan.pdfFileName) {
+        // Delete the PDF file from filesystem
+        const filePath = path.join(uploadsDir, plan.pdfFileName);
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.warn('Could not delete PDF file:', err);
+        }
+      }
+      
       await storage.deletePracticePlan(parseInt(id));
       
       res.json({ success: true });
     } catch (error) {
       console.error('Delete practice plan error:', error);
       res.status(500).json({ error: 'Failed to delete practice plan' });
+    }
+  });
+
+  // PDF Upload endpoint
+  app.post('/api/practice-plans/upload-pdf', authenticateToken, upload.single('pdf'), async (req: any, res) => {
+    try {
+      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No PDF file provided' });
+      }
+
+      const planId = parseInt(req.body.planId);
+      if (!planId) {
+        return res.status(400).json({ error: 'Practice plan ID required' });
+      }
+
+      // Generate a unique filename
+      const fileExtension = path.extname(req.file.originalname);
+      const uniqueFilename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${fileExtension}`;
+      const finalPath = path.join(uploadsDir, uniqueFilename);
+
+      // Move the uploaded file to the final location
+      fs.renameSync(req.file.path, finalPath);
+
+      // Update the practice plan with PDF info
+      const updatedPlan = await storage.updatePracticePlan(planId, {
+        pdfFileName: uniqueFilename,
+        pdfFileSize: req.file.size,
+        pdfUploadedAt: new Date()
+      });
+
+      if (!updatedPlan) {
+        // Clean up the uploaded file if plan update failed
+        fs.unlinkSync(finalPath);
+        return res.status(404).json({ error: 'Practice plan not found' });
+      }
+
+      res.json({ 
+        message: 'PDF uploaded successfully',
+        plan: updatedPlan
+      });
+    } catch (error) {
+      console.error('PDF upload error:', error);
+      // Clean up uploaded file on error
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: 'Failed to upload PDF' });
+    }
+  });
+
+  // PDF Download endpoint
+  app.get('/api/practice-plans/:id/download-pdf', authenticateToken, async (req: any, res) => {
+    try {
+      const planId = parseInt(req.params.id);
+      const plan = await storage.getPracticePlan(planId);
+
+      if (!plan) {
+        return res.status(404).json({ error: 'Practice plan not found' });
+      }
+
+      if (!plan.pdfFileName) {
+        return res.status(404).json({ error: 'No PDF attached to this practice plan' });
+      }
+
+      const filePath = path.join(uploadsDir, plan.pdfFileName);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'PDF file not found on server' });
+      }
+
+      // Set appropriate headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${plan.title}.pdf"`);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error('PDF download error:', error);
+      res.status(500).json({ error: 'Failed to download PDF' });
     }
   });
 

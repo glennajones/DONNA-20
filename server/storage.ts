@@ -176,6 +176,7 @@ export interface IStorage {
   getAllTimeClockEntries(userId: number): Promise<TimeClockEntry[]>;
   
   getPracticePlans(): Promise<PracticePlan[]>;
+  getPracticePlan(id: number): Promise<PracticePlan | undefined>;
   createPracticePlan(plan: InsertPracticePlan): Promise<PracticePlan>;
   updatePracticePlan(id: number, plan: Partial<InsertPracticePlan>): Promise<PracticePlan | undefined>;
   deletePracticePlan(id: number): Promise<boolean>;
@@ -822,6 +823,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPracticePlans(): Promise<PracticePlan[]> {
     return await db.select().from(practicePlans).orderBy(desc(practicePlans.createdAt));
+  }
+
+  async getPracticePlan(id: number): Promise<PracticePlan | undefined> {
+    const [plan] = await db.select().from(practicePlans).where(eq(practicePlans.id, id));
+    return plan || undefined;
   }
 
   async createPracticePlan(insertPlan: InsertPracticePlan): Promise<PracticePlan> {
