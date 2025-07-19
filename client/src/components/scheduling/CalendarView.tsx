@@ -382,10 +382,11 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                         >
                           {eventInSlot && isFirstSlot && (
                             <div 
-                              className="text-xs bg-[#56A0D3] text-white p-1 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute inset-1 flex flex-col justify-center z-10"
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-center z-10"
                               onClick={() => setSelectedEvent(eventInSlot)}
                               title={`${eventInSlot.title} - ${eventInSlot.coach}`}
                               style={{
+                                top: '4px',
                                 height: `${(eventInSlot.duration || 120) / 30 * 40 - 8}px`
                               }}
                             >
@@ -478,17 +479,16 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                           {eventsStartingInSlot.map((event, index) => (
                             <div 
                               key={event.id} 
-                              className="text-xs cursor-pointer absolute inset-1 z-10"
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-center z-10"
                               onClick={() => setSelectedEvent(event)}
                               title={`${event.title} - ${event.coach}`}
                               style={{
+                                top: '4px',
                                 height: `${(event.duration || 120) / 30 * 40 - 8}px`
                               }}
                             >
-                              <div className="font-medium bg-[#56A0D3] text-white px-1 py-0.5 rounded hover:bg-[#4A8BC2] transition-colors h-full flex flex-col justify-center">
-                                <div className="truncate">{event.title}</div>
-                                <div className="text-xs opacity-90 truncate">{event.coach}</div>
-                              </div>
+                              <div className="font-medium truncate">{event.title}</div>
+                              <div className="text-xs opacity-90 truncate">{event.coach}</div>
                             </div>
                           ))}
                         </div>
