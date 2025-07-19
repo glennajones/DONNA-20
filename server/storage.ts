@@ -349,6 +349,15 @@ export class DatabaseStorage implements IStorage {
     return newTemplate;
   }
 
+  async updateFormTemplate(id: number, template: Partial<InsertFormTemplate>): Promise<FormTemplate | undefined> {
+    const [updatedTemplate] = await db
+      .update(formTemplates)
+      .set(template)
+      .where(eq(formTemplates.id, id))
+      .returning();
+    return updatedTemplate || undefined;
+  }
+
   async deleteFormTemplate(id: number): Promise<boolean> {
     const result = await db.update(formTemplates)
       .set({ isActive: false })

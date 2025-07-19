@@ -125,6 +125,14 @@ Preferred communication style: Simple, everyday language.
 - **Authentication-protected endpoints** with JWT token validation
 - **Dynamic form field creation** with unique ID generation and proper state management
 - **Form template list view** with active/inactive status filtering
+- **Complete CRUD operations** for form templates:
+  - **Create**: Via form builder with drag-and-drop field creation
+  - **Read**: Template list with field details and metadata display
+  - **Update**: Edit template name and description with dialog interface
+  - **Delete**: Soft delete with confirmation dialog and proper permission checks
+- **Role-based permissions** for template management (admin/manager only)
+- **Real-time UI updates** with optimistic updates and proper error handling
+- **Confirmation dialogs** for destructive actions with accessible AlertDialog components
 
 ## Data Flow
 

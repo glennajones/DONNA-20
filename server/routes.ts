@@ -695,6 +695,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/forms/templates/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const { name, description, fields } = req.body;
+
+      if (!name || !fields || !Array.isArray(fields)) {
+        return res.status(400).json({ message: "Name and fields are required" });
+      }
+
+      const updatedTemplate = await storage.updateFormTemplate(parseInt(id), {
+        name: name.trim(),
+        description: description?.trim() || null,
+        fields
+      });
+
+      if (!updatedTemplate) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("Update template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.delete("/api/forms/templates/:id", authenticateToken, async (req: any, res) => {
     try {
       // Only admins and managers can delete templates
