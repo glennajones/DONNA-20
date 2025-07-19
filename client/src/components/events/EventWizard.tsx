@@ -36,8 +36,8 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
   const [players, setPlayers] = useState(0);
   const [playersPerCourt, setPlayersPerCourt] = useState(6);
   const [playersPerCoach, setPlayersPerCoach] = useState(12);
-  const courts = Math.ceil(players / playersPerCourt);
-  const coaches = Math.ceil(players / playersPerCoach);
+  const courts = playersPerCourt > 0 ? Math.ceil(players / playersPerCourt) : 0;
+  const coaches = playersPerCoach > 0 ? Math.ceil(players / playersPerCoach) : 0;
 
   // STEP 3: Budget & Pricing
   const [feePerPlayer, setFeePerPlayer] = useState(0);
