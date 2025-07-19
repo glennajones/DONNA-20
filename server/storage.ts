@@ -19,8 +19,7 @@ import {
   podcastPollVotes,
   timeClockEntries,
   practicePlans,
-  gameLineups,
-  gameStats,
+
   type User, 
   type InsertUser, 
   type Registration, 
@@ -59,10 +58,7 @@ import {
   type InsertTimeClockEntry,
   type PracticePlan,
   type InsertPracticePlan,
-  type GameLineup,
-  type InsertGameLineup,
-  type GameStat,
-  type InsertGameStat
+
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -183,11 +179,7 @@ export interface IStorage {
   updatePracticePlan(id: number, plan: Partial<InsertPracticePlan>): Promise<PracticePlan | undefined>;
   deletePracticePlan(id: number): Promise<boolean>;
   
-  getGameLineups(): Promise<GameLineup[]>;
-  createGameLineup(lineup: InsertGameLineup): Promise<GameLineup>;
-  
-  createGameStat(stat: InsertGameStat): Promise<GameStat>;
-  getGameStats(gameId: string): Promise<GameStat[]>;
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -847,31 +839,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async getGameLineups(): Promise<GameLineup[]> {
-    return await db.select().from(gameLineups).orderBy(desc(gameLineups.createdAt));
-  }
 
-  async createGameLineup(insertLineup: InsertGameLineup): Promise<GameLineup> {
-    const [lineup] = await db
-      .insert(gameLineups)
-      .values(insertLineup)
-      .returning();
-    return lineup;
-  }
-
-  async createGameStat(insertStat: InsertGameStat): Promise<GameStat> {
-    const [stat] = await db
-      .insert(gameStats)
-      .values(insertStat)
-      .returning();
-    return stat;
-  }
-
-  async getGameStats(gameId: string): Promise<GameStat[]> {
-    return await db.select().from(gameStats)
-      .where(eq(gameStats.gameId, gameId))
-      .orderBy(gameStats.createdAt);
-  }
 }
 
 export const storage = new DatabaseStorage();

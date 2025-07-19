@@ -1530,73 +1530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Game Lineups Routes
-  app.get('/api/game-lineups', authenticateToken, async (req: any, res) => {
-    try {
-      const lineups = await storage.getGameLineups();
-      res.json(lineups);
-    } catch (error) {
-      console.error('Get game lineups error:', error);
-      res.status(500).json({ error: 'Failed to get game lineups' });
-    }
-  });
 
-  app.post('/api/game-lineups', authenticateToken, async (req: any, res) => {
-    try {
-      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      const { name, players } = req.body;
-      
-      const lineup = await storage.createGameLineup({
-        name,
-        players,
-        createdBy: req.user.userId
-      });
-
-      res.json(lineup);
-    } catch (error) {
-      console.error('Create game lineup error:', error);
-      res.status(500).json({ error: 'Failed to create game lineup' });
-    }
-  });
-
-  // Game Stats Routes
-  app.post('/api/game-stats', authenticateToken, async (req: any, res) => {
-    try {
-      if (!req.user.role || !['admin', 'manager', 'coach'].includes(req.user.role)) {
-        return res.status(403).json({ error: 'Access denied' });
-      }
-
-      const { gameId, playerName, points, assists, rebounds } = req.body;
-      
-      const stat = await storage.createGameStat({
-        gameId,
-        playerName,
-        points: parseInt(points) || 0,
-        assists: parseInt(assists) || 0,
-        rebounds: parseInt(rebounds) || 0,
-        createdBy: req.user.userId
-      });
-
-      res.json(stat);
-    } catch (error) {
-      console.error('Create game stat error:', error);
-      res.status(500).json({ error: 'Failed to create game stat' });
-    }
-  });
-
-  app.get('/api/game-stats/:gameId', authenticateToken, async (req: any, res) => {
-    try {
-      const { gameId } = req.params;
-      const stats = await storage.getGameStats(gameId);
-      res.json(stats);
-    } catch (error) {
-      console.error('Get game stats error:', error);
-      res.status(500).json({ error: 'Failed to get game stats' });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
