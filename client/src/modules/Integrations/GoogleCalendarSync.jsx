@@ -49,12 +49,22 @@ export default function GoogleCalendarSync() {
       client_id: GOOGLE_CLIENT_ID,
       scope: SCOPES,
       callback: (tokenResponse) => {
+        if (tokenResponse.error) {
+          console.error('OAuth Error:', tokenResponse.error);
+          setError(`Authentication failed: ${tokenResponse.error}`);
+          return;
+        }
+        
         console.log('Token received:', tokenResponse);
         setAccessToken(tokenResponse.access_token);
         setIsSignedIn(true);
         
         // Save tokens to backend
         saveTokenToBackend(tokenResponse);
+      },
+      error_callback: (error) => {
+        console.error('OAuth Error:', error);
+        setError(`Authentication failed: ${error.type || 'Unknown error'}`);
       },
     });
     
