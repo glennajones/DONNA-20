@@ -3,18 +3,48 @@ import { useQuery } from "@tanstack/react-query";
 import { ScheduleEvent } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Info, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
 }
 
 export default function CalendarView({ viewType }: CalendarViewProps) {
-  const [dateRange, setDateRange] = useState(() => getDateRange(viewType));
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
 
   useEffect(() => {
-    setDateRange(getDateRange(viewType));
-  }, [viewType]);
+    setDateRange(getDateRange(viewType, currentDate));
+  }, [viewType, currentDate]);
+
+  const navigatePrevious = () => {
+    const newDate = new Date(currentDate);
+    if (viewType === "day") {
+      newDate.setDate(currentDate.getDate() - 1);
+    } else if (viewType === "week") {
+      newDate.setDate(currentDate.getDate() - 7);
+    } else if (viewType === "month") {
+      newDate.setMonth(currentDate.getMonth() - 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const navigateNext = () => {
+    const newDate = new Date(currentDate);
+    if (viewType === "day") {
+      newDate.setDate(currentDate.getDate() + 1);
+    } else if (viewType === "week") {
+      newDate.setDate(currentDate.getDate() + 7);
+    } else if (viewType === "month") {
+      newDate.setMonth(currentDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const navigateToday = () => {
+    setCurrentDate(new Date());
+  };
 
   const { data: scheduleData, isLoading, error } = useQuery({
     queryKey: ["/api/schedule", dateRange.from, dateRange.to],
@@ -64,12 +94,61 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     );
   }
 
+  // Navigation header component
+  const navigationHeader = (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center space-x-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={navigatePrevious}
+          className="p-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={navigateNext}
+          className="p-2"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={navigateToday}
+        >
+          Today
+        </Button>
+      </div>
+      <div className="text-lg font-semibold">
+        {getDisplayTitle(viewType, currentDate)}
+      </div>
+    </div>
+  );
+
   if (viewType === "day") {
-    return renderDayView(events, dateRange);
+    return (
+      <div>
+        {navigationHeader}
+        {renderDayView(events, dateRange)}
+      </div>
+    );
   } else if (viewType === "week") {
-    return renderWeekView(events, dateRange);
+    return (
+      <div>
+        {navigationHeader}
+        {renderWeekView(events, dateRange)}
+      </div>
+    );
   } else {
-    return renderMonthView(events, dateRange);
+    return (
+      <div>
+        {navigationHeader}
+        {renderMonthView(events, dateRange)}
+      </div>
+    );
   }
 }
 
@@ -189,7 +268,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            📅 Day View - {formatDateDisplay(dateRange.from)}
+            📅 Day View
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -257,7 +336,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            📅 Week View - {formatDateDisplay(dateRange.from)} to {formatDateDisplay(dateRange.to)}
+            📅 Week View
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -331,7 +410,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            📅 Month View - {formatMonthYear(dateRange.from)}
+            📅 Month View
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -388,22 +467,44 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
   );
 }
 
-function getDateRange(viewType: "day" | "week" | "month") {
-  const now = new Date();
-  let from = new Date(now);
-  let to = new Date(now);
+function getDateRange(viewType: "day" | "week" | "month", currentDate: Date) {
+  let from = new Date(currentDate);
+  let to = new Date(currentDate);
 
   if (viewType === "week") {
-    from.setDate(now.getDate() - now.getDay());
+    from.setDate(currentDate.getDate() - currentDate.getDay());
     to.setDate(from.getDate() + 6);
   } else if (viewType === "month") {
-    from = new Date(now.getFullYear(), now.getMonth(), 1);
-    to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    from = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    to = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
   }
-  // For "day", from and to are the same (today)
+  // For "day", from and to are the same (currentDate)
 
   return {
     from: from.toISOString().split("T")[0], // YYYY-MM-DD format
     to: to.toISOString().split("T")[0],
   };
+}
+
+function getDisplayTitle(viewType: "day" | "week" | "month", currentDate: Date): string {
+  if (viewType === "day") {
+    return currentDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  } else if (viewType === "week") {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    
+    return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  } else {
+    return currentDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long' 
+    });
+  }
 }
