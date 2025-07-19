@@ -189,12 +189,18 @@ function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: s
 }
 
 function getWeekDays(startDate: string) {
-  const start = new Date(startDate);
+  const inputDate = new Date(startDate);
   const days = [];
   
+  // Find the Sunday of this week
+  const sunday = new Date(inputDate);
+  const dayOfWeek = inputDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  sunday.setDate(inputDate.getDate() - dayOfWeek);
+  
+  // Generate 7 days starting from Sunday
   for (let i = 0; i < 7; i++) {
-    const date = new Date(start);
-    date.setDate(start.getDate() + i);
+    const date = new Date(sunday);
+    date.setDate(sunday.getDate() + i);
     days.push({
       date: date.toISOString().split('T')[0],
       name: date.toLocaleDateString('en-US', { weekday: 'short' }),
