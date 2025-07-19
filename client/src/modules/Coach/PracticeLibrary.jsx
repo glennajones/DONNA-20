@@ -338,9 +338,19 @@ export default function PracticeLibrary() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                          {plan.title}
-                        </h3>
+                        {plan.pdfFileName ? (
+                          <button
+                            onClick={() => window.open(`/api/practice-plans/${plan.id}/download-pdf`, '_blank')}
+                            className="font-semibold text-lg text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                            title="Click to view PDF"
+                          >
+                            {plan.title}
+                          </button>
+                        ) : (
+                          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                            {plan.title}
+                          </h3>
+                        )}
                         {plan.pdfFileName && (
                           <Badge variant="outline" className="flex items-center gap-1 text-blue-600 border-blue-600">
                             <FileText className="h-3 w-3" />
