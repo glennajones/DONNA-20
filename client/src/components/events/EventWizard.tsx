@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { InsertEvent } from "@shared/schema";
 
 interface CoachRate {
@@ -68,6 +68,9 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
         method: "POST",
         body: JSON.stringify(payload),
       });
+      
+      // Invalidate events cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       
       toast({
         title: "Success!",
