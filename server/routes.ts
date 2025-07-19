@@ -1209,24 +1209,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint to get upcoming events for calendar sync
   app.get("/api/events/upcoming", authenticateToken, async (req: any, res) => {
     try {
-      const allEvents = await storage.getEvents();
+      // Use schedule events instead of the events table which might have issues
+      const allScheduleEvents = await storage.getScheduleEvents();
       
       // Filter events that are in the future (next 30 days)
       const now = new Date();
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(now.getDate() + 30);
       
-      const upcomingEvents = allEvents
+      const upcomingEvents = allScheduleEvents
         .filter(event => {
-          const eventDate = new Date(event.startDate);
+          const eventDate = new Date(event.date);
           return eventDate >= now && eventDate <= thirtyDaysFromNow;
         })
         .map(event => ({
-          title: event.name,
-          description: event.description || `Event at ${event.location}`,
-          start: `${event.startDate}T09:00:00Z`, // Default start time
-          end: `${event.endDate}T17:00:00Z`, // Default end time
-          location: event.location
+          title: event.title,
+          description: event.notes || `${event.eventType} at ${event.court}`,
+          start: `${event.date}T${event.startTime || '09:00'}:00Z`,
+          end: `${event.date}T${event.endTime || '17:00'}:00Z`,
+          location: `Court: ${event.court}`
         }));
 
       res.json(upcomingEvents);
