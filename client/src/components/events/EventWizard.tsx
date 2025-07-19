@@ -34,8 +34,10 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
 
   // STEP 2: Court & Coach Estimation
   const [players, setPlayers] = useState(0);
-  const courts = Math.ceil(players / 6);
-  const coaches = Math.ceil(players / 12);
+  const [playersPerCourt, setPlayersPerCourt] = useState(6);
+  const [playersPerCoach, setPlayersPerCoach] = useState(12);
+  const courts = Math.ceil(players / playersPerCourt);
+  const coaches = Math.ceil(players / playersPerCoach);
 
   // STEP 3: Budget & Pricing
   const [feePerPlayer, setFeePerPlayer] = useState(0);
@@ -198,6 +200,29 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
                 value={players || ""}
                 onChange={(e) => setPlayers(Number(e.target.value))}
               />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="playersPerCourt">Players per Court Ratio</Label>
+                <Input
+                  id="playersPerCourt"
+                  type="number"
+                  placeholder="6"
+                  value={playersPerCourt || ""}
+                  onChange={(e) => setPlayersPerCourt(Number(e.target.value) || 1)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="playersPerCoach">Players per Coach Ratio</Label>
+                <Input
+                  id="playersPerCoach"
+                  type="number"
+                  placeholder="12"
+                  value={playersPerCoach || ""}
+                  onChange={(e) => setPlayersPerCoach(Number(e.target.value) || 1)}
+                />
+              </div>
             </div>
             
             <Card className="bg-gray-50 dark:bg-gray-800">
