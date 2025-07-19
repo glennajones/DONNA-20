@@ -212,14 +212,16 @@ function getWeekDays(startDate: string) {
 }
 
 function getMonthDays(dateString: string) {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = date.getMonth();
+  // Parse date string safely to avoid timezone issues
+  const [year, month, day] = dateString.split('-').map(Number);
+  const targetDate = new Date(year, month - 1, day); // month is 0-indexed
+  const targetYear = targetDate.getFullYear();
+  const targetMonth = targetDate.getMonth();
   
   // First day of the month
-  const firstDay = new Date(year, month, 1);
+  const firstDay = new Date(targetYear, targetMonth, 1);
   // Last day of the month
-  const lastDay = new Date(year, month + 1, 0);
+  const lastDay = new Date(targetYear, targetMonth + 1, 0);
   
   // Start from the first Sunday of the calendar grid
   const startDate = new Date(firstDay);
@@ -236,7 +238,7 @@ function getMonthDays(dateString: string) {
     days.push({
       date: currentDate.toISOString().split('T')[0],
       dayNumber: currentDate.getDate(),
-      isCurrentMonth: currentDate.getMonth() === month
+      isCurrentMonth: currentDate.getMonth() === targetMonth
     });
     currentDate.setDate(currentDate.getDate() + 1);
   }
@@ -410,6 +412,8 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
 function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to: string }) {
   const monthDays = getMonthDays(dateRange.from);
   const today = new Date().toISOString().split('T')[0];
+  
+
 
   return (
     <div className="space-y-4">
