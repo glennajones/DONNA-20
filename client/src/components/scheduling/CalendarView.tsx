@@ -396,7 +396,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                         >
                           {eventInSlot && isFirstSlot && (
                             <div 
-                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-center z-10"
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(eventInSlot)}
                               title={`${eventInSlot.title} - ${eventInSlot.coach}`}
                               style={{
@@ -481,14 +481,15 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                       return (
                         <div
                           key={`${day.date}-${timeSlot}`}
-                          className={`bg-white p-1 h-[40px] relative overflow-hidden ${
+                          className={`bg-white p-1 h-[40px] relative ${
                             eventsInSlot.length > 0 ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
+                          style={{ overflow: eventsStartingInSlot.length > 0 ? 'visible' : 'hidden' }}
                         >
                           {eventsStartingInSlot.map((event, index) => (
                             <div 
                               key={event.id} 
-                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-center z-10"
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(event)}
                               title={`${event.title} - ${event.coach}`}
                               style={{
