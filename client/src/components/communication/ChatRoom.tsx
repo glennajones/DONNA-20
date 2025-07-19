@@ -40,26 +40,35 @@ export function ChatRoom() {
   };
 
   useEffect(() => {
-    const channel = pusher.subscribe("global-chat");
-    
-    channel.bind("message", (data: Message) => {
-      setMessages((prev) => [...prev, data]);
-    });
-    
-    channel.bind("delivery_status", (data: DeliveryStatus) => {
-      setDeliveryStatuses((prev) => {
-        // Remove old status for same player/message combo and add new one
-        const filtered = prev.filter(
-          (status) => !(status.playerId === data.playerId && status.messageId === data.messageId)
-        );
-        return [...filtered, data];
+    // Try to connect to Pusher for real-time updates
+    try {
+      const channel = pusher.subscribe("global-chat");
+      
+      channel.bind("message", (data: Message) => {
+        setMessages((prev) => {
+          // Avoid duplicates by checking if message already exists
+          const exists = prev.some(msg => msg.id === data.id);
+          return exists ? prev : [...prev, data];
+        });
       });
-    });
+      
+      channel.bind("delivery_status", (data: DeliveryStatus) => {
+        setDeliveryStatuses((prev) => {
+          // Remove old status for same player/message combo and add new one
+          const filtered = prev.filter(
+            (status) => !(status.playerId === data.playerId && status.messageId === data.messageId)
+          );
+          return [...filtered, data];
+        });
+      });
 
-    return () => {
-      channel.unbind_all();
-      pusher.unsubscribe("global-chat");
-    };
+      return () => {
+        channel.unbind_all();
+        pusher.unsubscribe("global-chat");
+      };
+    } catch (error) {
+      console.warn("Pusher connection failed, using local updates only:", error);
+    }
   }, []);
 
   useEffect(() => {
@@ -71,19 +80,40 @@ export function ChatRoom() {
 
     setSending(true);
     try {
-      await apiRequest("/api/chat/send", {
+      const response = await apiRequest("/api/chat/send", {
         method: "POST",
         body: JSON.stringify({ 
           text: input, 
           senderId: user?.username || user?.name || "Unknown"
         }),
       });
+      
+      const result = await response.json();
+      
+      // Add message locally if real-time isn't working
+      if (result.message) {
+        setMessages(prev => [...prev, result.message]);
+        
+        // Add delivery statuses locally
+        if (result.deliveryResults) {
+          const newDeliveryStatuses = result.deliveryResults.map((delivery: any) => ({
+            playerId: delivery.playerId,
+            playerName: delivery.playerName,
+            channel: delivery.channel,
+            status: delivery.status,
+            messageId: result.message.id,
+          }));
+          setDeliveryStatuses(prev => [...prev, ...newDeliveryStatuses]);
+        }
+      }
+      
       setInput("");
       toast({
         title: "Message sent",
-        description: "Your message has been broadcast to all players",
+        description: `Your message has been broadcast to ${result.deliveryResults?.length || 0} players`,
       });
     } catch (error) {
+      console.error("Send message error:", error);
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -184,6 +214,9 @@ export function ChatRoom() {
             </div>
             <div className="text-xs text-gray-500 mt-2">
               Messages will be sent to all players via their preferred communication method
+              {!import.meta.env.VITE_PUSHER_KEY && (
+                <span className="text-amber-600"> • Real-time updates disabled</span>
+              )}
             </div>
           </div>
         </CardContent>
