@@ -60,9 +60,10 @@ export const players = pgTable("players", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   dateOfBirth: text("date_of_birth").notNull(), // YYYY-MM-DD format
-  contact: text("contact"), // email or phone
+  contact: text("contact"), // email
+  phone: text("phone"), // phone number
   photo: text("photo"), // profile photo URL
-  communicationPreference: text("communication_preference").array().notNull().default([]), // ["Email", "SMS", "GroupMe"]
+  communicationPreference: text("communication_preference", { enum: ["Email", "SMS", "GroupMe"] }).notNull().default("Email"), // single choice
   teams: text("teams").array().notNull().default([]), // team assignments
   status: text("status", { enum: ["active", "inactive", "suspended"] }).notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -103,6 +104,7 @@ export const insertPlayerSchema = createInsertSchema(players).omit({
   updatedAt: true,
 }).extend({
   name: z.string().min(2, "Name must be at least 2 characters"),
+  phone: z.string().optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   contact: z.string().optional(),
 });

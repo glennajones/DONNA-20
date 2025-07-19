@@ -28,8 +28,9 @@ export function PlayerForm({ player, onSaved, onCancel }: PlayerFormProps) {
       name: player?.name || "",
       dateOfBirth: player?.dateOfBirth || "",
       contact: player?.contact || "",
+      phone: player?.phone || "",
       photo: player?.photo || "",
-      communicationPreference: player?.communicationPreference || [],
+      communicationPreference: player?.communicationPreference || "Email",
       teams: player?.teams || [],
       status: player?.status || "active",
     },
@@ -121,15 +122,31 @@ export function PlayerForm({ player, onSaved, onCancel }: PlayerFormProps) {
                   name="contact"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Info</FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="Email or phone number" {...field} />
+                        <Input type="email" placeholder="player@example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="(555) 123-4567" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="status"
@@ -152,6 +169,31 @@ export function PlayerForm({ player, onSaved, onCancel }: PlayerFormProps) {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="communicationPreference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Communication Preference</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preference" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {communicationOptions.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField
@@ -168,46 +210,7 @@ export function PlayerForm({ player, onSaved, onCancel }: PlayerFormProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="communicationPreference"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Communication Preferences</FormLabel>
-                    <div className="grid grid-cols-3 gap-4">
-                      {communicationOptions.map((option) => (
-                        <FormField
-                          key={option}
-                          control={form.control}
-                          name="communicationPreference"
-                          render={({ field }) => {
-                            return (
-                              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(option)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...field.value, option])
-                                        : field.onChange(
-                                            field.value?.filter((value) => value !== option)
-                                          );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal">
-                                  {option}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
 
               <FormField
                 control={form.control}
