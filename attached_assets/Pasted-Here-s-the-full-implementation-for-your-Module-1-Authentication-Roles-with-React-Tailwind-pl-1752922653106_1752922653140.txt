@@ -1,0 +1,163 @@
+Here’s the full implementation for your Module 1 (Authentication & Roles) with React + Tailwind + plain JS.
+I’ve included all three files with working logic, best practices, and full JSX.
+
+✅ src/auth/AuthProvider.jsx
+jsx
+Copy
+Edit
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('auth_user');
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('auth_token') || '');
+  const [error, setError] = useState('');
+
+  const login = async (username, password) => {
+    try {
+      setError('');
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) throw new Error('Invalid credentials');
+      const data = await res.json();
+      setUser(data.user);
+      setToken(data.token);
+      localStorage.setItem('auth_user', JSON.stringify(data.user));
+      localStorage.setItem('auth_token', data.token);
+      navigate('/');
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken('');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
+    navigate('/login');
+  };
+
+  const requireRole = (requiredRole) => {
+    if (!user) return false;
+    // assuming role is a string like "admin" or "manager"
+    return user.role === requiredRole;
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, error, login, logout, requireRole }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+✅ src/auth/LoginForm.jsx
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import { useAuth } from './AuthProvider';
+
+const LoginForm = () => {
+  const { login, error } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await login(username, password);
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-md rounded px-8 pt-6 pb-8 w-full max-w-sm"
+      >
+        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        {error && (
+          <div className="mb-4 text-red-500 text-sm">{error}</div>
+        )}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2">Username</label>
+          <input
+            type="text"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+        <div className="mb-6">
+          <label className="block text-gray-700 text-sm font-bold mb-2">Password</label>
+          <input
+            type="password"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"
+        >
+          Sign In
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default LoginForm;
+✅ src/auth/withAuth.js
+jsx
+Copy
+Edit
+import React from 'react';
+import { useAuth } from './AuthProvider';
+import { Navigate } from 'react-router-dom';
+
+export default function withAuth(Component, requiredRole = null) {
+  return function ProtectedWrapper(props) {
+    const { user, requireRole } = useAuth();
+
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+
+    if (requiredRole && !requireRole(requiredRole)) {
+      return (
+        <div className="text-center mt-20 text-red-600 font-semibold text-xl">
+          Access Denied ❗
+        </div>
+      );
+    }
+
+    return <Component {...props} />;
+  };
+}
+💡 Integration Notes
+
+Wrap your app in <AuthProvider> in App.jsx or main.jsx.
+
+Use <LoginForm /> at /login.
+
+Wrap protected components like:
+
+jsx
+Copy
+Edit
+import withAuth from './auth/withAuth';
+export default withAuth(MyDashboard, 'admin');
