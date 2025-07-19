@@ -230,8 +230,13 @@ export default function GoogleCalendarSync() {
 
             // Import Google Calendar events to club system
             let importedCount = 0;
-            for (let googleEvent of googleEvents) {
+            console.log(`Starting import of ${googleEvents.length} events from Google Calendar...`);
+            
+            for (let i = 0; i < googleEvents.length; i++) {
+              const googleEvent = googleEvents[i];
               try {
+                console.log(`Importing event ${i + 1}/${googleEvents.length}: ${googleEvent.summary}`);
+                
                 const eventData = {
                   title: googleEvent.summary || 'Untitled Event',
                   date: googleEvent.start.date || googleEvent.start.dateTime?.split('T')[0],
@@ -256,6 +261,10 @@ export default function GoogleCalendarSync() {
 
                 if (response.ok) {
                   importedCount++;
+                  console.log(`✓ Successfully imported: ${googleEvent.summary}`);
+                } else {
+                  const errorText = await response.text();
+                  console.error(`Failed to import ${googleEvent.summary}:`, response.status, errorText);
                 }
               } catch (eventErr) {
                 console.error(`Failed to import event: ${googleEvent.summary}`, eventErr);
