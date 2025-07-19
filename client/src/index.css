@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --volleyball-blue: #56A0D3;
+    --volleyball-blue-light: #7BB5DC;
+    --volleyball-blue-dark: #4A8BB8;
+  }
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);

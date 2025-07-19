@@ -297,18 +297,18 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                         <div
                           key={`${court}-${timeSlot}`}
                           className={`bg-white p-1 min-h-[40px] relative ${
-                            eventInSlot ? "bg-blue-50" : "hover:bg-gray-50"
+                            eventInSlot ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
                           {eventInSlot && (
                             <div className="text-xs">
-                              <div className="font-medium text-blue-900 truncate">
+                              <div className="font-medium text-[#56A0D3] truncate">
                                 {eventInSlot.title}
                               </div>
-                              <div className="text-blue-600 truncate">
+                              <div className="text-[#4A8BB8] truncate">
                                 {eventInSlot.coach}
                               </div>
-                              <div className="text-xs text-blue-500">
+                              <div className="text-xs text-[#7BB5DC]">
                                 {eventInSlot.eventType}
                               </div>
                             </div>
@@ -348,7 +348,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                 {weekDays.map((day) => (
                   <div key={day.date} className="bg-gray-100 p-3 font-medium text-center text-xs">
                     <div>{day.name}</div>
-                    <div className="text-xs text-gray-600">{day.date.split('-')[2]}</div>
+                    <div className="text-xs text-[#56A0D3]">{day.date.split('-')[2]}</div>
                   </div>
                 ))}
               </div>
@@ -377,13 +377,13 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                         <div
                           key={`${day.date}-${timeSlot}`}
                           className={`bg-white p-1 min-h-[40px] relative ${
-                            eventsInSlot.length > 0 ? "bg-blue-50" : "hover:bg-gray-50"
+                            eventsInSlot.length > 0 ? "bg-[#56A0D3]/10 border-l-2 border-[#56A0D3]" : "hover:bg-gray-50"
                           }`}
                         >
                           {eventsInSlot.map((event, index) => (
                             <div key={event.id} className="text-xs mb-1">
-                              <div className="font-medium text-blue-900 truncate">
-                                {event.court.replace("Court ", "")} - {event.title}
+                              <div className="font-medium text-[#56A0D3] truncate">
+                                {event.court} - {event.title}
                               </div>
                             </div>
                           ))}
@@ -417,7 +417,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
           <div className="grid grid-cols-7 gap-1">
             {/* Day headers */}
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="p-2 text-center font-medium text-gray-600 bg-gray-100 text-sm">
+              <div key={day} className="p-2 text-center font-medium text-[#56A0D3] bg-[#56A0D3]/10 text-sm border border-[#56A0D3]/20">
                 {day}
               </div>
             ))}
@@ -433,11 +433,11 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                   key={index}
                   className={`min-h-[100px] p-2 border border-gray-200 ${
                     isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                  } ${isToday ? 'bg-blue-50 border-blue-300' : ''}`}
+                  } ${isToday ? 'bg-[#56A0D3]/10 border-[#56A0D3]' : ''}`}
                 >
                   <div className={`text-sm font-medium mb-1 ${
                     isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-                  } ${isToday ? 'text-blue-700' : ''}`}>
+                  } ${isToday ? 'text-[#56A0D3] font-bold' : ''}`}>
                     {day.dayNumber}
                   </div>
                   
@@ -445,7 +445,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                     {dayEvents.slice(0, 3).map(event => (
                       <div
                         key={event.id}
-                        className="text-xs p-1 rounded bg-blue-100 text-blue-800 truncate"
+                        className="text-xs p-1 rounded bg-[#56A0D3]/20 text-[#56A0D3] border-l-2 border-[#56A0D3] truncate"
                         title={`${event.time} - ${event.title} (${event.court})`}
                       >
                         {event.time} {event.title}
