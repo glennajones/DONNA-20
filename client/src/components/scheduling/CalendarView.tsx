@@ -279,7 +279,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                 <div className="bg-gray-100 p-3 font-medium text-center text-sm">Time</div>
                 {courts.map((court) => (
                   <div key={court} className="bg-gray-100 p-3 font-medium text-center text-xs">
-                    {court.replace("Court ", "")}
+                    {court}
                   </div>
                 ))}
               </div>
