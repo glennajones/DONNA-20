@@ -67,11 +67,10 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
 
   const events = scheduleData?.events || [];
 
-  // Available courts: 7 indoor + 2 beach (matching database values)
+  // Available courts: 7 indoor + 2 beach
   const courts = [
     "Court 1", "Court 2", "Court 3", "Court 4", "Court 5", "Court 6", "Court 7",
-    "Indoor Court 1", "Indoor Court 2",
-    "Beach 1", "Beach 2", "Beach Court 1",
+    "Beach 1", "Beach 2",
   ];
 
   if (isLoading) {
@@ -347,8 +346,7 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
   const timeSlots = generateTimeSlots();
   const courts = [
     "Court 1", "Court 2", "Court 3", "Court 4", "Court 5", "Court 6", "Court 7",
-    "Indoor Court 1", "Indoor Court 2",
-    "Beach 1", "Beach 2", "Beach Court 1",
+    "Beach 1", "Beach 2",
   ];
 
   const todayEvents = events
