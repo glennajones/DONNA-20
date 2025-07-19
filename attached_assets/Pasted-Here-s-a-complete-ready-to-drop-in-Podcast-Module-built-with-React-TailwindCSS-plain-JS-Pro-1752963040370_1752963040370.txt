@@ -1,0 +1,180 @@
+Here’s a complete, ready‑to‑drop‑in Podcast Module built with React + TailwindCSS + plain JS.
+
+✅ Project Structure
+css
+Copy
+Edit
+src/
+ └── modules/
+     └── Podcast/
+         ├── EpisodeList.jsx
+         └── EpisodePlayer.jsx
+📄 src/modules/Podcast/EpisodeList.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from "react";
+
+export default function EpisodeList({ onSelectEpisode }) {
+  const [episodes, setEpisodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    async function fetchEpisodes() {
+      try {
+        const res = await fetch("/api/podcast/episodes");
+        if (!res.ok) throw new Error("Failed to fetch episodes");
+        const data = await res.json();
+        setEpisodes(data);
+      } catch (e) {
+        setErr(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEpisodes();
+  }, []);
+
+  if (loading) return <div className="text-center py-6 text-gray-500">Loading episodes...</div>;
+  if (err) return <div className="text-center py-6 text-red-500">{err}</div>;
+
+  return (
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">🎙️ Episodes</h2>
+      <ul className="space-y-4">
+        {episodes.map((ep) => (
+          <li
+            key={ep.id}
+            onClick={() => onSelectEpisode(ep)}
+            className="p-4 bg-white rounded shadow hover:shadow-md hover:bg-gray-50 cursor-pointer transition"
+          >
+            <h3 className="text-lg font-semibold">{ep.title}</h3>
+            <p className="text-sm text-gray-500">{new Date(ep.date).toLocaleDateString()}</p>
+            <p className="mt-2 text-gray-700 line-clamp-3">{ep.summary}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+📄 src/modules/Podcast/EpisodePlayer.jsx
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+
+export default function EpisodePlayer({ episode, onBack }) {
+  const [comments, setComments] = useState([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [pollVote, setPollVote] = useState(null);
+
+  if (!episode) return null;
+
+  const handleAddComment = () => {
+    if (commentInput.trim() === "") return;
+    setComments((prev) => [...prev, { text: commentInput, date: new Date().toISOString() }]);
+    setCommentInput("");
+  };
+
+  const handleVote = (option) => {
+    setPollVote(option);
+  };
+
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="mb-4 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 transition"
+      >
+        ← Back to episodes
+      </button>
+      <h2 className="text-2xl font-bold mb-2">{episode.title}</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        {new Date(episode.date).toLocaleDateString()}
+      </p>
+
+      {/* Audio Player */}
+      <audio
+        className="w-full mb-6"
+        src={episode.audioUrl}
+        controls
+      ></audio>
+
+      {/* Comments */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">💬 Comments</h3>
+        <div className="space-y-2 mb-4">
+          {comments.map((c, idx) => (
+            <div key={idx} className="p-2 bg-gray-100 rounded">
+              <p className="text-gray-800">{c.text}</p>
+              <span className="text-xs text-gray-400">
+                {new Date(c.date).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="flex space-x-2">
+          <input
+            value={commentInput}
+            onChange={(e) => setCommentInput(e.target.value)}
+            className="flex-1 border rounded p-2"
+            placeholder="Add a comment..."
+          />
+          <button
+            onClick={handleAddComment}
+            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
+            Post
+          </button>
+        </div>
+      </div>
+
+      {/* Poll */}
+      <div>
+        <h3 className="text-lg font-semibold mb-2">📊 Poll</h3>
+        <p className="text-sm text-gray-600 mb-3">Did you enjoy this episode?</p>
+        <div className="flex space-x-4">
+          {["👍 Yes", "👎 No"].map((opt) => (
+            <button
+              key={opt}
+              onClick={() => handleVote(opt)}
+              className={`px-3 py-2 rounded border transition ${
+                pollVote === opt
+                  ? "bg-green-500 text-white border-green-600"
+                  : "bg-white hover:bg-gray-100"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        {pollVote && (
+          <p className="mt-3 text-sm text-gray-700">✅ You voted: {pollVote}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+💡 Usage Example
+In a parent component:
+
+jsx
+Copy
+Edit
+import React, { useState } from "react";
+import EpisodeList from "./modules/Podcast/EpisodeList";
+import EpisodePlayer from "./modules/Podcast/EpisodePlayer";
+
+export default function PodcastPage() {
+  const [selected, setSelected] = useState(null);
+  return (
+    <div className="max-w-3xl mx-auto">
+      {!selected ? (
+        <EpisodeList onSelectEpisode={setSelected} />
+      ) : (
+        <EpisodePlayer episode={selected} onBack={() => setSelected(null)} />
+      )}
+    </div>
+  );
+}

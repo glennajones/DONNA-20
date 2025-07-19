@@ -90,6 +90,12 @@ export default function Dashboard() {
       href: "/performance",
     },
     {
+      title: "Volleyball Podcast",
+      icon: LinkIcon,
+      color: "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700",
+      href: "/podcast",
+    },
+    {
       title: "Integrations",
       icon: LinkIcon,
       color: "bg-teal-50 hover:bg-teal-100 border-teal-200 text-teal-700",

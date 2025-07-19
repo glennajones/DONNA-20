@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
@@ -1224,6 +1224,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get calendar sync logs error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Podcast Routes
+  app.get("/api/podcast/episodes", async (req, res) => {
+    try {
+      const episodes = await storage.getPodcastEpisodes();
+      res.json(episodes);
+    } catch (error) {
+      console.error("Get podcast episodes error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/podcast/episodes/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const episode = await storage.getPodcastEpisode(parseInt(id));
+      
+      if (!episode) {
+        return res.status(404).json({ message: "Episode not found" });
+      }
+      
+      res.json(episode);
+    } catch (error) {
+      console.error("Get podcast episode error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/podcast/episodes", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create episodes
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const episodeData = insertPodcastEpisodeSchema.parse({
+        ...req.body,
+        createdBy: req.user.userId
+      });
+
+      const episode = await storage.createPodcastEpisode(episodeData);
+      res.status(201).json(episode);
+    } catch (error) {
+      console.error("Create podcast episode error:", error);
+      res.status(400).json({ message: "Invalid episode data" });
+    }
+  });
+
+  app.put("/api/podcast/episodes/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update episodes
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const episodeData = req.body;
+      
+      const updatedEpisode = await storage.updatePodcastEpisode(parseInt(id), episodeData);
+      
+      if (!updatedEpisode) {
+        return res.status(404).json({ message: "Episode not found" });
+      }
+      
+      res.json(updatedEpisode);
+    } catch (error) {
+      console.error("Update podcast episode error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/podcast/episodes/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins can delete episodes
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deletePodcastEpisode(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Episode not found" });
+      }
+      
+      res.json({ message: "Episode deleted successfully" });
+    } catch (error) {
+      console.error("Delete podcast episode error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Podcast Comments
+  app.get("/api/podcast/episodes/:id/comments", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const comments = await storage.getPodcastCommentsByEpisode(parseInt(id));
+      res.json(comments);
+    } catch (error) {
+      console.error("Get podcast comments error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/podcast/episodes/:id/comments", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { content } = insertPodcastCommentSchema.parse({
+        ...req.body,
+        episodeId: parseInt(id),
+        userId: req.user.userId
+      });
+
+      const comment = await storage.createPodcastComment({
+        episodeId: parseInt(id),
+        userId: req.user.userId,
+        content
+      });
+
+      // Get the comment with author name
+      const commentWithAuthor = await storage.getPodcastComment(comment.id);
+      res.status(201).json(commentWithAuthor);
+    } catch (error) {
+      console.error("Create podcast comment error:", error);
+      res.status(400).json({ message: "Invalid comment data" });
+    }
+  });
+
+  app.delete("/api/podcast/comments/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const comment = await storage.getPodcastComment(parseInt(id));
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Users can only delete their own comments, admins can delete any
+      if (comment.userId !== req.user.userId && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const success = await storage.deletePodcastComment(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+      
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Delete podcast comment error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Podcast Poll Votes
+  app.get("/api/podcast/episodes/:id/poll-vote", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const vote = await storage.getPodcastPollVote(parseInt(id), req.user.userId);
+      
+      if (!vote) {
+        return res.json({ vote: null });
+      }
+      
+      res.json({ vote: vote.vote });
+    } catch (error) {
+      console.error("Get podcast poll vote error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/podcast/episodes/:id/poll-vote", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { vote } = insertPodcastPollVoteSchema.parse({
+        ...req.body,
+        episodeId: parseInt(id),
+        userId: req.user.userId
+      });
+
+      // Check if user already voted
+      const existingVote = await storage.getPodcastPollVote(parseInt(id), req.user.userId);
+      
+      if (existingVote) {
+        // Update existing vote
+        const updatedVote = await storage.updatePodcastPollVote(parseInt(id), req.user.userId, vote);
+        res.json({ vote: updatedVote?.vote });
+      } else {
+        // Create new vote
+        const newVote = await storage.createPodcastPollVote({
+          episodeId: parseInt(id),
+          userId: req.user.userId,
+          vote
+        });
+        res.status(201).json({ vote: newVote.vote });
+      }
+    } catch (error) {
+      console.error("Create/update podcast poll vote error:", error);
+      res.status(400).json({ message: "Invalid vote data" });
     }
   });
 

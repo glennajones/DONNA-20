@@ -377,3 +377,89 @@ export const insertGoogleCalendarTokenSchema = createInsertSchema(googleCalendar
 export type InsertGoogleCalendarToken = z.infer<typeof insertGoogleCalendarTokenSchema>;
 export type GoogleCalendarToken = typeof googleCalendarTokens.$inferSelect;
 export type CalendarSyncLog = typeof calendarSyncLogs.$inferSelect;
+
+// Podcast Schema
+export const podcastEpisodes = pgTable("podcast_episodes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  audioUrl: text("audio_url"),
+  duration: text("duration"), // e.g., "45:30"
+  status: text("status", { enum: ["draft", "published", "archived"] }).notNull().default("draft"),
+  publishedAt: timestamp("published_at"),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const podcastComments = pgTable("podcast_comments", {
+  id: serial("id").primaryKey(),
+  episodeId: integer("episode_id").references(() => podcastEpisodes.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const podcastPollVotes = pgTable("podcast_poll_votes", {
+  id: serial("id").primaryKey(),
+  episodeId: integer("episode_id").references(() => podcastEpisodes.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  vote: text("vote", { enum: ["like", "dislike"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Podcast Relations
+export const podcastEpisodesRelations = relations(podcastEpisodes, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [podcastEpisodes.createdBy],
+    references: [users.id],
+  }),
+  comments: many(podcastComments),
+  pollVotes: many(podcastPollVotes),
+}));
+
+export const podcastCommentsRelations = relations(podcastComments, ({ one }) => ({
+  episode: one(podcastEpisodes, {
+    fields: [podcastComments.episodeId],
+    references: [podcastEpisodes.id],
+  }),
+  user: one(users, {
+    fields: [podcastComments.userId],
+    references: [users.id],
+  }),
+}));
+
+export const podcastPollVotesRelations = relations(podcastPollVotes, ({ one }) => ({
+  episode: one(podcastEpisodes, {
+    fields: [podcastPollVotes.episodeId],
+    references: [podcastEpisodes.id],
+  }),
+  user: one(users, {
+    fields: [podcastPollVotes.userId],
+    references: [users.id],
+  }),
+}));
+
+// Types for Podcast
+export const insertPodcastEpisodeSchema = createInsertSchema(podcastEpisodes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPodcastCommentSchema = createInsertSchema(podcastComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPodcastPollVoteSchema = createInsertSchema(podcastPollVotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPodcastEpisode = z.infer<typeof insertPodcastEpisodeSchema>;
+export type PodcastEpisode = typeof podcastEpisodes.$inferSelect;
+export type InsertPodcastComment = z.infer<typeof insertPodcastCommentSchema>;
+export type PodcastComment = typeof podcastComments.$inferSelect;
+export type InsertPodcastPollVote = z.infer<typeof insertPodcastPollVoteSchema>;
+export type PodcastPollVote = typeof podcastPollVotes.$inferSelect;

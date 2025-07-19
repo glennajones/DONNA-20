@@ -14,6 +14,9 @@ import {
   teamAssignments,
   googleCalendarTokens,
   calendarSyncLogs,
+  podcastEpisodes,
+  podcastComments,
+  podcastPollVotes,
   type User, 
   type InsertUser, 
   type Registration, 
@@ -41,7 +44,13 @@ import {
   type TeamAssignment,
   type GoogleCalendarToken,
   type InsertGoogleCalendarToken,
-  type CalendarSyncLog
+  type CalendarSyncLog,
+  type PodcastEpisode,
+  type InsertPodcastEpisode,
+  type PodcastComment,
+  type InsertPodcastComment,
+  type PodcastPollVote,
+  type InsertPodcastPollVote
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
@@ -136,6 +145,22 @@ export interface IStorage {
   
   createCalendarSyncLog(log: Omit<CalendarSyncLog, 'id' | 'syncedAt'>): Promise<CalendarSyncLog>;
   getCalendarSyncLogs(userId: number): Promise<CalendarSyncLog[]>;
+
+  // Podcast methods
+  getPodcastEpisode(id: number): Promise<PodcastEpisode | undefined>;
+  getPodcastEpisodes(): Promise<PodcastEpisode[]>;
+  createPodcastEpisode(episode: InsertPodcastEpisode): Promise<PodcastEpisode>;
+  updatePodcastEpisode(id: number, episode: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined>;
+  deletePodcastEpisode(id: number): Promise<boolean>;
+
+  getPodcastComment(id: number): Promise<(PodcastComment & { authorName: string }) | undefined>;
+  getPodcastCommentsByEpisode(episodeId: number): Promise<(PodcastComment & { authorName: string })[]>;
+  createPodcastComment(comment: InsertPodcastComment): Promise<PodcastComment>;
+  deletePodcastComment(id: number): Promise<boolean>;
+
+  getPodcastPollVote(episodeId: number, userId: number): Promise<PodcastPollVote | undefined>;
+  createPodcastPollVote(vote: InsertPodcastPollVote): Promise<PodcastPollVote>;
+  updatePodcastPollVote(episodeId: number, userId: number, vote: PodcastPollVote["vote"]): Promise<PodcastPollVote | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -639,6 +664,111 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(calendarSyncLogs)
       .where(eq(calendarSyncLogs.userId, userId))
       .orderBy(desc(calendarSyncLogs.syncedAt));
+  }
+
+  // Podcast methods
+  async getPodcastEpisode(id: number): Promise<PodcastEpisode | undefined> {
+    const [episode] = await db.select().from(podcastEpisodes).where(eq(podcastEpisodes.id, id));
+    return episode || undefined;
+  }
+
+  async getPodcastEpisodes(): Promise<PodcastEpisode[]> {
+    return await db.select().from(podcastEpisodes)
+      .where(eq(podcastEpisodes.status, 'published'))
+      .orderBy(desc(podcastEpisodes.publishedAt));
+  }
+
+  async createPodcastEpisode(insertEpisode: InsertPodcastEpisode): Promise<PodcastEpisode> {
+    const [episode] = await db
+      .insert(podcastEpisodes)
+      .values(insertEpisode)
+      .returning();
+    return episode;
+  }
+
+  async updatePodcastEpisode(id: number, episodeUpdate: Partial<InsertPodcastEpisode>): Promise<PodcastEpisode | undefined> {
+    const [episode] = await db
+      .update(podcastEpisodes)
+      .set({ ...episodeUpdate, updatedAt: new Date() })
+      .where(eq(podcastEpisodes.id, id))
+      .returning();
+    return episode || undefined;
+  }
+
+  async deletePodcastEpisode(id: number): Promise<boolean> {
+    const result = await db.delete(podcastEpisodes).where(eq(podcastEpisodes.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getPodcastComment(id: number): Promise<(PodcastComment & { authorName: string }) | undefined> {
+    const result = await db
+      .select({
+        id: podcastComments.id,
+        episodeId: podcastComments.episodeId,
+        userId: podcastComments.userId,
+        content: podcastComments.content,
+        createdAt: podcastComments.createdAt,
+        authorName: users.name
+      })
+      .from(podcastComments)
+      .leftJoin(users, eq(podcastComments.userId, users.id))
+      .where(eq(podcastComments.id, id));
+    
+    return result[0] || undefined;
+  }
+
+  async getPodcastCommentsByEpisode(episodeId: number): Promise<(PodcastComment & { authorName: string })[]> {
+    const result = await db
+      .select({
+        id: podcastComments.id,
+        episodeId: podcastComments.episodeId,
+        userId: podcastComments.userId,
+        content: podcastComments.content,
+        createdAt: podcastComments.createdAt,
+        authorName: users.name
+      })
+      .from(podcastComments)
+      .leftJoin(users, eq(podcastComments.userId, users.id))
+      .where(eq(podcastComments.episodeId, episodeId))
+      .orderBy(desc(podcastComments.createdAt));
+    
+    return result;
+  }
+
+  async createPodcastComment(insertComment: InsertPodcastComment): Promise<PodcastComment> {
+    const [comment] = await db
+      .insert(podcastComments)
+      .values(insertComment)
+      .returning();
+    return comment;
+  }
+
+  async deletePodcastComment(id: number): Promise<boolean> {
+    const result = await db.delete(podcastComments).where(eq(podcastComments.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getPodcastPollVote(episodeId: number, userId: number): Promise<PodcastPollVote | undefined> {
+    const [vote] = await db.select().from(podcastPollVotes)
+      .where(and(eq(podcastPollVotes.episodeId, episodeId), eq(podcastPollVotes.userId, userId)));
+    return vote || undefined;
+  }
+
+  async createPodcastPollVote(insertVote: InsertPodcastPollVote): Promise<PodcastPollVote> {
+    const [vote] = await db
+      .insert(podcastPollVotes)
+      .values(insertVote)
+      .returning();
+    return vote;
+  }
+
+  async updatePodcastPollVote(episodeId: number, userId: number, voteValue: PodcastPollVote["vote"]): Promise<PodcastPollVote | undefined> {
+    const [vote] = await db
+      .update(podcastPollVotes)
+      .set({ vote: voteValue })
+      .where(and(eq(podcastPollVotes.episodeId, episodeId), eq(podcastPollVotes.userId, userId)))
+      .returning();
+    return vote || undefined;
   }
 }
 
