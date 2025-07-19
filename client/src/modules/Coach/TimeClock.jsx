@@ -38,13 +38,21 @@ export default function TimeClock() {
   const fetchAllEntries = async () => {
     try {
       const token = localStorage.getItem('auth_token');
+      console.log("Fetching time history with token:", token ? "present" : "missing");
+      
       const response = await fetch("/api/timeclock/history", {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
       
+      console.log("History response status:", response.status);
+      
       if (response.ok) {
         const entries = await response.json();
+        console.log("Fetched entries:", entries);
         setAllEntries(entries);
+      } else {
+        const errorText = await response.text();
+        console.error("History fetch failed:", response.status, errorText);
       }
     } catch (error) {
       console.error("Failed to fetch time history:", error);
@@ -54,21 +62,26 @@ export default function TimeClock() {
   const calculateHours = (entries) => {
     let total = 0;
     let currentClockIn = null;
+    let isClockedIn = false;
     
-    entries.forEach(entry => {
+    // Sort entries by timestamp ascending to process them in order
+    const sortedEntries = [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    sortedEntries.forEach(entry => {
       if (entry.action === "clock-in") {
         currentClockIn = new Date(entry.timestamp);
         setLastClockIn(currentClockIn.getTime());
-        setClockedIn(true);
+        isClockedIn = true;
       } else if (entry.action === "clock-out" && currentClockIn) {
         const clockOut = new Date(entry.timestamp);
         total += (clockOut - currentClockIn) / 1000 / 60 / 60; // Convert to hours
         currentClockIn = null;
-        setClockedIn(false);
+        isClockedIn = false;
         setLastClockIn(null);
       }
     });
 
+    setClockedIn(isClockedIn);
     setTotalHours(total);
   };
 
@@ -156,22 +169,33 @@ export default function TimeClock() {
   const groupEntriesByDate = (entries) => {
     const grouped = {};
     
-    for (let i = 0; i < entries.length; i += 2) {
-      const clockIn = entries[i];
-      const clockOut = entries[i + 1];
+    // Sort entries by timestamp ascending to pair them correctly
+    const sortedEntries = [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    let i = 0;
+    while (i < sortedEntries.length) {
+      const entry = sortedEntries[i];
       
-      if (clockIn && clockIn.action === 'clock-in') {
-        const date = formatDate(clockIn.timestamp);
+      if (entry.action === 'clock-in') {
+        const date = formatDate(entry.timestamp);
         
         if (!grouped[date]) {
           grouped[date] = [];
         }
         
+        // Look for the next clock-out entry
+        let clockOut = null;
+        if (i + 1 < sortedEntries.length && sortedEntries[i + 1].action === 'clock-out') {
+          clockOut = sortedEntries[i + 1];
+          i++; // Skip the clock-out entry in next iteration
+        }
+        
         grouped[date].push({
-          clockIn,
-          clockOut: clockOut && clockOut.action === 'clock-out' ? clockOut : null
+          clockIn: entry,
+          clockOut: clockOut
         });
       }
+      i++;
     }
     
     return grouped;
