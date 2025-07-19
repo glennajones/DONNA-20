@@ -189,7 +189,9 @@ function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: s
 }
 
 function getWeekDays(startDate: string) {
-  const inputDate = new Date(startDate);
+  // Parse date string safely to avoid timezone issues
+  const [year, month, day] = startDate.split('-').map(Number);
+  const inputDate = new Date(year, month - 1, day);
   const days = [];
   
   // Find the Sunday of this week
@@ -517,8 +519,8 @@ function getDisplayTitle(viewType: "day" | "week" | "month", currentDate: Date):
     return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   } else {
     return currentDate.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long' 
+      month: 'long', 
+      year: 'numeric' 
     });
   }
 }
