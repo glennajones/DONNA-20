@@ -29,6 +29,8 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
     name: "",
     startDate: "",
     endDate: "",
+    startTime: "",
+    endTime: "",
     location: "",
   });
 
@@ -79,7 +81,7 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
       
       // Reset form
       setStep(1);
-      setBasic({ name: "", startDate: "", endDate: "", location: "" });
+      setBasic({ name: "", startDate: "", endDate: "", startTime: "", endTime: "", location: "" });
       setPlayers(0);
       setFeePerPlayer(0);
       setCoachRates([{ profile: "", rate: 0 }]);
@@ -176,6 +178,27 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
                   type="date"
                   value={basic.endDate}
                   onChange={(e) => setBasic({ ...basic, endDate: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={basic.startTime}
+                  onChange={(e) => setBasic({ ...basic, startTime: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={basic.endTime}
+                  onChange={(e) => setBasic({ ...basic, endTime: e.target.value })}
                 />
               </div>
             </div>
@@ -441,7 +464,7 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
             <Button
               onClick={() => setStep(step + 1)}
               disabled={
-                (step === 1 && (!basic.name.trim() || !basic.startDate.trim() || !basic.endDate.trim() || !basic.location.trim())) ||
+                (step === 1 && (!basic.name.trim() || !basic.startDate.trim() || !basic.endDate.trim() || !basic.startTime.trim() || !basic.endTime.trim() || !basic.location.trim())) ||
                 (step === 2 && players <= 0)
               }
               className="bg-[#56A0D3] hover:bg-[#4A90C2]"
