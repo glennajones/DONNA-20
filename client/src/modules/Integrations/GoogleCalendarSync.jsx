@@ -82,6 +82,13 @@ export default function GoogleCalendarSync() {
       });
       const status = await res.json();
       setConnectionStatus(status);
+      
+      // If we have a valid connection, set the signed in state
+      if (status.connected && !status.expired) {
+        setIsSignedIn(true);
+        // We don't have the actual access token from storage, but we're connected
+        setAccessToken('connected'); // Placeholder to indicate connection
+      }
     } catch (err) {
       console.error("Failed to check connection status", err);
     }
@@ -162,7 +169,8 @@ export default function GoogleCalendarSync() {
   };
 
   const handleSyncEvents = async () => {
-    if (!isSignedIn) {
+    // Check if we have a stored connection instead of requiring fresh sign-in
+    if (!connectionStatus?.connected) {
       setError('Please connect to Google Calendar first');
       return;
     }
@@ -178,70 +186,97 @@ export default function GoogleCalendarSync() {
     }
 
     try {
-      // Set access token for API calls
-      window.gapi.client.setToken({access_token: accessToken});
-
-      // Get upcoming events from Google Calendar
-      const timeMin = new Date().toISOString();
-      const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
-      
-      const response = await window.gapi.client.calendar.events.list({
-        calendarId: 'primary',
-        timeMin: timeMin,
-        timeMax: timeMax,
-        maxResults: 50,
-        singleEvents: true,
-        orderBy: 'startTime'
-      });
-
-      const googleEvents = response.result.items || [];
-      
-      if (googleEvents.length === 0) {
-        alert('No upcoming events found in your Google Calendar');
+      // Get a fresh token for API calls since we need the actual access token
+      if (!tokenClient) {
+        setError('Google authentication not ready. Please refresh the page and reconnect.');
         setSyncing(false);
         return;
       }
 
-      // Import Google Calendar events to club system
-      let importedCount = 0;
-      for (let googleEvent of googleEvents) {
-        try {
-          const eventData = {
-            title: googleEvent.summary || 'Untitled Event',
-            date: googleEvent.start.date || googleEvent.start.dateTime?.split('T')[0],
-            startTime: googleEvent.start.dateTime ? 
-              new Date(googleEvent.start.dateTime).toTimeString().slice(0, 5) : '09:00',
-            endTime: googleEvent.end.dateTime ? 
-              new Date(googleEvent.end.dateTime).toTimeString().slice(0, 5) : '10:00',
-            court: 'Court 1', // Default court assignment
-            eventType: 'imported',
-            notes: googleEvent.description || 'Imported from Google Calendar',
-            coach: 'TBD'
-          };
-
-          const response = await fetch("/api/schedule", {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify(eventData)
-          });
-
-          if (response.ok) {
-            importedCount++;
+      // Request a new access token for this operation
+      tokenClient.requestAccessToken({ 
+        prompt: '',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            setError(`Authentication failed: ${tokenResponse.error}`);
+            setSyncing(false);
+            return;
           }
-        } catch (eventErr) {
-          console.error(`Failed to import event: ${googleEvent.summary}`, eventErr);
-        }
-      }
 
-      alert(`✅ Imported ${importedCount} of ${googleEvents.length} events from Google Calendar to club schedule`);
+          try {
+            // Set access token for API calls
+            window.gapi.client.setToken({access_token: tokenResponse.access_token});
+
+            // Get upcoming events from Google Calendar
+            const timeMin = new Date().toISOString();
+            const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
+            
+            const response = await window.gapi.client.calendar.events.list({
+              calendarId: 'primary',
+              timeMin: timeMin,
+              timeMax: timeMax,
+              maxResults: 50,
+              singleEvents: true,
+              orderBy: 'startTime'
+            });
+
+            const googleEvents = response.result.items || [];
+            
+            if (googleEvents.length === 0) {
+              alert('No upcoming events found in your Google Calendar');
+              setSyncing(false);
+              return;
+            }
+
+            // Import Google Calendar events to club system
+            let importedCount = 0;
+            for (let googleEvent of googleEvents) {
+              try {
+                const eventData = {
+                  title: googleEvent.summary || 'Untitled Event',
+                  date: googleEvent.start.date || googleEvent.start.dateTime?.split('T')[0],
+                  startTime: googleEvent.start.dateTime ? 
+                    new Date(googleEvent.start.dateTime).toTimeString().slice(0, 5) : '09:00',
+                  endTime: googleEvent.end.dateTime ? 
+                    new Date(googleEvent.end.dateTime).toTimeString().slice(0, 5) : '10:00',
+                  court: 'Court 1', // Default court assignment
+                  eventType: 'imported',
+                  notes: googleEvent.description || 'Imported from Google Calendar',
+                  coach: 'TBD'
+                };
+
+                const response = await fetch("/api/schedule", {
+                  method: "POST",
+                  headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                  },
+                  body: JSON.stringify(eventData)
+                });
+
+                if (response.ok) {
+                  importedCount++;
+                }
+              } catch (eventErr) {
+                console.error(`Failed to import event: ${googleEvent.summary}`, eventErr);
+              }
+            }
+
+            alert(`✅ Imported ${importedCount} of ${googleEvents.length} events from Google Calendar to club schedule`);
+            setSyncing(false);
+          } catch (err) {
+            console.error("Sync error:", err);
+            setError("Failed to import events from Google Calendar. Please check your connection and try again.");
+            setSyncing(false);
+          }
+        }
+      });
+
     } catch (err) {
       console.error("Sync error:", err);
       setError("Failed to import events from Google Calendar. Please check your connection and try again.");
+      setSyncing(false);
     }
-    setSyncing(false);
   };
 
   // Show configuration message if Google Client ID is not set up
