@@ -67,7 +67,7 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
 
   // Available courts: 7 indoor + 2 beach
   const courts = [
-    ...Array.from({ length: 7 }, (_, i) => `Indoor Court ${i + 1}`),
+    ...Array.from({ length: 7 }, (_, i) => `Court ${i + 1}`),
     "Beach Court 1",
     "Beach Court 2",
   ];
@@ -256,7 +256,7 @@ function formatMonthYear(dateString: string): string {
 function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: string }) {
   const timeSlots = generateTimeSlots();
   const courts = [
-    ...Array.from({ length: 7 }, (_, i) => `Indoor Court ${i + 1}`),
+    ...Array.from({ length: 7 }, (_, i) => `Court ${i + 1}`),
     "Beach Court 1",
     "Beach Court 2",
   ];
