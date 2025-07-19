@@ -147,14 +147,10 @@ export function PlayerList({ onEdit, onAdd }: PlayerListProps) {
                         </Badge>
                       </td>
                       <td className="p-3">
-                        {player.communicationPreference && player.communicationPreference.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {player.communicationPreference.map((pref, index) => (
-                              <Badge key={index} variant="secondary">
-                                {pref}
-                              </Badge>
-                            ))}
-                          </div>
+                        {player.communicationPreference ? (
+                          <Badge variant="secondary">
+                            {player.communicationPreference}
+                          </Badge>
                         ) : (
                           <span className="text-gray-400">None set</span>
                         )}
