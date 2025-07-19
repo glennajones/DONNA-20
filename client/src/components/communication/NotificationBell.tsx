@@ -36,7 +36,7 @@ export default function NotificationBell({ user }: NotificationBellProps) {
 
       const handleIncomingMessage = (data: Notification) => {
         // Only show notifications for incoming replies, not outgoing messages
-        if (data.source === "sms_reply" || data.source === "email_reply") {
+        if (data.source === "sms_reply" || data.source === "email_reply" || data.source === "groupme_reply") {
           setNotifications((prev) => {
             const updated = [data, ...prev.slice(0, 49)]; // Keep last 50 notifications
             return updated;
@@ -48,6 +48,7 @@ export default function NotificationBell({ user }: NotificationBellProps) {
       chatChannel.bind("message", handleIncomingMessage);
       notificationChannel.bind("sms_reply", handleIncomingMessage);
       notificationChannel.bind("email_reply", handleIncomingMessage);
+      notificationChannel.bind("groupme_reply", handleIncomingMessage);
 
       return () => {
         chatChannel.unbind_all();
@@ -122,7 +123,9 @@ export default function NotificationBell({ user }: NotificationBellProps) {
               <DropdownMenuItem key={notification.id} className="flex flex-col items-start p-3 cursor-default">
                 <div className="flex items-center justify-between w-full mb-1">
                   <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    {notification.source === "sms_reply" ? "📱 SMS Reply" : "📧 Email Reply"}
+                    {notification.source === "sms_reply" && "📱 SMS Reply"}
+                    {notification.source === "email_reply" && "📧 Email Reply"}
+                    {notification.source === "groupme_reply" && "💬 GroupMe Reply"}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {formatDate(notification.date)}

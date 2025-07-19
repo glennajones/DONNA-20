@@ -1,0 +1,112 @@
+1. Email Webhook (SendGrid Inbound Parse)
+👉 SendGrid setup:
+
+In your SendGrid settings, enable Inbound Parse Webhook.
+
+Set it to POST incoming emails to your backend endpoint:
+https://your-server.com/api/webhook/email
+
+Choose “POST” and enable “Send raw (multipart/form-data)” or JSON.
+
+👉 Backend route (server/routes.ts):
+Add:
+
+ts
+Copy
+Edit
+// ✅ Email Webhook
+router.post("/api/webhook/email", async (req, res) => {
+  // SendGrid inbound parse sends data as multipart/form-data
+  // You might use multer or express.raw middleware to handle this,
+  // but here's the conceptual payload if parsed:
+  const from = req.body.from || req.body.envelope?.from;
+  const subject = req.body.subject || "";
+  const text = req.body.text || "";
+
+  console.log(`[INBOUND EMAIL] from ${from}: ${subject} - ${text}`);
+
+  const replyMessage = {
+    id: Date.now().toString(),
+    from: from,
+    text: text || "(No body)",
+    date: new Date().toISOString(),
+    source: "email",
+  };
+
+  await pusher.trigger("global-chat", "message", replyMessage);
+
+  // Optionally store in DB
+  res.status(200).send("ok");
+});
+⚠️ Important: SendGrid posts multipart form data.
+👉 Install multer or use express.urlencoded() and test.
+👉 For production, parse fields like text, subject, and from.
+
+💬 2. GroupMe Webhook (Bot Callback)
+👉 GroupMe setup:
+
+Create a bot in your GroupMe group via https://dev.groupme.com/bots.
+
+Give it a callback URL:
+https://your-server.com/api/webhook/groupme
+
+👉 Backend route (server/routes.ts):
+Add:
+
+ts
+Copy
+Edit
+// ✅ GroupMe Bot Webhook
+router.post("/api/webhook/groupme", async (req, res) => {
+  const { text, name, sender_type } = req.body;
+
+  // Ignore messages from your bot itself
+  if (sender_type === "bot") {
+    return res.status(200).send("ignored");
+  }
+
+  console.log(`[INBOUND GROUPME] from ${name}: ${text}`);
+
+  const replyMessage = {
+    id: Date.now().toString(),
+    from: name,
+    text: text,
+    date: new Date().toISOString(),
+    source: "groupme",
+  };
+
+  await pusher.trigger("global-chat", "message", replyMessage);
+
+  // Optionally store in DB
+  res.status(200).send("ok");
+});
+🏗 Server Setup Notes
+✅ Make sure your Express app has these middlewares enabled in server/index.ts:
+
+ts
+Copy
+Edit
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+✅ Add these routes after your other routes:
+
+ts
+Copy
+Edit
+import routes from './routes';
+app.use(routes);
+✅ Deploy with a public HTTPS URL and configure SendGrid & GroupMe webhooks to point to it.
+
+📡 Test Flow
+📩 Send an email to your SendGrid inbound domain → watch it appear in ChatRoom & NotificationBell.
+
+💬 Send a message in your GroupMe group → watch it appear in ChatRoom & NotificationBell.
+
+✨ Next Steps
+✅ Once tested, you can:
+
+✅ Save these inbound messages to your DB for history.
+
+✅ Add sender lookups (map phone/email to a player ID or name).
+
+✅ Expand NotificationBell to mark read/unread, or filter by source.

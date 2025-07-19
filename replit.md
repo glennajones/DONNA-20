@@ -103,10 +103,14 @@ Preferred communication style: Simple, everyday language.
 - **Role-based communication** (admin/manager can send messages)
 - **Message history** with timestamps and sender identification
 - **Live delivery confirmations** with recipient details
-- **Incoming reply webhooks** for Twilio SMS and SendGrid email responses
+- **Incoming reply webhooks** for Twilio SMS, SendGrid email, and GroupMe responses
 - **Notification bell system** with real-time alerts for incoming replies
 - **Reply message display** in chat interface with source identification
-- **Webhook endpoints** ready for production integration (/api/webhook/sms, /api/webhook/email)
+- **Webhook endpoints** ready for production integration:
+  - SMS: `/api/webhook/sms` (Twilio webhook)
+  - Email: `/api/webhook/email` (SendGrid inbound parse - optional)  
+  - GroupMe: `/api/webhook/groupme` (GroupMe bot callback)
+- **Multi-platform reply handling** with automatic source detection and formatting
 
 ## Data Flow
 

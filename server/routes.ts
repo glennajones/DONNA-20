@@ -575,20 +575,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SendGrid Email Webhook for incoming email replies
+  // SendGrid Email Webhook for incoming email replies (optional)
   app.post("/api/webhook/email", async (req, res) => {
     try {
       // SendGrid inbound parse webhook
-      const from = req.body.from;
-      const subject = req.body.subject;
-      const text = req.body.text;
+      const from = req.body.from || req.body.envelope?.from;
+      const subject = req.body.subject || "";
+      const text = req.body.text || "";
 
       console.log(`[INBOUND EMAIL] from ${from}: ${subject}`);
 
       const replyMessage = {
         id: Date.now().toString(),
         from: `Email: ${from}`,
-        text: `Subject: ${subject}\n\n${text}`,
+        text: subject ? `Subject: ${subject}\n\n${text}` : text || "(No body)",
         date: new Date().toISOString(),
         source: "email_reply",
       };
@@ -605,6 +605,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).send("OK");
     } catch (error) {
       console.error("Email webhook error:", error);
+      res.status(200).send("OK");
+    }
+  });
+
+  // GroupMe Bot Webhook for incoming messages
+  app.post("/api/webhook/groupme", async (req, res) => {
+    try {
+      const { text, name, sender_type, group_id } = req.body;
+
+      // Ignore messages from bots to prevent loops
+      if (sender_type === "bot") {
+        return res.status(200).send("ignored");
+      }
+
+      console.log(`[INBOUND GROUPME] from ${name}: ${text}`);
+
+      const replyMessage = {
+        id: Date.now().toString(),
+        from: `GroupMe: ${name}`,
+        text: text,
+        date: new Date().toISOString(),
+        source: "groupme_reply",
+        group_id,
+      };
+
+      // Broadcast to Pusher
+      try {
+        await pusher.trigger("global-chat", "message", replyMessage);
+        await pusher.trigger("notifications", "groupme_reply", replyMessage);
+        console.log("GroupMe reply broadcast successful");
+      } catch (pusherError) {
+        console.error("Pusher error for GroupMe reply:", pusherError);
+      }
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("GroupMe webhook error:", error);
       res.status(200).send("OK");
     }
   });
