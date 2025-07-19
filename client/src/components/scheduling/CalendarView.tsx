@@ -565,7 +565,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                         title={`${event.time} - ${event.title} (${event.court})`}
                         onClick={() => setSelectedEvent(event)}
                       >
-                        {event.time} {event.title}
+                        {formatTime(event.time)} {event.title}
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
