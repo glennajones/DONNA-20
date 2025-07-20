@@ -68,7 +68,9 @@ export default function TimeClock() {
     let currentClockIn = null;
     let isClockedIn = false;
     
-    const sortedEntries = [...entries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Filter only approved entries for calculation
+    const approvedEntries = entries.filter(entry => entry.status === 'approved');
+    const sortedEntries = [...approvedEntries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     
     sortedEntries.forEach(entry => {
       if (entry.action === "clock-in") {
@@ -99,11 +101,22 @@ export default function TimeClock() {
     mutationFn: async (action: "clock-in" | "clock-out") => {
       return apiRequest("/api/timeclock", "POST", { action });
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const action = variables;
       toast({
-        title: clockedIn ? "Clocked Out" : "Clocked In",
-        description: clockedIn ? "Your time has been recorded" : "Timer started successfully"
+        title: action === "clock-out" ? "Clocked Out" : "Clocked In",
+        description: action === "clock-out" ? "Your time has been recorded" : "Timer started successfully"
       });
+      
+      // Update state immediately for better UX
+      if (action === "clock-in") {
+        setClockedIn(true);
+        setLastClockIn(Date.now());
+      } else {
+        setClockedIn(false);
+        setLastClockIn(null);
+      }
+      
       refetchToday();
     },
     onError: () => {
@@ -214,6 +227,11 @@ export default function TimeClock() {
               {formatTime(totalHours)}
             </div>
             <div className="text-sm text-gray-600">Total Hours Today</div>
+            {clockedIn && lastClockIn && (
+              <div className="text-xs text-blue-600 mt-1">
+                Currently clocked in since {new Date(lastClockIn).toLocaleTimeString()}
+              </div>
+            )}
           </div>
 
           {/* Clock Buttons */}
