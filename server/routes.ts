@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Schedule/Calendar routes
+  // Schedule/Calendar routes - Now only fetches from Events
   app.get("/api/schedule", authenticateToken, async (req: any, res) => {
     try {
       // Allow all authenticated users to view schedules
@@ -254,89 +254,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { from, to, includeEvents } = req.query;
-      let events = await storage.getScheduleEvents(from as string, to as string);
+      const { from, to } = req.query;
       
-      // Optionally include budget events that have court assignments and times
-      if (includeEvents === "true") {
-        try {
-          const budgetEvents = await storage.getEvents();
-          const scheduleCompatibleEvents = budgetEvents
-            .filter(event => 
-              event.assignedCourts && 
-              Array.isArray(event.assignedCourts) && 
-              event.assignedCourts.length > 0 && 
-              event.startTime && 
-              event.endTime &&
-              (!from || event.startDate >= from) &&
-              (!to || event.startDate <= to)
-            )
-            .flatMap(budgetEvent => {
-              // For day view, create separate entries for each court
-              // For week/month view, we need to show the event with all courts
-              if (req.query.viewType === 'day') {
-                return (budgetEvent.assignedCourts as string[]).map(court => ({
-                  id: `budget-${budgetEvent.id}-${court}`,
-                  title: budgetEvent.name,
-                  court,
-                  date: budgetEvent.startDate,
-                  time: budgetEvent.startTime!,
-                  duration: budgetEvent.startTime && budgetEvent.endTime ? 
-                    Math.max(
-                      Math.round(
-                        (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
-                         new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
-                      ), 30
-                    ) : 120,
-                  eventType: budgetEvent.eventType, // Use original eventType from budget events
-                  participants: [],
-                  coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
-                    ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
-                    : 'TBD',
-                  description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
-                  status: "scheduled" as const,
-                  createdBy: budgetEvent.createdBy,
-                  createdAt: budgetEvent.createdAt,
-                  updatedAt: budgetEvent.updatedAt,
-                  budgetEventId: budgetEvent.id
-                }));
-              } else {
-                // For week/month view, create single event with all courts
-                return [{
-                  id: `budget-${budgetEvent.id}`,
-                  title: budgetEvent.name,
-                  court: (budgetEvent.assignedCourts as string[]).join(', '),
-                  date: budgetEvent.startDate,
-                  time: budgetEvent.startTime!,
-                  duration: budgetEvent.startTime && budgetEvent.endTime ? 
-                    Math.max(
-                      Math.round(
-                        (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
-                         new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
-                      ), 30
-                    ) : 120,
-                  eventType: budgetEvent.eventType, // Use original eventType from budget events
-                  participants: [],
-                  coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
-                    ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
-                    : 'TBD',
-                  description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
-                  status: "scheduled" as const,
-                  createdBy: budgetEvent.createdBy,
-                  createdAt: budgetEvent.createdAt,
-                  updatedAt: budgetEvent.updatedAt,
-                  budgetEventId: budgetEvent.id
-                }];
-              }
-            });
-          
-          events = [...events, ...scheduleCompatibleEvents as any];
-        } catch (budgetEventsError) {
-          console.warn("Failed to include budget events in schedule:", budgetEventsError);
-        }
+      // Only fetch from Events system - simplified approach
+      try {
+        const budgetEvents = await storage.getEvents();
+        const scheduleCompatibleEvents = budgetEvents
+          .filter(event => 
+            event.assignedCourts && 
+            Array.isArray(event.assignedCourts) && 
+            event.assignedCourts.length > 0 && 
+            event.startTime && 
+            event.endTime &&
+            (!from || event.startDate >= from) &&
+            (!to || event.startDate <= to)
+          )
+          .flatMap(budgetEvent => {
+            // For day view, create separate entries for each court
+            // For week/month view, we need to show the event with all courts
+            if (req.query.viewType === 'day') {
+              return (budgetEvent.assignedCourts as string[]).map(court => ({
+                id: `event-${budgetEvent.id}-${court}`,
+                title: budgetEvent.name,
+                court,
+                date: budgetEvent.startDate,
+                time: budgetEvent.startTime!,
+                duration: budgetEvent.startTime && budgetEvent.endTime ? 
+                  Math.max(
+                    Math.round(
+                      (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                       new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                    ), 30
+                  ) : 120,
+                eventType: budgetEvent.eventType,
+                participants: [],
+                coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
+                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
+                  : 'TBD',
+                description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
+                status: "scheduled" as const,
+                createdBy: budgetEvent.createdBy,
+                createdAt: budgetEvent.createdAt,
+                updatedAt: budgetEvent.updatedAt,
+                eventId: budgetEvent.id
+              }));
+            } else {
+              // For week/month view, create single event with all courts
+              return [{
+                id: `event-${budgetEvent.id}`,
+                title: budgetEvent.name,
+                court: (budgetEvent.assignedCourts as string[]).join(', '),
+                date: budgetEvent.startDate,
+                time: budgetEvent.startTime!,
+                duration: budgetEvent.startTime && budgetEvent.endTime ? 
+                  Math.max(
+                    Math.round(
+                      (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                       new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                    ), 30
+                  ) : 120,
+                eventType: budgetEvent.eventType,
+                participants: [],
+                coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
+                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
+                  : 'TBD',
+                description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
+                status: "scheduled" as const,
+                createdBy: budgetEvent.createdBy,
+                createdAt: budgetEvent.createdAt,
+                updatedAt: budgetEvent.updatedAt,
+                eventId: budgetEvent.id
+              }];
+            }
+          });
+        
+        res.json({ events: scheduleCompatibleEvents });
+      } catch (error) {
+        console.error("Failed to fetch events for schedule:", error);
+        res.json({ events: [] });
       }
-      
-      res.json({ events });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

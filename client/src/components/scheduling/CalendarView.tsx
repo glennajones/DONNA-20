@@ -79,12 +79,11 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
   };
 
   const { data: scheduleData, isLoading, error } = useQuery({
-    queryKey: ["/api/schedule", dateRange.from, dateRange.to, "unified", viewType],
+    queryKey: ["/api/schedule", dateRange.from, dateRange.to, viewType],
     queryFn: async () => {
       const params = new URLSearchParams({
         from: dateRange.from,
         to: dateRange.to,
-        includeEvents: "true", // Include budget events in the unified view
         viewType: viewType, // Pass view type to backend
       });
       const response = await fetch(`/api/schedule?${params}`, {
@@ -250,7 +249,7 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
               </div>
 
               {/* Registration Button for Players/Parents */}
-              {selectedEvent && ["player", "parent"].includes(user?.role) && (
+              {selectedEvent && user?.role && ["player", "parent"].includes(user.role) && (
                 <div className="mt-6 pt-4 border-t">
                   <Button 
                     onClick={() => {

@@ -298,6 +298,23 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 20, 2025)
 
+### System Simplification (Evening - Latest)
+- **Simplified dual-system architecture** by making Training & Scheduling only fetch from Events list
+- **Removed all seed test data** including 32 schedule_events and 2 event_registrations to eliminate confusion
+- **Eliminated complex dual-system API logic** that was causing duplicates and sync issues
+- **Streamlined schedule API** to only fetch from Events system with proper court and time filtering
+- **Updated client-side query parameters** to remove includeEvents flag since it's now always Events-only
+
+#### Technical Implementation
+- Simplified `/api/schedule` endpoint to only process Events (budget events) with proper filtering
+- Changed event IDs from `budget-${id}` to `event-${id}` to reflect single-system approach
+- Removed foreign key dependencies by clearing event_registrations before schedule_events deletion
+- Updated CalendarView queryKey to remove "unified" flag and includeEvents parameter
+- Maintained all existing event display logic while eliminating dual-system complexity
+- System now has single source of truth: Events created through Events page appear on Training & Scheduling
+
+## Recent Changes (July 20, 2025) - Earlier
+
 ### Time Clock System Enhancements
 - **Implemented 2-column layout** for the Time Clock widget in Coach Resources
   - Left column: Time clock interface with hours display, clock in/out buttons, and manual entry
