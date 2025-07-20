@@ -20,7 +20,11 @@ import {
   TriangleAlert,
   Heart,
   TrendingUp,
-  Link as LinkIcon
+  Link as LinkIcon,
+  MessageCircle,
+  GraduationCap,
+  Headphones,
+  UserX
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -146,6 +150,65 @@ export default function Dashboard() {
     },
   ];
 
+  // Main navigation cards for quick access to key sections
+  const navigationCards = [
+    {
+      title: "Members",
+      description: "Manage players and parents",
+      icon: Users,
+      href: "/members",
+      color: "from-blue-500 to-blue-600",
+      roles: ["admin", "manager"],
+    },
+    {
+      title: "Training",
+      description: "Schedule and manage training sessions",
+      icon: Calendar,
+      href: "/training",
+      color: "from-green-500 to-green-600",
+      roles: ["admin", "manager", "coach"],
+    },
+    {
+      title: "Communication",
+      description: "Send messages and announcements",
+      icon: MessageCircle,
+      href: "/communication",
+      color: "from-purple-500 to-purple-600",
+      roles: ["admin", "manager", "coach"],
+    },
+    {
+      title: "Events",
+      description: "Plan and budget events",
+      icon: Trophy,
+      href: "/events",
+      color: "from-yellow-500 to-yellow-600",
+      roles: ["admin", "manager"],
+    },
+    {
+      title: "Coach Resources",
+      description: "Tools for coaching teams",
+      icon: GraduationCap,
+      href: "/coach-resources",
+      color: "from-teal-500 to-teal-600",
+      roles: ["admin", "manager", "coach"],
+    },
+    {
+      title: "Podcast",
+      description: "Volleyball podcast episodes",
+      icon: Headphones,
+      href: "/podcast",
+      color: "from-indigo-500 to-indigo-600",
+    },
+    {
+      title: "Admin",
+      description: "System settings and user management",
+      icon: Settings,
+      href: "/admin-settings",
+      color: "from-red-500 to-red-600",
+      roles: ["admin"],
+    },
+  ];
+
   const activities = [
     {
       icon: UserPlus,
@@ -210,6 +273,38 @@ export default function Dashboard() {
               </Card>
             );
           })}
+        </div>
+
+        {/* Navigation Cards */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {navigationCards.map((card) => {
+              if (card.roles && !hasRole(card.roles)) return null;
+              
+              const Icon = card.icon;
+              return (
+                <Link key={card.title} href={card.href}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer group">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col items-center text-center space-y-3">
+                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${card.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                          <Icon className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                            {card.title}
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {card.description}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
         </div>
 
         {/* Main Content Grid */}
