@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users, Edit, Trash2, Plus, UserCheck } from 'lucide-react';
+import { Users, Edit, Trash2, Plus, UserCheck, ArrowLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -209,9 +210,17 @@ export default function UserManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Users className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Users className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+        </div>
+        <Link href="/dashboard">
+          <Button variant="outline" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Return to Dashboard
+          </Button>
+        </Link>
       </div>
 
       {/* Add/Edit User Form */}
