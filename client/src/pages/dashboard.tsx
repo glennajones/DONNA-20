@@ -163,7 +163,7 @@ export default function Dashboard() {
     },
     {
       title: "Training & Scheduling",
-      description: "Schedule and manage training sessions",
+      description: "Manage Training Sessions",
       icon: Calendar,
       href: "/training",
       color: "from-green-500 to-green-600",
