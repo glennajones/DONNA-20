@@ -267,6 +267,7 @@ export type ReportGeneration = typeof reportGenerations.$inferSelect;
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  eventType: text("event_type", { enum: ["Practice", "School Activity", "Tournament", "Camp", "Team Camp", "Social"] }).notNull().default("Practice"),
   startDate: text("start_date").notNull(), // YYYY-MM-DD format
   endDate: text("end_date"), // YYYY-MM-DD format - optional for single day events
   startTime: text("start_time"), // HH:MM format - optional

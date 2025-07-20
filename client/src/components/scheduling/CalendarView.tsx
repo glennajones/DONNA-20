@@ -79,6 +79,31 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     "Beach 1", "Beach 2",
   ];
 
+  // Event type colors
+  const getEventColor = (eventType: string) => {
+    const colorMap: Record<string, string> = {
+      "Practice": "#56A0D3",
+      "School Activity": "#10B981", 
+      "Tournament": "#FF0000",
+      "Camp": "#8B5CF6",
+      "Team Camp": "#FFA500",
+      "Social": "#EC4899"
+    };
+    return colorMap[eventType] || "#56A0D3"; // Default to blue if type not found
+  };
+
+  const getEventColorHover = (eventType: string) => {
+    const colorMap: Record<string, string> = {
+      "Practice": "#4A8BC2",
+      "School Activity": "#0F9971",
+      "Tournament": "#DC2626",
+      "Camp": "#7C3AED",
+      "Team Camp": "#EA580C",
+      "Social": "#DB2777"
+    };
+    return colorMap[eventType] || "#4A8BC2";
+  };
+
   if (isLoading) {
     return (
       <div className="p-4">
@@ -153,8 +178,18 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
           {selectedEvent && (
             <div className="space-y-4">
               <div>
-                <h3 className="font-semibold text-lg text-[#56A0D3]">
+                <h3 className="font-semibold text-lg flex items-center gap-2" style={{ color: getEventColor(selectedEvent.eventType || "Practice") }}>
+                  <div 
+                    className="w-3 h-3 rounded-full" 
+                    style={{ backgroundColor: getEventColor(selectedEvent.eventType || "Practice") }}
+                  ></div>
                   {selectedEvent.title}
+                  {selectedEvent.eventType && (
+                    <span className="text-xs font-normal px-2 py-1 rounded-full text-white" 
+                          style={{ backgroundColor: getEventColor(selectedEvent.eventType) }}>
+                      {selectedEvent.eventType}
+                    </span>
+                  )}
                 </h3>
               </div>
               
@@ -447,12 +482,19 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                         >
                           {eventInSlot && isFirstSlot && (
                             <div 
-                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
+                              className="text-xs text-white p-2 rounded cursor-pointer transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(eventInSlot)}
                               title={`${eventInSlot.title} - ${eventInSlot.coach}`}
                               style={{
+                                backgroundColor: getEventColor(eventInSlot.eventType || "Practice"),
                                 top: '4px',
                                 height: `${(eventInSlot.duration || 120) / 30 * 40 - 8}px`
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = getEventColorHover(eventInSlot.eventType || "Practice");
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = getEventColor(eventInSlot.eventType || "Practice");
                               }}
                             >
                               <div className="font-medium truncate">
@@ -548,12 +590,19 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                           {eventsStartingInSlot.map((event, index) => (
                             <div 
                               key={event.id} 
-                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
+                              className="text-xs text-white p-2 rounded cursor-pointer transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(event)}
                               title={`${event.title} - ${event.coach}`}
                               style={{
+                                backgroundColor: getEventColor(event.eventType || "Practice"),
                                 top: '4px',
                                 height: `${(event.duration || 120) / 30 * 40 - 8}px`
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = getEventColorHover(event.eventType || "Practice");
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = getEventColor(event.eventType || "Practice");
                               }}
                             >
                               <div className="font-medium truncate">
@@ -630,9 +679,18 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                       .slice(0, 3).map(event => (
                       <div
                         key={event.id}
-                        className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate cursor-pointer hover:bg-[#4A8BC2] transition-colors"
+                        className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
                         title={`${event.time} - ${event.title} (${event.court})`}
                         onClick={() => setSelectedEvent(event)}
+                        style={{
+                          backgroundColor: getEventColor(event.eventType || "Practice")
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = getEventColorHover(event.eventType || "Practice");
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = getEventColor(event.eventType || "Practice");
+                        }}
                       >
                         {formatTime(event.time)} {event.title}
                       </div>

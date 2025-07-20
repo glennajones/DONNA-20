@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle } from "lucide-react";
+import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle, Tag } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { InsertEvent } from "@shared/schema";
 
@@ -26,9 +27,20 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const { toast } = useToast();
   const [openSections, setOpenSections] = useState<string[]>(["basic"]);
 
+  // Event type configuration with colors
+  const eventTypes = [
+    { value: "Practice", label: "Practice", color: "#56A0D3", description: "Regular practice sessions" },
+    { value: "School Activity", label: "School Activity", color: "#10B981", description: "School-related activities" },
+    { value: "Tournament", label: "Tournament", color: "#FF0000", description: "Competitive events" },
+    { value: "Camp", label: "Camp", color: "#8B5CF6", description: "Multi-day training programs" },
+    { value: "Team Camp", label: "Team Camp", color: "#FFA500", description: "Multi-day team training programs" },
+    { value: "Social", label: "Social", color: "#EC4899", description: "Team building activities" }
+  ];
+
   // Basic info
   const [basic, setBasic] = useState({
     name: "",
+    eventType: "Practice" as const,
     startDate: "",
     endDate: "",
     startTime: "",
@@ -91,7 +103,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   };
 
   // Validation functions
-  const isBasicComplete = basic.name && basic.startDate;
+  const isBasicComplete = basic.name && basic.startDate && basic.eventType;
   const isResourceComplete = players > 0 && playersPerCourt > 0 && playersPerCoach > 0;
   const isBudgetComplete = feePerPlayer > 0;
   const canSubmit = isBasicComplete && isResourceComplete && isBudgetComplete;
@@ -111,21 +123,22 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       
       const payload: InsertEvent = {
         name: basic.name,
+        eventType: basic.eventType,
         startDate: basic.startDate,
         endDate: basic.endDate || basic.startDate,
         startTime: basic.startTime || "09:00",
         endTime: basic.endTime || "17:00",
         location: "Volleyball Club", // Default since court assignments handle specific locations
-        estimatedPlayers: players,
-        estimatedCoaches: coaches,
-        estimatedCourts: courts,
+        players: players,
+        courts: courts,
+        coaches: coaches,
+        assignedCourts: assignedCourts,
         projectedRevenue: projectedRevenue.toString(),
         actualRevenue: "0",
         status: "planning",
         feePerPlayer: feePerPlayer.toString(),
         coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
-        miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item)),
-        assignedCourts: assignedCourts
+        miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item))
       };
 
       await apiRequest("/api/events", {
@@ -141,7 +154,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       });
       
       // Reset form
-      setBasic({ name: "", startDate: "", endDate: "", startTime: "", endTime: "" });
+      setBasic({ name: "", eventType: "Practice", startDate: "", endDate: "", startTime: "", endTime: "" });
       setPlayers(0);
       setAssignedCourts([]);
       setFeePerPlayer(0);
@@ -241,6 +254,31 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                       value={basic.name}
                       onChange={(e) => setBasic({ ...basic, name: e.target.value })}
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="eventType">Event Type *</Label>
+                    <Select value={basic.eventType} onValueChange={(value) => setBasic({ ...basic, eventType: value as any })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {eventTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: type.color }}
+                              ></div>
+                              <span>{type.label}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500">
+                      {eventTypes.find(t => t.value === basic.eventType)?.description}
+                    </p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">

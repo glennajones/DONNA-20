@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: "tournament" as const,
+                  eventType: budgetEvent.eventType || "Practice", // Use the actual event type from budget events
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -313,7 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: "tournament" as const,
+                  eventType: budgetEvent.eventType || "Practice", // Use the actual event type from budget events
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -1132,7 +1132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: event.startDate,
                 time: event.startTime,
                 duration: durationMinutes,
-                eventType: "tournament", // Default for budget events
+                eventType: event.eventType || "Practice", // Use actual event type
                 participants: [], // Can be populated later
                 coach: "", // Can be populated later
                 description: event.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -1208,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: updatedEvent.startDate,
                 time: updatedEvent.startTime,
                 duration: durationMinutes,
-                eventType: "tournament",
+                eventType: updatedEvent.eventType || "Practice", // Use actual event type
                 participants: [],
                 coach: "",
                 description: updatedEvent.assignedCourts?.join(', ') || 'Multiple Courts',
