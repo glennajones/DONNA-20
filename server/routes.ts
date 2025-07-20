@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema, insertCoachSchema, insertCoachOutreachLogSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema, insertCoachSchema, insertCoachOutreachLogSchema, insertReportTemplateSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
@@ -802,6 +802,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(response);
     } catch (error) {
       console.error("Submit response error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Report Builder Routes
+  app.get("/api/reports/templates", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can access report templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const templates = await storage.getReportTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Get report templates error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/reports/templates", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create report templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const templateData = insertReportTemplateSchema.parse({
+        ...req.body,
+        createdBy: req.user.userId
+      });
+
+      const template = await storage.createReportTemplate(templateData);
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Create report template error:", error);
+      res.status(400).json({ message: "Invalid template data" });
+    }
+  });
+
+  app.get("/api/reports/templates/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can access report templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const template = await storage.getReportTemplate(parseInt(id));
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      res.json(template);
+    } catch (error) {
+      console.error("Get report template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/reports/templates/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update report templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const templateData = req.body;
+      
+      const updatedTemplate = await storage.updateReportTemplate(parseInt(id), templateData);
+      
+      if (!updatedTemplate) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("Update report template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/reports/templates/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete report templates
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteReportTemplate(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      res.json({ message: "Template deleted successfully" });
+    } catch (error) {
+      console.error("Delete report template error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/reports/templates/:id/generate", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can generate reports
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const parameters = req.body;
+      
+      const generation = await storage.generateReport(parseInt(id), req.user.userId, parameters);
+      res.json(generation);
+    } catch (error) {
+      console.error("Generate report error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/reports/data-sources", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can access data sources
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const dataSources = [
+        {
+          name: "players",
+          label: "Players",
+          fields: [
+            { name: "id", label: "ID", type: "number" },
+            { name: "name", label: "Name", type: "text" },
+            { name: "dateOfBirth", label: "Date of Birth", type: "date" },
+            { name: "contact", label: "Email", type: "text" },
+            { name: "phone", label: "Phone", type: "text" },
+            { name: "teams", label: "Teams", type: "array" },
+            { name: "status", label: "Status", type: "text" },
+            { name: "createdAt", label: "Created Date", type: "date" }
+          ]
+        },
+        {
+          name: "events",
+          label: "Events", 
+          fields: [
+            { name: "id", label: "ID", type: "number" },
+            { name: "name", label: "Event Name", type: "text" },
+            { name: "startDate", label: "Start Date", type: "date" },
+            { name: "endDate", label: "End Date", type: "date" },
+            { name: "location", label: "Location", type: "text" },
+            { name: "players", label: "Player Count", type: "number" },
+            { name: "status", label: "Status", type: "text" },
+            { name: "projectedRevenue", label: "Projected Revenue", type: "currency" },
+            { name: "actualRevenue", label: "Actual Revenue", type: "currency" }
+          ]
+        },
+        {
+          name: "registrations",
+          label: "Registrations",
+          fields: [
+            { name: "id", label: "ID", type: "number" },
+            { name: "name", label: "Player Name", type: "text" },
+            { name: "email", label: "Email", type: "text" },
+            { name: "phone", label: "Phone", type: "text" },
+            { name: "status", label: "Status", type: "text" },
+            { name: "registrationFee", label: "Registration Fee", type: "currency" },
+            { name: "createdAt", label: "Registration Date", type: "date" }
+          ]
+        }
+      ];
+      
+      res.json(dataSources);
+    } catch (error) {
+      console.error("Get data sources error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

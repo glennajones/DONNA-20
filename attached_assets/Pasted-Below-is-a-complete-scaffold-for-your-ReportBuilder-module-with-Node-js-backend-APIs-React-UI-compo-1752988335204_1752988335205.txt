@@ -1,0 +1,351 @@
+Below is a complete scaffold for your ReportBuilder module with Node.js backend APIs, React UI components, and Tailwind CSS styling.
+
+I’ve structured it according to your spec. All code is self‑contained and ready to integrate into your existing project. Let’s go! 💡
+
+📦 Backend (Node.js / Express)
+src/api/reports.js
+
+js
+Copy
+Edit
+const express = require('express');
+const router = express.Router();
+const { requireRole } = require('../middleware/auth');
+const ReportService = require('../services/ReportService');
+
+// Protect all routes
+router.use(requireRole('Admin'));
+
+// List templates
+router.get('/templates', async (req, res) => {
+  const templates = await ReportService.listTemplates();
+  res.json(templates);
+});
+
+// Create template
+router.post('/templates', async (req, res) => {
+  const created = await ReportService.createTemplate(req.body);
+  res.json(created);
+});
+
+// Update template
+router.put('/templates/:id', async (req, res) => {
+  const updated = await ReportService.updateTemplate(req.params.id, req.body);
+  res.json(updated);
+});
+
+// Delete template
+router.delete('/templates/:id', async (req, res) => {
+  await ReportService.deleteTemplate(req.params.id);
+  res.json({ success: true });
+});
+
+// Get template
+router.get('/templates/:id', async (req, res) => {
+  const tmpl = await ReportService.getTemplate(req.params.id);
+  res.json(tmpl);
+});
+
+// Generate report
+router.post('/:id/generate', async (req, res) => {
+  const report = await ReportService.generateReport(req.params.id, req.body);
+  res.json(report);
+});
+
+// Schedule
+router.get('/schedules', async (req, res) => {
+  const schedules = await ReportService.listSchedules();
+  res.json(schedules);
+});
+
+router.post('/:id/schedule', async (req, res) => {
+  await ReportService.scheduleReport(req.params.id, req.body);
+  res.json({ success: true });
+});
+
+// Share
+router.post('/:id/share', async (req, res) => {
+  await ReportService.shareTemplate(req.params.id, req.body.userIds);
+  res.json({ success: true });
+});
+
+module.exports = router;
+src/services/ReportService.js
+
+js
+Copy
+Edit
+// Simulated in-memory store
+let templates = [];
+let schedules = [];
+
+async function listTemplates() {
+  return templates;
+}
+
+async function createTemplate(template) {
+  const newTmpl = { ...template, id: Date.now().toString() };
+  templates.push(newTmpl);
+  return newTmpl;
+}
+
+async function updateTemplate(id, template) {
+  const idx = templates.findIndex(t => t.id === id);
+  if (idx >= 0) {
+    templates[idx] = { ...templates[idx], ...template };
+    return templates[idx];
+  }
+  throw new Error('Template not found');
+}
+
+async function deleteTemplate(id) {
+  templates = templates.filter(t => t.id !== id);
+}
+
+async function getTemplate(id) {
+  return templates.find(t => t.id === id);
+}
+
+async function generateReport(id, params) {
+  console.log(`Generating report for ${id}`, params);
+  // mock urls
+  return { pdfUrl: `/downloads/${id}.pdf`, csvUrl: `/downloads/${id}.csv` };
+}
+
+async function listSchedules() {
+  return schedules;
+}
+
+async function scheduleReport(id, scheduleConfig) {
+  schedules.push({ id, ...scheduleConfig });
+}
+
+async function shareTemplate(id, userIds) {
+  const tmpl = templates.find(t => t.id === id);
+  if (tmpl) tmpl.sharing = userIds;
+}
+
+module.exports = {
+  listTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  getTemplate,
+  generateReport,
+  listSchedules,
+  scheduleReport,
+  shareTemplate,
+};
+🎨 Frontend (React + Tailwind)
+✅ Module folder: src/modules/ReportBuilder/
+
+TemplateList.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import { listTemplates, deleteTemplate, generateReport } from '../../services/ReportService';
+
+export default function TemplateList() {
+  const [templates, setTemplates] = useState([]);
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function refresh() {
+    const data = await listTemplates();
+    setTemplates(data);
+  }
+
+  async function handleDelete(id) {
+    await deleteTemplate(id);
+    refresh();
+  }
+
+  async function handleGenerate(id) {
+    const { pdfUrl, csvUrl } = await generateReport(id, {});
+    window.open(pdfUrl, '_blank');
+    console.log('CSV ready at', csvUrl);
+  }
+
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">Templates</h1>
+      <ul className="divide-y">
+        {templates.map(t => (
+          <li key={t.id} className="flex justify-between items-center py-2">
+            <span>{t.name}</span>
+            <div className="space-x-2">
+              <button onClick={() => handleGenerate(t.id)} className="text-green-600">Generate</button>
+              <button onClick={() => handleDelete(t.id)} className="text-red-600">Delete</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+ReportWizard.jsx
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import FieldSelector from './FieldSelector';
+import LayoutCanvas from './LayoutCanvas';
+import PreviewPane from './PreviewPane';
+import { createTemplate } from '../../services/ReportService';
+
+export default function ReportWizard() {
+  const [step, setStep] = useState(1);
+  const [template, setTemplate] = useState({
+    name: '', description: '', dataSource: '',
+    fields: [], layout: [], filters: [], output: { formats: ['pdf'], preview: true },
+    sharing: [], scheduleConfig: null
+  });
+  const [savedTemplate, setSavedTemplate] = useState(null);
+
+  async function handleSave() {
+    const saved = await createTemplate(template);
+    setSavedTemplate(saved);
+    setStep(5);
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      {step === 1 && <FieldSelector template={template} setTemplate={setTemplate} />}
+      {step === 2 && <LayoutCanvas template={template} setTemplate={setTemplate} />}
+      {step === 3 && (
+        <div>
+          <label>Output formats: </label>
+          <select multiple className="border p-1" onChange={(e)=> {
+            const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+            setTemplate({ ...template, output: { ...template.output, formats: opts } });
+          }}>
+            <option value="pdf">PDF</option>
+            <option value="csv">CSV</option>
+          </select>
+        </div>
+      )}
+      {step === 4 && (
+        <div>
+          <label>Cron schedule: </label>
+          <input type="text" className="border p-1"
+            onChange={e => setTemplate({ ...template, scheduleConfig: { cron: e.target.value, timeZone: 'UTC' } })}/>
+          <button className="bg-blue-600 text-white px-2 py-1" onClick={handleSave}>Save Template</button>
+        </div>
+      )}
+      {step === 5 && <PreviewPane template={savedTemplate} />}
+      {step < 5 && (
+        <div className="flex space-x-2">
+          {step > 1 && <button onClick={() => setStep(step-1)} className="border px-2">Back</button>}
+          <button onClick={() => setStep(step+1)} className="border px-2">Next</button>
+        </div>
+      )}
+    </div>
+  );
+}
+FieldSelector.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+
+export default function FieldSelector({ template, setTemplate }) {
+  const [availableFields, setAvailableFields] = useState([
+    { fieldName: 'id', label: 'ID', dataType: 'number' },
+    { fieldName: 'name', label: 'Name', dataType: 'string' },
+    { fieldName: 'createdAt', label: 'Created At', dataType: 'date' },
+  ]);
+
+  function toggleField(f) {
+    const exists = template.fields.find(x => x.fieldName === f.fieldName);
+    const newFields = exists
+      ? template.fields.filter(x => x.fieldName !== f.fieldName)
+      : [...template.fields, f];
+    setTemplate({ ...template, fields: newFields });
+  }
+
+  return (
+    <div>
+      <h2 className="font-bold">Select Fields</h2>
+      <ul className="space-y-1">
+        {availableFields.map(f => (
+          <li key={f.fieldName} className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={template.fields.some(x => x.fieldName === f.fieldName)}
+              onChange={() => toggleField(f)}
+            />
+            <span>{f.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+LayoutCanvas.jsx
+jsx
+Copy
+Edit
+import React from 'react';
+
+export default function LayoutCanvas({ template, setTemplate }) {
+  function handleAdd(field) {
+    setTemplate({ ...template, layout: [...template.layout, field] });
+  }
+
+  return (
+    <div>
+      <h2 className="font-bold">Layout Canvas</h2>
+      <div className="grid grid-cols-3 gap-2 border p-2 min-h-[100px]">
+        {template.layout.map((f, idx) => (
+          <div key={idx} className="p-2 border bg-gray-100">{f.label}</div>
+        ))}
+      </div>
+      <div className="mt-2">
+        {template.fields.map(f => (
+          <button key={f.fieldName} onClick={() => handleAdd(f)} className="m-1 px-2 py-1 border">
+            Add {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+PreviewPane.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import { generateReport } from '../../services/ReportService';
+
+export default function PreviewPane({ template }) {
+  const [reportUrls, setReportUrls] = useState(null);
+
+  useEffect(() => {
+    if (template?.id) {
+      generateReport(template.id, {}).then(setReportUrls);
+    }
+  }, [template]);
+
+  if (!template) return null;
+  return (
+    <div className="space-y-2">
+      <h2 className="font-bold">Preview Report</h2>
+      {reportUrls ? (
+        <>
+          <iframe title="PDF Preview" src={reportUrls.pdfUrl} className="w-full h-64 border" />
+          <a href={reportUrls.csvUrl} className="text-blue-600 underline">Download CSV</a>
+        </>
+      ) : (
+        <p>Generating preview...</p>
+      )}
+    </div>
+  );
+}
+✨ Next Steps
+✅ Integrate these files into your project.
+✅ Ensure you have react-dnd or similar for advanced drag‑and‑drop if needed.
+✅ Add Tailwind classes as desired for UI polish.
+✅ Replace mock data and implement real DB/API logic in ReportService.js.

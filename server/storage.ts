@@ -7,6 +7,8 @@ import {
   parents,
   formTemplates,
   formResponses,
+  reportTemplates,
+  reportGenerations,
   events,
   campaigns,
   sponsors,
@@ -41,6 +43,10 @@ import {
   type InsertFormTemplate,
   type FormResponse,
   type InsertFormResponse,
+  type ReportTemplate,
+  type InsertReportTemplate,
+  type ReportGeneration,
+  type InsertReportGeneration,
   type Event,
   type InsertEvent,
   type Campaign,
@@ -134,6 +140,14 @@ export interface IStorage {
   getFormResponse(id: number): Promise<FormResponse | undefined>;
   getFormResponses(templateId: number): Promise<FormResponse[]>;
   createFormResponse(response: InsertFormResponse): Promise<FormResponse>;
+
+  // Report Builder methods
+  getReportTemplate(id: number): Promise<ReportTemplate | undefined>;
+  getReportTemplates(): Promise<ReportTemplate[]>;
+  createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate>;
+  updateReportTemplate(id: number, template: Partial<InsertReportTemplate>): Promise<ReportTemplate | undefined>;
+  deleteReportTemplate(id: number): Promise<boolean>;
+  generateReport(templateId: number, userId: number, parameters: any): Promise<ReportGeneration>;
 
   // Event methods
   getEvent(id: number): Promise<Event | undefined>;
@@ -1101,6 +1115,76 @@ export class DatabaseStorage implements IStorage {
       .update(eventRegistrations)
       .set({ status: status as any })
       .where(eq(eventRegistrations.id, registrationId));
+  }
+
+  // Report Builder methods
+  async getReportTemplate(id: number): Promise<ReportTemplate | undefined> {
+    const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.id, id));
+    return template || undefined;
+  }
+
+  async getReportTemplates(): Promise<ReportTemplate[]> {
+    return await db.select().from(reportTemplates)
+      .where(eq(reportTemplates.isActive, true))
+      .orderBy(desc(reportTemplates.createdAt));
+  }
+
+  async createReportTemplate(insertTemplate: InsertReportTemplate): Promise<ReportTemplate> {
+    const [template] = await db
+      .insert(reportTemplates)
+      .values(insertTemplate)
+      .returning();
+    return template;
+  }
+
+  async updateReportTemplate(id: number, templateUpdate: Partial<InsertReportTemplate>): Promise<ReportTemplate | undefined> {
+    const [template] = await db
+      .update(reportTemplates)
+      .set({ ...templateUpdate, updatedAt: new Date() })
+      .where(eq(reportTemplates.id, id))
+      .returning();
+    return template || undefined;
+  }
+
+  async deleteReportTemplate(id: number): Promise<boolean> {
+    // Soft delete by setting isActive to false
+    const result = await db
+      .update(reportTemplates)
+      .set({ isActive: false })
+      .where(eq(reportTemplates.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async generateReport(templateId: number, userId: number, parameters: any): Promise<ReportGeneration> {
+    // Mock implementation for now - in production this would:
+    // 1. Fetch the template
+    // 2. Query the data source based on template configuration
+    // 3. Generate PDF/CSV files
+    // 4. Store files and return URLs
+    
+    const template = await this.getReportTemplate(templateId);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    const mockUrls = {
+      pdf: `/api/reports/downloads/${templateId}-${Date.now()}.pdf`,
+      csv: `/api/reports/downloads/${templateId}-${Date.now()}.csv`
+    };
+
+    const [generation] = await db
+      .insert(reportGenerations)
+      .values({
+        templateId,
+        generatedBy: userId,
+        status: 'completed',
+        parameters,
+        outputUrls: mockUrls,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+      })
+      .returning();
+
+    return generation;
   }
 
 }

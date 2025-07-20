@@ -217,6 +217,52 @@ export const insertFormResponseSchema = createInsertSchema(formResponses).omit({
 export type InsertFormResponse = z.infer<typeof insertFormResponseSchema>;
 export type FormResponse = typeof formResponses.$inferSelect;
 
+// Report Builder Schema
+export const reportTemplates = pgTable("report_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  dataSource: varchar("data_source", { length: 50 }).notNull(), // e.g., "players", "events", "registrations"
+  fields: json("fields").notNull(), // selected fields for the report
+  layout: json("layout").notNull(), // field positioning and formatting
+  filters: json("filters").notNull().default([]), // report filters
+  outputFormats: json("output_formats").notNull().default(["pdf"]), // pdf, csv, excel
+  scheduleConfig: json("schedule_config"), // cron schedule if automated
+  sharing: json("sharing").notNull().default([]), // user IDs with access
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
+export const reportGenerations = pgTable("report_generations", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => reportTemplates.id).notNull(),
+  generatedBy: integer("generated_by").references(() => users.id),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, completed, failed
+  parameters: json("parameters").notNull().default({}), // generation parameters
+  outputUrls: json("output_urls").notNull().default({}), // { pdf: "url", csv: "url" }
+  errorMessage: text("error_message"),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"), // when generated files expire
+});
+
+// Types for report builder
+export const insertReportTemplateSchema = createInsertSchema(reportTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertReportTemplate = z.infer<typeof insertReportTemplateSchema>;
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+
+export const insertReportGenerationSchema = createInsertSchema(reportGenerations).omit({
+  id: true,
+  generatedAt: true,
+});
+export type InsertReportGeneration = z.infer<typeof insertReportGenerationSchema>;
+export type ReportGeneration = typeof reportGenerations.$inferSelect;
+
 // Events & Budgeting Schema
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
