@@ -8,8 +8,9 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle, Tag } from "lucide-react";
+import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle, Tag, Repeat } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { InsertEvent } from "@shared/schema";
 
@@ -67,6 +68,15 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const [coachRates, setCoachRates] = useState<CoachRate[]>([{ profile: "", rate: 0 }]);
   const [miscExpenses, setMiscExpenses] = useState<MiscExpense[]>([{ item: "", quantity: 1, cost: 0 }]);
 
+  // Duplication state
+  const [duplicateEvent, setDuplicateEvent] = useState(false);
+  const [recurringSettings, setRecurringSettings] = useState({
+    frequency: "weekly" as "weekly" | "daily" | "monthly",
+    daysOfWeek: [] as string[],
+    endDate: "",
+    occurrences: 1,
+  });
+
   // Calculated values
   const projectedRevenue = players * feePerPlayer;
   
@@ -109,6 +119,57 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const isBudgetComplete = feePerPlayer >= 0; // Allow $0 for free events
   const canSubmit = isBasicComplete && isResourceComplete && isBudgetComplete;
 
+  // Helper function to generate recurring event dates
+  const generateRecurringDates = () => {
+    const dates = [];
+    const startDate = new Date(basic.startDate);
+    
+    if (!duplicateEvent) {
+      return [{ startDate: basic.startDate, endDate: basic.endDate || basic.startDate }];
+    }
+
+    if (recurringSettings.frequency === "weekly" && recurringSettings.daysOfWeek.length > 0) {
+      const endDate = recurringSettings.endDate ? new Date(recurringSettings.endDate) : null;
+      const maxOccurrences = recurringSettings.occurrences;
+      let currentDate = new Date(startDate);
+      let occurrenceCount = 0;
+
+      // Find the first occurrence based on selected days
+      const dayMap = {
+        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+        Thursday: 4, Friday: 5, Saturday: 6
+      };
+
+      while (occurrenceCount < maxOccurrences && (!endDate || currentDate <= endDate)) {
+        const dayName = Object.keys(dayMap).find(key => dayMap[key as keyof typeof dayMap] === currentDate.getDay());
+        
+        if (dayName && recurringSettings.daysOfWeek.includes(dayName)) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          dates.push({ startDate: dateStr, endDate: dateStr });
+          occurrenceCount++;
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else if (recurringSettings.frequency === "daily") {
+      for (let i = 0; i < recurringSettings.occurrences; i++) {
+        const eventDate = new Date(startDate);
+        eventDate.setDate(startDate.getDate() + i);
+        const dateStr = eventDate.toISOString().split('T')[0];
+        dates.push({ startDate: dateStr, endDate: dateStr });
+      }
+    } else if (recurringSettings.frequency === "monthly") {
+      for (let i = 0; i < recurringSettings.occurrences; i++) {
+        const eventDate = new Date(startDate);
+        eventDate.setMonth(startDate.getMonth() + i);
+        const dateStr = eventDate.toISOString().split('T')[0];
+        dates.push({ startDate: dateStr, endDate: dateStr });
+      }
+    }
+
+    return dates.length > 0 ? dates : [{ startDate: basic.startDate, endDate: basic.endDate || basic.startDate }];
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit) {
       toast({
@@ -122,36 +183,46 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
     try {
       setIsSubmitting(true);
       
-      const payload: InsertEvent = {
-        name: basic.name,
-        eventType: basic.eventType,
-        startDate: basic.startDate,
-        endDate: basic.endDate || basic.startDate,
-        startTime: basic.startTime || "09:00",
-        endTime: basic.endTime || "17:00",
-        location: "Volleyball Club", // Default since court assignments handle specific locations
-        players: players,
-        courts: courts,
-        coaches: coaches,
-        assignedCourts: assignedCourts,
-        projectedRevenue: projectedRevenue.toString(),
-        actualRevenue: "0",
-        status: "planning",
-        feePerPlayer: feePerPlayer.toString(),
-        coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
-        miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item))
-      };
+      const eventDates = generateRecurringDates();
+      const createdEvents = [];
 
-      await apiRequest("/api/events", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      for (let i = 0; i < eventDates.length; i++) {
+        const { startDate, endDate } = eventDates[i];
+        const eventName = eventDates.length > 1 ? `${basic.name} #${i + 1}` : basic.name;
+        
+        const payload: InsertEvent = {
+          name: eventName,
+          eventType: basic.eventType,
+          startDate: startDate,
+          endDate: endDate,
+          startTime: basic.startTime || "09:00",
+          endTime: basic.endTime || "17:00",
+          location: "Volleyball Club",
+          players: players,
+          courts: courts,
+          coaches: coaches,
+          assignedCourts: assignedCourts,
+          projectedRevenue: projectedRevenue.toString(),
+          actualRevenue: "0",
+          status: "planning",
+          feePerPlayer: feePerPlayer.toString(),
+          coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
+          miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item))
+        };
+
+        await apiRequest("/api/events", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        
+        createdEvents.push(eventName);
+      }
       
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       
       toast({
         title: "Success!",
-        description: "Event has been created successfully",
+        description: `${createdEvents.length} event${createdEvents.length > 1 ? 's' : ''} created successfully`,
       });
       
       // Reset form
@@ -161,6 +232,13 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       setFeePerPlayer(0);
       setCoachRates([{ profile: "", rate: 0 }]);
       setMiscExpenses([{ item: "", quantity: 1, cost: 0 }]);
+      setDuplicateEvent(false);
+      setRecurringSettings({
+        frequency: "weekly",
+        daysOfWeek: [],
+        endDate: "",
+        occurrences: 1,
+      });
       setOpenSections(["basic"]);
       
       if (onComplete) {
@@ -170,7 +248,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       console.error("Event creation failed:", err);
       toast({
         title: "Error",
-        description: "Failed to create event. Please try again.",
+        description: "Failed to create event(s). Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -620,12 +698,134 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
             <Separator />
 
+            {/* Duplicate Event Checkbox */}
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <Checkbox
+                id="duplicate-event"
+                checked={duplicateEvent}
+                onCheckedChange={(checked) => setDuplicateEvent(checked as boolean)}
+              />
+              <Label htmlFor="duplicate-event" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                <Repeat className="h-4 w-4" />
+                Duplicate this event?
+              </Label>
+            </div>
+
+            {duplicateEvent && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    Configure Recurring Events
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create Recurring Events</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="frequency">Frequency</Label>
+                      <Select
+                        value={recurringSettings.frequency}
+                        onValueChange={(value) =>
+                          setRecurringSettings(prev => ({ ...prev, frequency: value as "weekly" | "daily" | "monthly" }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {recurringSettings.frequency === "weekly" && (
+                      <div>
+                        <Label className="text-sm font-medium">Days of Week</Label>
+                        <div className="grid grid-cols-4 gap-2 mt-2">
+                          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                            <div key={day} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={day}
+                                checked={recurringSettings.daysOfWeek.includes(day)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setRecurringSettings(prev => ({
+                                      ...prev,
+                                      daysOfWeek: [...prev.daysOfWeek, day]
+                                    }));
+                                  } else {
+                                    setRecurringSettings(prev => ({
+                                      ...prev,
+                                      daysOfWeek: prev.daysOfWeek.filter(d => d !== day)
+                                    }));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={day} className="text-xs cursor-pointer">
+                                {day.slice(0, 3)}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label htmlFor="end-date">End Date</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={recurringSettings.endDate}
+                        onChange={(e) =>
+                          setRecurringSettings(prev => ({ ...prev, endDate: e.target.value }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="occurrences">Number of Occurrences</Label>
+                      <Input
+                        id="occurrences"
+                        type="number"
+                        min="1"
+                        max="52"
+                        value={recurringSettings.occurrences}
+                        onChange={(e) =>
+                          setRecurringSettings(prev => ({ ...prev, occurrences: parseInt(e.target.value) || 1 }))
+                        }
+                      />
+                    </div>
+
+                    <div className="text-sm text-gray-500 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <p className="font-medium mb-1">Example:</p>
+                      <p>
+                        {recurringSettings.frequency === "weekly" && recurringSettings.daysOfWeek.length > 0
+                          ? `Weekly on ${recurringSettings.daysOfWeek.join(", ")} from ${basic.startTime || "10:00 AM"} to ${basic.endTime || "12:00 PM"}`
+                          : `${recurringSettings.frequency.charAt(0).toUpperCase() + recurringSettings.frequency.slice(1)} from ${basic.startTime || "10:00 AM"} to ${basic.endTime || "12:00 PM"}`
+                        }
+                        {assignedCourts.length > 0 && ` on ${assignedCourts.join(" and ")}`}
+                      </p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
               className="w-full bg-[#56A0D3] hover:bg-[#4A90C2]"
             >
-              {isSubmitting ? "Creating Event..." : "Create Event"}
+              {isSubmitting 
+                ? "Creating Event..." 
+                : duplicateEvent 
+                  ? `Create ${recurringSettings.occurrences} Event${recurringSettings.occurrences > 1 ? 's' : ''}` 
+                  : "Create Event"
+              }
             </Button>
 
             {!canSubmit && (
