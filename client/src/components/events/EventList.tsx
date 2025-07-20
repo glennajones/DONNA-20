@@ -121,20 +121,28 @@ export function EventList() {
   };
 
   const handleEditEvent = (event: Event) => {
+    // Ensure we have at least one coach rate and one misc expense for the form
+    const coachRates = Array.isArray(event.coachRates) && event.coachRates.length > 0 
+      ? event.coachRates 
+      : [{ profile: "", rate: 0 }];
+    const miscExpenses = Array.isArray(event.miscExpenses) && event.miscExpenses.length > 0 
+      ? event.miscExpenses 
+      : [{ item: "", cost: 0 }];
+
     setEditFormData({
       name: event.name,
       startDate: event.startDate,
       endDate: event.endDate,
-      startTime: event.startTime,
-      endTime: event.endTime,
+      startTime: event.startTime || "",
+      endTime: event.endTime || "",
       location: event.location,
       players: event.players,
       courts: event.courts,
       coaches: event.coaches,
       feePerPlayer: event.feePerPlayer,
       status: event.status,
-      coachRates: event.coachRates || [],
-      miscExpenses: event.miscExpenses || [],
+      coachRates: coachRates,
+      miscExpenses: miscExpenses,
     });
     setEditingEvent(event);
     setShowEditDialog(true);
@@ -651,28 +659,117 @@ export function EventList() {
                     <div>
                       <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Event</h4>
                       <p className="font-semibold">{editFormData.name}</p>
+                      {editFormData.startDate && (
+                        <p className="text-sm text-gray-600">{new Date(editFormData.startDate).toLocaleDateString()}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {editFormData.players && editFormData.players > 0 && (
+                    <div>
+                      <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Resources</h4>
+                      <div className="space-y-1 text-sm">
+                        <p>{editFormData.players} players</p>
+                        <p>{editFormData.courts} courts needed</p>
+                        <p>{editFormData.coaches} coaches needed</p>
+                        {(() => {
+                          // Calculate event duration in hours for live calculations
+                          if (!editFormData.startTime || !editFormData.endTime) return null;
+                          
+                          const startTime = new Date(`2000-01-01T${editFormData.startTime}`);
+                          const endTime = new Date(`2000-01-01T${editFormData.endTime}`);
+                          
+                          // Handle overnight events
+                          if (endTime <= startTime) {
+                            endTime.setDate(endTime.getDate() + 1);
+                          }
+                          
+                          const diffMs = endTime.getTime() - startTime.getTime();
+                          const hours = diffMs / (1000 * 60 * 60);
+                          
+                          if (hours > 0) {
+                            return <p>{hours.toFixed(1)} hours</p>;
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   )}
 
                   <Separator />
 
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Players:</span>
-                      <span>{editFormData.players || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Courts:</span>
-                      <span>{editFormData.courts || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Coaches:</span>
-                      <span>{editFormData.coaches || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Fee per Player:</span>
-                      <span>${editFormData.feePerPlayer || "0"}</span>
-                    </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Financial Summary</h4>
+                    
+                    {(() => {
+                      // Live financial calculations
+                      const players = editFormData.players || 0;
+                      const feePerPlayer = parseFloat(editFormData.feePerPlayer || "0");
+                      const projectedRevenue = players * feePerPlayer;
+                      
+                      // Calculate event duration for coach costs
+                      let eventDurationHours = 1; // default to 1 hour
+                      if (editFormData.startTime && editFormData.endTime) {
+                        const startTime = new Date(`2000-01-01T${editFormData.startTime}`);
+                        const endTime = new Date(`2000-01-01T${editFormData.endTime}`);
+                        
+                        if (endTime <= startTime) {
+                          endTime.setDate(endTime.getDate() + 1);
+                        }
+                        
+                        const diffMs = endTime.getTime() - startTime.getTime();
+                        eventDurationHours = Math.max(diffMs / (1000 * 60 * 60), 0);
+                      }
+                      
+                      const coachRates = (editFormData.coachRates as CoachRate[]) || [];
+                      const miscExpenses = (editFormData.miscExpenses as MiscExpense[]) || [];
+                      
+                      const totalCoachCost = coachRates.reduce((sum, coach) => sum + ((coach.rate || 0) * eventDurationHours), 0);
+                      const totalMiscCost = miscExpenses.reduce((sum, expense) => sum + (expense.cost || 0), 0);
+                      const totalCosts = totalCoachCost + totalMiscCost;
+                      const netProfit = projectedRevenue - totalCosts;
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Projected Revenue:</span>
+                            <span className="font-medium">${projectedRevenue.toFixed(2)}</span>
+                          </div>
+                          
+                          <div className="flex justify-between text-sm">
+                            <span>Coach Costs:</span>
+                            <span className="font-medium">
+                              ${totalCoachCost.toFixed(2)}
+                              {eventDurationHours > 0 && eventDurationHours !== 1 && (
+                                <span className="text-xs text-gray-500 ml-1">
+                                  ({eventDurationHours.toFixed(1)}h)
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          
+                          <div className="flex justify-between text-sm">
+                            <span>Other Expenses:</span>
+                            <span className="font-medium">${totalMiscCost.toFixed(2)}</span>
+                          </div>
+                          
+                          <Separator />
+                          
+                          <div className="flex justify-between font-semibold">
+                            <span>Net Profit:</span>
+                            <span className={netProfit >= 0 ? "text-green-600" : "text-red-600"}>
+                              ${netProfit.toFixed(2)}
+                            </span>
+                          </div>
+                          
+                          {projectedRevenue > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {((netProfit / projectedRevenue) * 100).toFixed(1)}% margin
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
