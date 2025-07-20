@@ -2937,71 +2937,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { role } = req.params;
       
-      // Return default permissions based on role (in real implementation, these would be stored in DB)
-      const defaultPermissions = {
-        admin: [
-          { widgetId: 1, canView: true, canManage: true },
-          { widgetId: 2, canView: true, canManage: true },
-          { widgetId: 3, canView: true, canManage: true },
-          { widgetId: 4, canView: true, canManage: true },
-          { widgetId: 5, canView: true, canManage: true },
-          { widgetId: 6, canView: true, canManage: true },
-          { widgetId: 7, canView: true, canManage: true },
-          { widgetId: 8, canView: true, canManage: true },
-        ],
-        manager: [
-          { widgetId: 1, canView: true, canManage: true },
-          { widgetId: 2, canView: true, canManage: true },
-          { widgetId: 3, canView: true, canManage: true },
-          { widgetId: 4, canView: true, canManage: true },
-          { widgetId: 5, canView: true, canManage: false },
-          { widgetId: 6, canView: true, canManage: false },
-          { widgetId: 7, canView: true, canManage: true },
-          { widgetId: 8, canView: false, canManage: false },
-        ],
-        coach: [
-          { widgetId: 1, canView: true, canManage: false },
-          { widgetId: 2, canView: true, canManage: false },
-          { widgetId: 3, canView: true, canManage: false },
-          { widgetId: 4, canView: true, canManage: false },
-          { widgetId: 5, canView: true, canManage: false },
-          { widgetId: 6, canView: true, canManage: false },
-          { widgetId: 7, canView: false, canManage: false },
-          { widgetId: 8, canView: false, canManage: false },
-        ],
-        staff: [
-          { widgetId: 1, canView: false, canManage: false },
-          { widgetId: 2, canView: false, canManage: false },
-          { widgetId: 3, canView: false, canManage: false },
-          { widgetId: 4, canView: false, canManage: false },
-          { widgetId: 5, canView: true, canManage: false },
-          { widgetId: 6, canView: true, canManage: false },
-          { widgetId: 7, canView: false, canManage: false },
-          { widgetId: 8, canView: false, canManage: false },
-        ],
-        player: [
-          { widgetId: 1, canView: false, canManage: false },
-          { widgetId: 2, canView: true, canManage: false },
-          { widgetId: 3, canView: false, canManage: false },
-          { widgetId: 4, canView: true, canManage: false },
-          { widgetId: 5, canView: false, canManage: false },
-          { widgetId: 6, canView: true, canManage: false },
-          { widgetId: 7, canView: false, canManage: false },
-          { widgetId: 8, canView: false, canManage: false },
-        ],
-        parent: [
-          { widgetId: 1, canView: false, canManage: false },
-          { widgetId: 2, canView: true, canManage: false },
-          { widgetId: 3, canView: false, canManage: false },
-          { widgetId: 4, canView: true, canManage: false },
-          { widgetId: 5, canView: false, canManage: false },
-          { widgetId: 6, canView: true, canManage: false },
-          { widgetId: 7, canView: false, canManage: false },
-          { widgetId: 8, canView: false, canManage: false },
-        ],
-      };
-
-      res.json(defaultPermissions[role] || []);
+      // Get permissions from database
+      const permissions = await storage.getRolePermissions(role);
+      
+      // If no permissions exist, return default permissions based on role
+      if (permissions.length === 0) {
+        const defaultPermissions: { [key: string]: any[] } = {
+          admin: [
+            { widgetId: 1, canView: true, canManage: true },
+            { widgetId: 2, canView: true, canManage: true },
+            { widgetId: 3, canView: true, canManage: true },
+            { widgetId: 4, canView: true, canManage: true },
+            { widgetId: 5, canView: true, canManage: true },
+            { widgetId: 6, canView: true, canManage: true },
+            { widgetId: 7, canView: true, canManage: true },
+            { widgetId: 8, canView: true, canManage: true },
+          ],
+          manager: [
+            { widgetId: 1, canView: true, canManage: true },
+            { widgetId: 2, canView: true, canManage: true },
+            { widgetId: 3, canView: true, canManage: true },
+            { widgetId: 4, canView: true, canManage: true },
+            { widgetId: 5, canView: true, canManage: false },
+            { widgetId: 6, canView: true, canManage: false },
+            { widgetId: 7, canView: true, canManage: true },
+            { widgetId: 8, canView: false, canManage: false },
+          ],
+          coach: [
+            { widgetId: 1, canView: true, canManage: false },
+            { widgetId: 2, canView: true, canManage: false },
+            { widgetId: 3, canView: true, canManage: false },
+            { widgetId: 4, canView: true, canManage: false },
+            { widgetId: 5, canView: true, canManage: false },
+            { widgetId: 6, canView: true, canManage: false },
+            { widgetId: 7, canView: false, canManage: false },
+            { widgetId: 8, canView: false, canManage: false },
+          ],
+          staff: [
+            { widgetId: 1, canView: false, canManage: false },
+            { widgetId: 2, canView: false, canManage: false },
+            { widgetId: 3, canView: false, canManage: false },
+            { widgetId: 4, canView: false, canManage: false },
+            { widgetId: 5, canView: true, canManage: false },
+            { widgetId: 6, canView: true, canManage: false },
+            { widgetId: 7, canView: false, canManage: false },
+            { widgetId: 8, canView: false, canManage: false },
+          ],
+          player: [
+            { widgetId: 1, canView: false, canManage: false },
+            { widgetId: 2, canView: true, canManage: false },
+            { widgetId: 3, canView: false, canManage: false },
+            { widgetId: 4, canView: true, canManage: false },
+            { widgetId: 5, canView: false, canManage: false },
+            { widgetId: 6, canView: true, canManage: false },
+            { widgetId: 7, canView: false, canManage: false },
+            { widgetId: 8, canView: false, canManage: false },
+          ],
+          parent: [
+            { widgetId: 1, canView: false, canManage: false },
+            { widgetId: 2, canView: true, canManage: false },
+            { widgetId: 3, canView: false, canManage: false },
+            { widgetId: 4, canView: true, canManage: false },
+            { widgetId: 5, canView: false, canManage: false },
+            { widgetId: 6, canView: true, canManage: false },
+            { widgetId: 7, canView: false, canManage: false },
+            { widgetId: 8, canView: false, canManage: false },
+          ],
+        };
+        
+        return res.json(defaultPermissions[role] || []);
+      }
+      
+      res.json(permissions);
     } catch (error) {
       console.error("Get role permissions error:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -3017,16 +3024,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { role, widgetId, canView, canManage } = req.body;
 
-      // In a real implementation, this would update the database
-      // For now, we'll just return success
+      // Update or create permission in database
+      const updatedPermission = await storage.updateRolePermission(role, widgetId, canView, canManage);
       console.log(`Updated permissions for ${role} on widget ${widgetId}: view=${canView}, manage=${canManage}`);
 
       res.json({ 
         message: "Permissions updated successfully",
-        role,
-        widgetId,
-        canView,
-        canManage
+        permission: updatedPermission
       });
     } catch (error) {
       console.error("Update role permissions error:", error);

@@ -26,6 +26,8 @@ import {
   documents,
   documentSignatures,
   documentAuditLogs,
+  rolePermissions,
+  dashboardWidgets,
 
   type User, 
   type InsertUser, 
@@ -79,6 +81,10 @@ import {
   type InsertDocumentSignature,
   type DocumentAuditLog,
   type InsertDocumentAuditLog,
+  type RolePermission,
+  type InsertRolePermission,
+  type DashboardWidget,
+  type InsertDashboardWidget,
   eventRegistrations,
 
 } from "@shared/schema";
@@ -250,6 +256,11 @@ export interface IStorage {
   getEventRegistrations(eventId: number): Promise<any[]>;
   getUserEventRegistration(eventId: number, userId: number): Promise<any>;
   updateEventRegistrationStatus(registrationId: number, status: string): Promise<void>;
+
+  // Role Permissions methods
+  getRolePermissions(role: string): Promise<RolePermission[]>;
+  updateRolePermission(role: string, widgetId: number, canView: boolean, canManage: boolean): Promise<RolePermission>;
+  createDefaultRolePermission(permission: InsertRolePermission): Promise<RolePermission>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1284,6 +1295,39 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     return generation;
+  }
+
+  // Role Permissions methods
+  async getRolePermissions(role: string): Promise<RolePermission[]> {
+    return await db.select().from(rolePermissions).where(eq(rolePermissions.role, role));
+  }
+
+  async updateRolePermission(role: string, widgetId: number, canView: boolean, canManage: boolean): Promise<RolePermission> {
+    // Try to update existing permission first
+    const existing = await db.select().from(rolePermissions)
+      .where(and(eq(rolePermissions.role, role), eq(rolePermissions.widgetId, widgetId)));
+
+    if (existing.length > 0) {
+      // Update existing permission
+      const [updated] = await db.update(rolePermissions)
+        .set({ canView, canManage })
+        .where(and(eq(rolePermissions.role, role), eq(rolePermissions.widgetId, widgetId)))
+        .returning();
+      return updated;
+    } else {
+      // Create new permission
+      const [created] = await db.insert(rolePermissions)
+        .values({ role, widgetId, canView, canManage })
+        .returning();
+      return created;
+    }
+  }
+
+  async createDefaultRolePermission(permission: InsertRolePermission): Promise<RolePermission> {
+    const [created] = await db.insert(rolePermissions)
+      .values(permission)
+      .returning();
+    return created;
   }
 
 }
