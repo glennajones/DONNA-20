@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat } from "lucide-react";
+import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat, User } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import type { Event } from "@shared/schema";
@@ -437,6 +437,34 @@ export function EventList() {
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
                           {event.players} players
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          {(() => {
+                            // Parse coach rates to show specific coach names if available
+                            let coachRates = [];
+                            try {
+                              coachRates = Array.isArray(event.coachRates) 
+                                ? event.coachRates 
+                                : typeof event.coachRates === 'string' 
+                                  ? JSON.parse(event.coachRates) 
+                                  : [];
+                            } catch (e) {
+                              coachRates = [];
+                            }
+                            
+                            const coachNames = coachRates
+                              .filter((coach: any) => coach.profile && coach.profile.trim())
+                              .map((coach: any) => coach.profile.trim());
+                            
+                            if (coachNames.length > 0) {
+                              return coachNames.length <= 2 
+                                ? coachNames.join(", ")
+                                : `${coachNames.slice(0, 2).join(", ")} +${coachNames.length - 2} more`;
+                            }
+                            
+                            return `${event.coaches} coach${event.coaches !== 1 ? 'es' : ''}`;
+                          })()}
                         </div>
                       </div>
                     </div>
