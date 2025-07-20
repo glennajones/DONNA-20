@@ -19,6 +19,8 @@ import {
   podcastPollVotes,
   timeClockEntries,
   practicePlans,
+  coaches,
+  coachOutreachLogs,
 
   type User, 
   type InsertUser, 
@@ -58,6 +60,10 @@ import {
   type InsertTimeClockEntry,
   type PracticePlan,
   type InsertPracticePlan,
+  type Coach,
+  type InsertCoach,
+  type CoachOutreachLog,
+  type InsertCoachOutreachLog,
 
 } from "@shared/schema";
 import { db } from "./db";

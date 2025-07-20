@@ -99,7 +99,7 @@ export default function CoachManagement() {
 
       const submitData = {
         ...formData,
-        hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : null
+        hourlyRate: formData.hourlyRate ? formData.hourlyRate : null
       };
       
       if (!isEditing) {
