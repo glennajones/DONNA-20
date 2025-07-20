@@ -708,12 +708,20 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
 
                       const consolidatedEvents = Object.values(groupedEvents).slice(0, 3);
                       
+                      // Debug: log the consolidated events
+                      console.log('Consolidated events for day:', day.date, consolidatedEvents.map(g => ({
+                        title: g.event.title,
+                        time: g.event.time,
+                        courts: g.courts,
+                        courtCount: g.courts.length
+                      })));
+                      
                       return consolidatedEvents.map((group, index) => (
                         <div
                           key={`${group.event.id}-${index}`}
                           className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
                           title={`${group.event.time} - ${group.event.title}${group.courts.length > 1 ? ` (${group.courts.length} courts)` : ''} - ${group.courts.join(', ')}`}
-                          onClick={() => setSelectedEvent(group.event, {courts: [...new Set(group.courts.sort())], count: group.courts.length})}
+                          onClick={() => setSelectedEvent(group.event, {courts: Array.from(new Set(group.courts)).sort(), count: group.courts.length})}
                           style={{
                             backgroundColor: getEventColor(group.event.eventType || "Practice")
                           }}
