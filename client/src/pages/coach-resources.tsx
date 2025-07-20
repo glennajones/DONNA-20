@@ -3,11 +3,15 @@ import Navbar from "@/components/layout/Navbar";
 import TimeClock from "@/modules/Coach/TimeClock";
 import PracticeLibrary from "@/modules/Coach/PracticeLibrary";
 import GameTools from "@/modules/Coach/GameTools";
+import AdminApprovals from "@/modules/Coach/AdminApprovals";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, GraduationCap } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/lib/auth";
 
 export default function CoachResourcesPage() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
@@ -43,6 +47,13 @@ export default function CoachResourcesPage() {
         <div className="mb-8">
           <TimeClock />
         </div>
+
+        {/* Admin Approvals Section - Only show for admins */}
+        {user?.role === "admin" && (
+          <div className="mb-8">
+            <AdminApprovals />
+          </div>
+        )}
 
         {/* Practice Library Section */}
         <div className="mb-8">
