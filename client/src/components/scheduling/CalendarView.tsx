@@ -103,33 +103,35 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
   // Navigation header component
   const navigationHeader = (
     <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={navigatePrevious}
-          className="p-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={navigateNext}
-          className="p-2"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={navigateToday}
-        >
-          Today
-        </Button>
-      </div>
-      <div className="text-lg font-semibold">
-        {getDisplayTitle(viewType, currentDate)}
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={navigatePrevious}
+            className="p-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={navigateNext}
+            className="p-2"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={navigateToday}
+          >
+            Today
+          </Button>
+        </div>
+        <div className="text-lg font-semibold">
+          {getDisplayTitle(viewType, currentDate)}
+        </div>
       </div>
     </div>
   );
