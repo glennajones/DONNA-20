@@ -49,7 +49,25 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
   // Calculated values
   const projectedRevenue = players * feePerPlayer;
-  const totalCoachCost = coachRates.reduce((sum, coach) => sum + coach.rate, 0);
+  
+  // Calculate event duration in hours
+  const getEventDurationHours = () => {
+    if (!basic.startTime || !basic.endTime) return 0;
+    
+    const startTime = new Date(`2000-01-01T${basic.startTime}`);
+    const endTime = new Date(`2000-01-01T${basic.endTime}`);
+    
+    // Handle overnight events
+    if (endTime <= startTime) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+    
+    const diffMs = endTime.getTime() - startTime.getTime();
+    return diffMs / (1000 * 60 * 60); // Convert to hours
+  };
+  
+  const eventDurationHours = getEventDurationHours();
+  const totalCoachCost = coachRates.reduce((sum, coach) => sum + (coach.rate * eventDurationHours), 0);
   const totalMiscCost = miscExpenses.reduce((sum, expense) => sum + expense.cost, 0);
   const totalCosts = totalCoachCost + totalMiscCost;
   const netProfit = projectedRevenue - totalCosts;
@@ -353,7 +371,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         />
                         <Input
                           type="number"
-                          placeholder="Rate ($)"
+                          placeholder="Hourly Rate ($)"
                           value={coach.rate}
                           onChange={(e) => updateCoachRate(index, "rate", e.target.value)}
                           className="w-32"
@@ -437,6 +455,9 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                   <p>{players} players</p>
                   <p>{courts} courts needed</p>
                   <p>{coaches} coaches needed</p>
+                  {eventDurationHours > 0 && (
+                    <p>{eventDurationHours.toFixed(1)} hours</p>
+                  )}
                 </div>
               </div>
             )}
@@ -453,7 +474,14 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
               
               <div className="flex justify-between text-sm">
                 <span>Coach Costs:</span>
-                <span className="font-medium">${totalCoachCost.toFixed(2)}</span>
+                <span className="font-medium">
+                  ${totalCoachCost.toFixed(2)}
+                  {eventDurationHours > 0 && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      ({eventDurationHours.toFixed(1)}h)
+                    </span>
+                  )}
+                </span>
               </div>
               
               <div className="flex justify-between text-sm">

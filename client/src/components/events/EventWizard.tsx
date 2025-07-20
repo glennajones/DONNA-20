@@ -102,6 +102,24 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
     }
   };
 
+  // Calculate event duration in hours
+  const getEventDurationHours = () => {
+    if (!basic.startTime || !basic.endTime) return 0;
+    
+    const startTime = new Date(`2000-01-01T${basic.startTime}`);
+    const endTime = new Date(`2000-01-01T${basic.endTime}`);
+    
+    // Handle overnight events
+    if (endTime <= startTime) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+    
+    const diffMs = endTime.getTime() - startTime.getTime();
+    return diffMs / (1000 * 60 * 60); // Convert to hours
+  };
+
+  const eventDurationHours = getEventDurationHours();
+
   // Helper functions for dynamic lists
   const updateCoachRate = (index: number, field: keyof CoachRate, value: string | number) => {
     const updated = [...coachRates];
@@ -135,7 +153,7 @@ export function EventWizard({ onComplete }: { onComplete?: () => void }) {
     }
   };
 
-  const totalCoachCost = coachRates.reduce((sum, rate) => sum + (rate.rate * coaches), 0);
+  const totalCoachCost = coachRates.reduce((sum, rate) => sum + (rate.rate * eventDurationHours), 0);
   const totalMiscCost = miscExpenses.reduce((sum, expense) => sum + expense.cost, 0);
   const totalCosts = totalCoachCost + totalMiscCost;
   const netProfit = projectedRevenue - totalCosts;
