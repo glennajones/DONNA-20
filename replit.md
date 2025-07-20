@@ -194,6 +194,23 @@ Preferred communication style: Simple, everyday language.
 - **Full CRUD operations** tested and working: Create, Read, Update (with visual feedback), Delete
 - **Edit functionality** with smooth scrolling, visual indicators, and form pre-population
 
+#### Module 15: Documents & e-Signatures (Completed ✓)
+- **Document Repository System** with secure file upload, storage, and management
+- **Electronic Signature Engine** supporting both canvas drawing and typed signatures
+- **Multi-format document support** (PDF, DOC, DOCX, TXT) with 10MB file size limit
+- **Role-based access control** with granular document permissions by user role
+- **Document lifecycle management** with versioning, expiration dates, and status tracking
+- **Comprehensive audit logging** tracking all document actions (view, download, sign, edit, delete)
+- **Signature workflow management** with requirement flags and signature collection tracking
+- **Document viewer integration** with inline PDF preview and signature collection interface
+- **Full CRUD operations** for documents: Create (upload), Read (view/download), Update (edit metadata), Delete (admin only)
+- **Legal compliance features** including electronic signature agreements and IP address logging
+- **Real-time signature status** showing who has signed and when
+- **Database integration** with PostgreSQL including documents, document_signatures, and document_audit_logs tables
+- **RESTful API endpoints** for document management, signature collection, and audit trail access
+- **Professional UI components** with drag-and-drop signature canvas and typed signature options
+- **Dashboard navigation integration** with documents quick access button
+
 ## Data Flow
 
 1. **Authentication Flow**:

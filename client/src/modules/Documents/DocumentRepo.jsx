@@ -46,6 +46,14 @@ export default function DocumentRepo({ onViewDocument }) {
     file: null
   });
 
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    version: '',
+    requiresSignature: false,
+    allowedRoles: []
+  });
+
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -199,6 +207,62 @@ export default function DocumentRepo({ onViewDocument }) {
     }
   };
 
+  const handleEdit = (document) => {
+    setSelectedDocument(document);
+    setEditForm({
+      title: document.title,
+      description: document.description || '',
+      version: document.version,
+      requiresSignature: document.requiresSignature,
+      allowedRoles: document.allowedRoles || ['admin', 'manager']
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!editForm.title) {
+      toast({
+        title: "Validation Error",
+        description: "Title is required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/documents/${selectedDocument.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(editForm)
+      });
+
+      if (response.ok) {
+        await fetchDocuments();
+        setEditDialogOpen(false);
+        setSelectedDocument(null);
+        toast({
+          title: "Success",
+          description: "Document updated successfully."
+        });
+      } else {
+        throw new Error('Failed to update document');
+      }
+    } catch (error) {
+      console.error('Failed to update document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusBadge = (document) => {
     if (document.status === 'active') {
       if (document.expirationDate && new Date(document.expirationDate) < new Date()) {
@@ -326,13 +390,20 @@ export default function DocumentRepo({ onViewDocument }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="requiresSignature"
-                      checked={uploadForm.requiresSignature}
-                      onCheckedChange={(checked) => setUploadForm(prev => ({ ...prev, requiresSignature: checked }))}
-                    />
-                    <Label htmlFor="requiresSignature">Requires Electronic Signature</Label>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="requiresSignature"
+                        checked={uploadForm.requiresSignature}
+                        onCheckedChange={(checked) => setUploadForm(prev => ({ ...prev, requiresSignature: checked }))}
+                      />
+                      <Label htmlFor="requiresSignature" className="font-medium">
+                        Requires Electronic Signature
+                      </Label>
+                    </div>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                      Check this box to enable e-signature functionality for this document. Users will need to electronically sign before accessing.
+                    </p>
                   </div>
 
                   <div className="flex gap-2">
@@ -399,10 +470,14 @@ export default function DocumentRepo({ onViewDocument }) {
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-1">
-                          {document.requiresSignature && (
-                            <Badge variant="outline" className="text-xs">
+                          {document.requiresSignature ? (
+                            <Badge variant="default" className="text-xs bg-blue-600">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Signature Required
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-gray-500">
+                              No Signature Required
                             </Badge>
                           )}
                           {document.expirationDate && (
@@ -455,6 +530,7 @@ export default function DocumentRepo({ onViewDocument }) {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={() => handleEdit(document)}
                               className="flex items-center gap-1"
                             >
                               <Edit className="h-3 w-3" />
@@ -498,6 +574,107 @@ export default function DocumentRepo({ onViewDocument }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Document Dialog */}
+      {selectedDocument && (
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Document</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">Title *</Label>
+                <Input
+                  id="edit-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Document title"
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editForm.description}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Brief description of the document"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-version">Version</Label>
+                <Input
+                  id="edit-version"
+                  value={editForm.version}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, version: e.target.value }))}
+                  placeholder="1.0"
+                />
+              </div>
+
+              <div>
+                <Label>Access Permissions</Label>
+                <div className="space-y-2 mt-2">
+                  {['admin', 'manager', 'coach'].map(role => (
+                    <div key={role} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-${role}`}
+                        checked={editForm.allowedRoles.includes(role)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setEditForm(prev => ({
+                              ...prev,
+                              allowedRoles: [...prev.allowedRoles, role]
+                            }));
+                          } else {
+                            setEditForm(prev => ({
+                              ...prev,
+                              allowedRoles: prev.allowedRoles.filter(r => r !== role)
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`edit-${role}`} className="capitalize">{role}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-requiresSignature"
+                    checked={editForm.requiresSignature}
+                    onCheckedChange={(checked) => setEditForm(prev => ({ ...prev, requiresSignature: checked }))}
+                  />
+                  <Label htmlFor="edit-requiresSignature" className="font-medium">
+                    Requires Electronic Signature
+                  </Label>
+                </div>
+                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                  Enable electronic signature requirement for this document.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  Update Document
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
