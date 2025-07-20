@@ -65,6 +65,9 @@ Preferred communication style: Simple, everyday language.
 - **Status workflow** (pending → approved/rejected)
 - **Registration data validation** with comprehensive form handling
 - **Demo payment processing** with mock Stripe integration
+- **Event registration system** with automatic form pre-filling from active player profiles
+- **Parent registration capability** with child profile data integration and parent contact auto-fill
+- **Visual confirmation system** showing when forms are populated from existing profiles
 
 #### Module 3: Training & Scheduling System (Completed)
 - **Calendar view** with day/week/month viewing options
@@ -73,12 +76,14 @@ Preferred communication style: Simple, everyday language.
 - **Event management** (training, match, tournament, practice)
 - **Coach assignment** and participant tracking
 - **Schedule conflict prevention** with automatic validation
-- **Role-based scheduling access** (admin/manager can create, coach can view)
+- **Role-based scheduling access** (admin/manager can create, players/parents can view and register)
 - **Multi-court event support** with comma-separated court assignments
 - **Unified event data source** across all calendar views
 - **Authentic calendar dates** with proper timezone handling (July 2025)
 - **Court abbreviations in week view** (C1, B1, etc.)
 - **Text wrapping for coach names** in event cards
+- **Event registration system** with intelligent auto-fill for players and parents
+- **Player dashboard integration** with streamlined schedule access
 
 #### Module 4: Player & Parent Management (Completed)
 - **Player management** with comprehensive profile system
