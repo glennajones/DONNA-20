@@ -54,8 +54,10 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const [playersPerCourt, setPlayersPerCourt] = useState(6);
   const [playersPerCoach, setPlayersPerCoach] = useState(12);
   const [assignedCourts, setAssignedCourts] = useState<string[]>([]);
+  const [manualCoaches, setManualCoaches] = useState<number | null>(null);
+  const [useManualCoaches, setUseManualCoaches] = useState(false);
   const courts = playersPerCourt > 0 ? Math.ceil(players / playersPerCourt) : 0;
-  const coaches = playersPerCoach > 0 ? Math.ceil(players / playersPerCoach) : 0;
+  const coaches = useManualCoaches ? (manualCoaches ?? 0) : (playersPerCoach > 0 ? Math.ceil(players / playersPerCoach) : 0);
 
   // Available courts from the scheduling system
   const availableCourts = [
@@ -458,8 +460,45 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         placeholder="12"
                         value={playersPerCoach}
                         onChange={(e) => setPlayersPerCoach(Number(e.target.value) || 0)}
+                        disabled={useManualCoaches}
                       />
                     </div>
+                  </div>
+
+                  {/* Manual Coach Override */}
+                  <div className="space-y-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="manualCoaches"
+                        checked={useManualCoaches}
+                        onCheckedChange={(checked) => {
+                          setUseManualCoaches(!!checked);
+                          if (!checked) {
+                            setManualCoaches(null);
+                          }
+                        }}
+                      />
+                      <Label htmlFor="manualCoaches" className="text-sm font-medium">
+                        Override coaches (for outside/school coaches)
+                      </Label>
+                    </div>
+                    
+                    {useManualCoaches && (
+                      <div className="space-y-2">
+                        <Label htmlFor="manualCoachesInput">Number of Club Coaches Needed</Label>
+                        <Input
+                          id="manualCoachesInput"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={manualCoaches ?? ""}
+                          onChange={(e) => setManualCoaches(Number(e.target.value) || 0)}
+                        />
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Set to 0 if using outside coaches or school coaches that the club doesn't provide
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {players > 0 && (
