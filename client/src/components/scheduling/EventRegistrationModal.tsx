@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [playerProfile, setPlayerProfile] = useState(null);
   
   const [formData, setFormData] = useState({
     playerName: "",
@@ -45,6 +46,44 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
     parentPhone: user?.role === "parent" ? user.phone || "" : "",
     registrationType: user?.role === "parent" ? "parent" : "player",
   });
+
+  // Fetch player profile data if user is a player
+  useEffect(() => {
+    const fetchPlayerProfile = async () => {
+      if (user?.role === "player" && isOpen) {
+        try {
+          const token = localStorage.getItem('auth_token');
+          const response = await fetch('/api/players', {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          
+          if (response.ok) {
+            const players = await response.json();
+            // Find the player profile that matches the current user's name
+            const currentPlayerProfile = players.find(player => 
+              player.name === user.name && player.status === "active"
+            );
+            
+            if (currentPlayerProfile) {
+              setPlayerProfile(currentPlayerProfile);
+              // Pre-fill form with player data
+              setFormData(prev => ({
+                ...prev,
+                playerName: currentPlayerProfile.name || "",
+                playerEmail: currentPlayerProfile.contact || "",
+                playerPhone: currentPlayerProfile.phone || "",
+                playerDateOfBirth: currentPlayerProfile.dateOfBirth || "",
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch player profile:', error);
+        }
+      }
+    };
+
+    fetchPlayerProfile();
+  }, [user, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,6 +239,14 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
                 <div className="space-y-4">
                   <div className="border-b pb-2">
                     <h4 className="font-medium">Player Information</h4>
+                    {playerProfile && (
+                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                          <AlertCircle className="h-4 w-4" />
+                          <span className="text-sm">Information pre-filled from your active player profile</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div>
