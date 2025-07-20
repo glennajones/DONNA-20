@@ -289,8 +289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: budgetEvent.eventType,
                 participants: [],
                 coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
-                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
-                  : 'TBD',
+                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`
+                  : `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`,
                 description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
                 status: "scheduled" as const,
                 createdBy: budgetEvent.createdBy,
@@ -316,8 +316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: budgetEvent.eventType,
                 participants: [],
                 coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
-                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
-                  : 'TBD',
+                  ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`
+                  : `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`,
                 description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
                 status: "scheduled" as const,
                 createdBy: budgetEvent.createdBy,

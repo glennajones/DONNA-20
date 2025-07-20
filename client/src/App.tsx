@@ -37,6 +37,7 @@ function Router() {
       <Route path="/registration/success" component={RegistrationSuccessPage} />
       <Route path="/registrations" component={RegistrationsManagementPage} />
       <Route path="/training" component={TrainingPage} />
+      <Route path="/training-scheduling" component={TrainingPage} />
       <Route path="/members" component={MembersPage} />
       <Route path="/communication" component={CommunicationPage} />
       <Route path="/forms" component={FormsPage} />
