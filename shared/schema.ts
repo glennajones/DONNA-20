@@ -830,7 +830,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 export const rolePermissions = pgTable("role_permissions", {
   id: serial("id").primaryKey(),
   role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
-  widgetId: integer("widget_id").references(() => dashboardWidgets.id),
+  widgetId: integer("widget_id"), // Remove foreign key constraint for now
   canView: boolean("can_view").notNull().default(false),
   canManage: boolean("can_manage").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
