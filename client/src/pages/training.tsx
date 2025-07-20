@@ -1,15 +1,19 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
 import CalendarView from "@/components/scheduling/CalendarView";
 import CourtManager from "@/components/scheduling/CourtManager";
 import { useAuth } from "@/lib/auth";
+import { Monitor, ExternalLink } from "lucide-react";
 
 export default function TrainingPage() {
   const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   return (
     <ProtectedRoute requiredRoles={["admin", "manager", "coach", "player", "parent"]}>
@@ -30,34 +34,47 @@ export default function TrainingPage() {
             <Tabs defaultValue="calendar" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
-                {["admin", "manager", "coach"].includes(user?.role) && (
+                {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
                   <TabsTrigger value="courts">🏟️ Court Manager</TabsTrigger>
                 )}
               </TabsList>
               
               <TabsContent value="calendar" className="space-y-4">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-sm font-medium">View:</span>
-                  <div className="flex bg-white dark:bg-gray-800 border rounded-lg">
-                    {(["day", "week", "month"] as const).map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setViewType(type)}
-                        className={`px-3 py-1 text-sm capitalize ${
-                          viewType === type
-                            ? "bg-blue-500 text-white"
-                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        } first:rounded-l-lg last:rounded-r-lg`}
-                      >
-                        {type}
-                      </button>
-                    ))}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium">View:</span>
+                    <div className="flex bg-white dark:bg-gray-800 border rounded-lg">
+                      {(["day", "week", "month"] as const).map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => setViewType(type)}
+                          className={`px-3 py-1 text-sm capitalize ${
+                            viewType === type
+                              ? "bg-blue-500 text-white"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          } first:rounded-l-lg last:rounded-r-lg`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  
+                  {/* TV Display Button */}
+                  <Button
+                    onClick={() => setLocation('/tv-display')}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Monitor className="h-4 w-4" />
+                    TV Display
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
                 </div>
                 <CalendarView viewType={viewType} />
               </TabsContent>
               
-              {["admin", "manager", "coach"].includes(user?.role) && (
+              {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
                 <TabsContent value="courts">
                   <CourtManager />
                 </TabsContent>

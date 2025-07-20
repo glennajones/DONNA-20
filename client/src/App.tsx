@@ -26,6 +26,7 @@ import AdminSettingsPage from "./pages/admin-settings";
 import AdminDashboardConfigPage from "./pages/admin-dashboard-config";
 import CoachMatchingPage from "./pages/coach-matching";
 import DocumentsPage from "./pages/documents";
+import TVDisplayPage from "./pages/tv-display";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -51,6 +52,7 @@ function Router() {
       <Route path="/admin-dashboard-config" component={AdminDashboardConfigPage} />
       <Route path="/coach-matching" component={CoachMatchingPage} />
       <Route path="/documents" component={DocumentsPage} />
+      <Route path="/tv-display" component={TVDisplayPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
