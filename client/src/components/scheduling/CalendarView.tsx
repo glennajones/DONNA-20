@@ -330,12 +330,12 @@ function findEventInTimeSlot(events: ScheduleEvent[], court: string, timeSlot: s
   });
 }
 
-function findFirstSlotForEvent(events: ScheduleEvent[], court: string, timeSlots: string[]): string | null {
-  // Find any event in this court (or 'any' for week view)
-  const event = court === 'any' ? events[0] : events.find(e => {
+function findFirstSlotForEvent(events: ScheduleEvent[], court: string, timeSlots: string[], targetEvent?: ScheduleEvent): string | null {
+  // Find the specific target event if provided, otherwise find any event in this court
+  const event = targetEvent || (court === 'any' ? events[0] : events.find(e => {
     const eventCourts = e.court.split(',').map(c => c.trim());
     return eventCourts.includes(court);
-  });
+  }));
   
   if (!event) return null;
   
@@ -489,8 +489,8 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                     </div>
                     {courts.map((court) => {
                       const eventInSlot = findEventInTimeSlot(todayEvents, court, timeSlot);
-                      const firstEventSlot = findFirstSlotForEvent(todayEvents, court, timeSlots);
-                      const isFirstSlot = timeSlot === firstEventSlot;
+                      const firstEventSlot = findFirstSlotForEvent(todayEvents, court, timeSlots, eventInSlot);
+                      const isFirstSlot = eventInSlot && timeSlot === firstEventSlot;
                       
                       return (
                         <div
