@@ -46,75 +46,80 @@ export function Navbar() {
                 Dashboard
               </Link>
               
-              {hasRole(["admin", "manager"]) && (
-                <Link href="/registrations" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Registrations
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager"]) && (
-                <Link href="/members" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Members
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager", "coach"]) && (
-                <Link href="/training" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Training
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager"]) && (
-                <Link href="/communication" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Communication
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager"]) && (
-                <Link href="/forms" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Forms
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager"]) && (
-                <Link href="/events" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Events
-                </Link>
-              )}
-              
-              {hasRole(["admin", "manager", "coach", "staff"]) && (
-                <Link href="/coach-resources" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Coach Resources
-                </Link>
-              )}
-              
-              <Link href="/player-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                Player Zone
-              </Link>
-              
-              <Link href="/parent-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                Parent Zone
-              </Link>
-              
-              <a 
-                href="https://www.unitedvolleyball.club/pages/better-together-a-united-podcast" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium cursor-pointer"
-              >
-                Podcast
-              </a>
-              
-              {hasRole("admin") && (
-                <Link href="/admin-settings" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Admin Settings
-                </Link>
-              )}
-              
-              {(hasRole("admin") || hasRole("manager")) && (
-                <Link href="/coach-matching" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Coach Matching
-                </Link>
+              {/* Temporarily hide all navigation for Korohenj except Dashboard */}
+              {user?.username !== "korohenj" && (
+                <>
+                  {hasRole(["admin", "manager"]) && (
+                    <Link href="/registrations" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Registrations
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager"]) && (
+                    <Link href="/members" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Members
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager", "coach"]) && (
+                    <Link href="/training" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Training
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager"]) && (
+                    <Link href="/communication" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Communication
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager"]) && (
+                    <Link href="/forms" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Forms
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager"]) && (
+                    <Link href="/events" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Events
+                    </Link>
+                  )}
+                  
+                  {hasRole(["admin", "manager", "coach", "staff"]) && (
+                    <Link href="/coach-resources" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Coach Resources
+                    </Link>
+                  )}
+                  
+                  <Link href="/player-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                    Player Zone
+                  </Link>
+                  
+                  <Link href="/parent-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                    Parent Zone
+                  </Link>
+                  
+                  <a 
+                    href="https://www.unitedvolleyball.club/pages/better-together-a-united-podcast" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium cursor-pointer"
+                  >
+                    Podcast
+                  </a>
+                  
+                  {hasRole("admin") && (
+                    <Link href="/admin-settings" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Admin Settings
+                    </Link>
+                  )}
+                  
+                  {(hasRole("admin") || hasRole("manager")) && (
+                    <Link href="/coach-matching" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                      Coach Matching
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>

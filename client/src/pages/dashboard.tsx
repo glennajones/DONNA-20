@@ -162,7 +162,7 @@ export default function Dashboard() {
   ];
 
   // Main navigation cards for quick access to key sections
-  const navigationCards = [
+  const allNavigationCards = [
     {
       title: "Members",
       description: "Manage players and parents",
@@ -227,6 +227,15 @@ export default function Dashboard() {
       roles: ["admin"],
     },
   ];
+
+  // Filter navigation cards for Korohenj - only show Training & Scheduling, Events, and Podcast
+  const navigationCards = user?.username === "korohenj" 
+    ? allNavigationCards.filter(card => 
+        card.title === "Training & Scheduling" || 
+        card.title === "Events" || 
+        card.title === "Podcast"
+      )
+    : allNavigationCards;
 
   // Create activities from pending time clock entries that need admin approval
   const activities = pendingEntries.map((entry: any) => {
