@@ -129,12 +129,6 @@ export const parentsRelations = relations(parents, ({ many }) => ({
 }));
 
 // Type exports
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Registration = typeof registrations.$inferSelect;
-export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
-export type Payment = typeof payments.$inferSelect;
-export type ScheduleEvent = typeof scheduleEvents.$inferSelect;
 export type Player = typeof players.$inferSelect;
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type Parent = typeof parents.$inferSelect;

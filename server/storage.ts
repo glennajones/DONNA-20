@@ -89,7 +89,7 @@ import {
 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, ne, desc, or } from "drizzle-orm";
+import { eq, and, gte, lte, ne, desc, or, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -578,7 +578,9 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     // Automatically create user account for parent
-    await this.createUserAccount(parent.name, parent.contact, "parent");
+    if (parent.email) {
+      await this.createUserAccount(parent.name, parent.email, "parent");
+    }
     
     return parent;
   }
@@ -628,7 +630,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(formTemplates)
       .set({ isActive: false })
       .where(eq(formTemplates.id, id));
-    return result.rowCount > 0;
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Form Response methods
@@ -892,7 +894,7 @@ export class DatabaseStorage implements IStorage {
         userId: podcastComments.userId,
         content: podcastComments.content,
         createdAt: podcastComments.createdAt,
-        authorName: users.name
+        authorName: sql<string>`COALESCE(${users.name}, 'Unknown User')`
       })
       .from(podcastComments)
       .leftJoin(users, eq(podcastComments.userId, users.id))
@@ -909,7 +911,7 @@ export class DatabaseStorage implements IStorage {
         userId: podcastComments.userId,
         content: podcastComments.content,
         createdAt: podcastComments.createdAt,
-        authorName: users.name
+        authorName: sql<string>`COALESCE(${users.name}, 'Unknown User')`
       })
       .from(podcastComments)
       .leftJoin(users, eq(podcastComments.userId, users.id))
