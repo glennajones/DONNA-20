@@ -150,18 +150,8 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
           {selectedEvent && (
             <div className="space-y-4">
               <div>
-                <h3 className={`font-semibold text-lg flex items-center gap-2 ${
-                  selectedEvent.isBudgetEvent ? 'text-emerald-600' : 'text-[#56A0D3]'
-                }`}>
-                  {selectedEvent.isBudgetEvent && (
-                    <span className="text-emerald-600">💰</span>
-                  )}
+                <h3 className="font-semibold text-lg text-[#56A0D3]">
                   {selectedEvent.title}
-                  {selectedEvent.isBudgetEvent && (
-                    <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-2 py-1 rounded-full">
-                      Budget Event
-                    </span>
-                  )}
                 </h3>
               </div>
               
@@ -454,22 +444,15 @@ function renderDayView(events: ScheduleEvent[], dateRange: { from: string; to: s
                         >
                           {eventInSlot && isFirstSlot && (
                             <div 
-                              className={`text-xs text-white p-2 rounded cursor-pointer transition-colors absolute left-1 right-1 flex flex-col justify-start z-10 ${
-                                eventInSlot.isBudgetEvent 
-                                  ? "bg-emerald-600 hover:bg-emerald-700 border border-emerald-500" 
-                                  : "bg-[#56A0D3] hover:bg-[#4A8BC2]"
-                              }`}
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(eventInSlot)}
-                              title={`${eventInSlot.title} - ${eventInSlot.coach}${eventInSlot.isBudgetEvent ? ' (Budget Event)' : ''}`}
+                              title={`${eventInSlot.title} - ${eventInSlot.coach}`}
                               style={{
                                 top: '4px',
                                 height: `${(eventInSlot.duration || 120) / 30 * 40 - 8}px`
                               }}
                             >
-                              <div className="font-medium truncate flex items-center gap-1">
-                                {eventInSlot.isBudgetEvent && (
-                                  <span className="text-xs">💰</span>
-                                )}
+                              <div className="font-medium truncate">
                                 {eventInSlot.title}
                               </div>
                               <div className="text-xs opacity-90">
@@ -562,22 +545,15 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                           {eventsStartingInSlot.map((event, index) => (
                             <div 
                               key={event.id} 
-                              className={`text-xs text-white p-2 rounded cursor-pointer transition-colors absolute left-1 right-1 flex flex-col justify-start z-10 ${
-                                event.isBudgetEvent 
-                                  ? "bg-emerald-600 hover:bg-emerald-700 border border-emerald-500" 
-                                  : "bg-[#56A0D3] hover:bg-[#4A8BC2]"
-                              }`}
+                              className="text-xs bg-[#56A0D3] text-white p-2 rounded cursor-pointer hover:bg-[#4A8BC2] transition-colors absolute left-1 right-1 flex flex-col justify-start z-10"
                               onClick={() => setSelectedEvent(event)}
-                              title={`${event.title} - ${event.coach}${event.isBudgetEvent ? ' (Budget Event)' : ''}`}
+                              title={`${event.title} - ${event.coach}`}
                               style={{
                                 top: '4px',
                                 height: `${(event.duration || 120) / 30 * 40 - 8}px`
                               }}
                             >
-                              <div className="font-medium truncate flex items-center gap-1">
-                                {event.isBudgetEvent && (
-                                  <span className="text-xs">💰</span>
-                                )}
+                              <div className="font-medium truncate">
                                 {event.title}
                               </div>
                               <div className="text-xs opacity-90">{abbreviateCourts(event.court)}</div>
@@ -651,15 +627,10 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                       .slice(0, 3).map(event => (
                       <div
                         key={event.id}
-                        className={`text-xs p-1 rounded text-white truncate cursor-pointer transition-colors ${
-                          event.isBudgetEvent 
-                            ? "bg-emerald-600 hover:bg-emerald-700" 
-                            : "bg-[#56A0D3] hover:bg-[#4A8BC2]"
-                        }`}
-                        title={`${event.time} - ${event.title} (${event.court})${event.isBudgetEvent ? ' (Budget Event)' : ''}`}
+                        className="text-xs p-1 rounded bg-[#56A0D3] text-white truncate cursor-pointer hover:bg-[#4A8BC2] transition-colors"
+                        title={`${event.time} - ${event.title} (${event.court})`}
                         onClick={() => setSelectedEvent(event)}
                       >
-                        {event.isBudgetEvent && <span className="mr-1">💰</span>}
                         {formatTime(event.time)} {event.title}
                       </div>
                     ))}

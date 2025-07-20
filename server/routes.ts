@@ -288,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament" as const,
                 participants: [],
                 coach: "",
-                description: `Budget Event - ${budgetEvent.location}`,
+                description: `Budget Event - ${budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts'}`,
                 status: "scheduled" as const,
                 createdBy: budgetEvent.createdBy,
                 createdAt: budgetEvent.createdAt,
@@ -1108,7 +1108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament", // Default for budget events
                 participants: [], // Can be populated later
                 coach: "", // Can be populated later
-                description: `Budget Event - ${event.location}`,
+                description: `Budget Event - ${event.assignedCourts?.join(', ') || 'Multiple Courts'}`,
                 status: "scheduled",
                 createdBy: req.user.userId
               });
@@ -1184,7 +1184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament",
                 participants: [],
                 coach: "",
-                description: `Budget Event - ${updatedEvent.location}`,
+                description: `Budget Event - ${updatedEvent.assignedCourts?.join(', ') || 'Multiple Courts'}`,
                 status: "scheduled",
                 createdBy: req.user.userId
               });

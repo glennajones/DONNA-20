@@ -33,7 +33,6 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
     endDate: "",
     startTime: "",
     endTime: "",
-    location: "",
   });
 
   // Resource planning
@@ -92,7 +91,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   };
 
   // Validation functions
-  const isBasicComplete = basic.name && basic.startDate && basic.location;
+  const isBasicComplete = basic.name && basic.startDate;
   const isResourceComplete = players > 0 && playersPerCourt > 0 && playersPerCoach > 0;
   const isBudgetComplete = feePerPlayer > 0;
   const canSubmit = isBasicComplete && isResourceComplete && isBudgetComplete;
@@ -111,16 +110,22 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       setIsSubmitting(true);
       
       const payload: InsertEvent = {
-        ...basic,
-        players,
-        courts,
-        coaches,
-        assignedCourts,
-        feePerPlayer: feePerPlayer.toString(),
-        coachRates,
-        miscExpenses,
+        name: basic.name,
+        startDate: basic.startDate,
+        endDate: basic.endDate || basic.startDate,
+        startTime: basic.startTime || "09:00",
+        endTime: basic.endTime || "17:00",
+        location: "Volleyball Club", // Default since court assignments handle specific locations
+        estimatedPlayers: players,
+        estimatedCoaches: coaches,
+        estimatedCourts: courts,
         projectedRevenue: projectedRevenue.toString(),
-        status: "planning"
+        actualRevenue: "0",
+        status: "planning",
+        feePerPlayer: feePerPlayer.toString(),
+        coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
+        miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item)),
+        assignedCourts: assignedCourts
       };
 
       await apiRequest("/api/events", {
@@ -136,7 +141,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       });
       
       // Reset form
-      setBasic({ name: "", startDate: "", endDate: "", startTime: "", endTime: "", location: "" });
+      setBasic({ name: "", startDate: "", endDate: "", startTime: "", endTime: "" });
       setPlayers(0);
       setAssignedCourts([]);
       setFeePerPlayer(0);
@@ -279,16 +284,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                       />
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location *</Label>
-                    <Input
-                      id="location"
-                      placeholder="Sports Complex, Main Gym"
-                      value={basic.location}
-                      onChange={(e) => setBasic({ ...basic, location: e.target.value })}
-                    />
-                  </div>
+
                 </AccordionContent>
               </AccordionItem>
 
