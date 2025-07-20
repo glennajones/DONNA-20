@@ -33,6 +33,18 @@ async function seed() {
         name: "Mike Coach",
         role: "coach" as const,
       },
+      {
+        username: "player",
+        password: await bcrypt.hash("player123", 10),
+        name: "Emma Wilson",
+        role: "player" as const,
+      },
+      {
+        username: "parent",
+        password: await bcrypt.hash("parent123", 10),
+        name: "Sarah Wilson",
+        role: "parent" as const,
+      },
     ];
 
     console.log("Creating demo users...");

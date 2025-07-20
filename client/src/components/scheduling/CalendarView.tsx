@@ -4,8 +4,10 @@ import { ScheduleEvent } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { Info, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth";
+import EventRegistrationModal from "./EventRegistrationModal";
 
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
@@ -15,6 +17,8 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+  const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setDateRange(getDateRange(viewType, currentDate));
@@ -196,10 +200,32 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
                   </div>
                 )}
               </div>
+
+              {/* Registration Button for Players/Parents */}
+              {selectedEvent && ["player", "parent"].includes(user?.role) && (
+                <div className="mt-6 pt-4 border-t">
+                  <Button 
+                    onClick={() => {
+                      setRegistrationModalOpen(true);
+                    }}
+                    className="w-full bg-[#56A0D3] hover:bg-[#4a8bc2] flex items-center gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Register for This Session
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Event Registration Modal */}
+      <EventRegistrationModal
+        isOpen={registrationModalOpen}
+        onClose={() => setRegistrationModalOpen(false)}
+        event={selectedEvent}
+      />
     </div>
   );
 }

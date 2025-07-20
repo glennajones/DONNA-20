@@ -2410,6 +2410,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Event Registration API endpoints
+  app.post("/api/event-registrations", authenticateToken, async (req: any, res) => {
+    try {
+      // Only players and parents can register for events
+      if (!["player", "parent"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const registrationData = {
+        ...req.body,
+        userId: req.user.userId,
+        status: 'pending',
+        registrationFee: '25.00'
+      };
+
+      // Check if user already registered for this event
+      const existingRegistration = await storage.getUserEventRegistration(
+        registrationData.eventId, 
+        req.user.userId
+      );
+      
+      if (existingRegistration) {
+        return res.status(400).json({ message: "You are already registered for this event" });
+      }
+
+      const registration = await storage.createEventRegistration(registrationData);
+      res.status(201).json(registration);
+    } catch (error) {
+      console.error("Event registration error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/event-registrations/:eventId", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins, managers, and coaches can view registrations
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const eventId = parseInt(req.params.eventId);
+      const registrations = await storage.getEventRegistrations(eventId);
+      res.json(registrations);
+    } catch (error) {
+      console.error("Get event registrations error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/event-registrations/:id/status", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update registration status
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const registrationId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      await storage.updateEventRegistrationStatus(registrationId, status);
+      res.json({ message: "Registration status updated successfully" });
+    } catch (error) {
+      console.error("Update registration status error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

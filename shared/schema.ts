@@ -8,7 +8,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
-  role: text("role", { enum: ["admin", "manager", "coach"] }).notNull(),
+  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent"] }).notNull(),
 });
 
 export const registrations = pgTable("registrations", {
@@ -536,6 +536,29 @@ export const coachOutreachLogs = pgTable('coach_outreach_logs', {
   remindersSent: integer('reminders_sent').notNull().default(0),
 });
 
+// Event registrations for training sessions
+export const eventRegistrations = pgTable("event_registrations", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").references(() => scheduleEvents.id).notNull(),
+  playerName: text("player_name").notNull(),
+  playerEmail: text("player_email").notNull(),
+  playerPhone: text("player_phone").notNull(),
+  playerDateOfBirth: text("player_date_of_birth").notNull(),
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
+  medicalInfo: text("medical_info"),
+  parentName: text("parent_name"), // If registered by parent
+  parentEmail: text("parent_email"), // If registered by parent
+  parentPhone: text("parent_phone"), // If registered by parent
+  registrationType: text("registration_type", { enum: ["player", "parent"] }).notNull(),
+  status: text("status", { enum: ["registered", "waitlisted", "cancelled"] }).notNull().default("registered"),
+  registrationFee: decimal("registration_fee", { precision: 10, scale: 2 }).notNull().default("25.00"),
+  paymentStatus: text("payment_status", { enum: ["pending", "completed", "failed"] }).notNull().default("pending"),
+  registeredBy: integer("registered_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Coach Resources Relations
 export const timeClockEntriesRelations = relations(timeClockEntries, ({ one }) => ({
   user: one(users, {
@@ -625,6 +648,21 @@ export type InsertCoach = z.infer<typeof insertCoachSchema>;
 export type Coach = typeof coaches.$inferSelect;
 export type InsertCoachOutreachLog = z.infer<typeof insertCoachOutreachLogSchema>;
 export type CoachOutreachLog = typeof coachOutreachLogs.$inferSelect;
+
+// Event Registration Schemas
+export const insertEventRegistrationSchema = createInsertSchema(eventRegistrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  playerName: z.string().min(1, "Player name is required"),
+  playerEmail: z.string().email("Valid email is required"),
+  playerPhone: z.string().min(1, "Phone number is required"),
+  playerDateOfBirth: z.string().min(1, "Date of birth is required"),
+});
+
+export type InsertEventRegistration = z.infer<typeof insertEventRegistrationSchema>;
+export type EventRegistration = typeof eventRegistrations.$inferSelect;
 
 // Documents & e-Signatures Tables
 export const documents = pgTable("documents", {

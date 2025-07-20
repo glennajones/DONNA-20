@@ -73,6 +73,7 @@ import {
   type InsertDocumentSignature,
   type DocumentAuditLog,
   type InsertDocumentAuditLog,
+  eventRegistrations,
 
 } from "@shared/schema";
 import { db } from "./db";
@@ -229,6 +230,11 @@ export interface IStorage {
   getDocumentAuditLogs(documentId: number): Promise<DocumentAuditLog[]>;
   createDocumentAuditLog(auditLog: InsertDocumentAuditLog): Promise<DocumentAuditLog>;
 
+  // Event Registration methods
+  createEventRegistration(registrationData: any): Promise<any>;
+  getEventRegistrations(eventId: number): Promise<any[]>;
+  getUserEventRegistration(eventId: number, userId: number): Promise<any>;
+  updateEventRegistrationStatus(registrationId: number, status: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1064,6 +1070,37 @@ export class DatabaseStorage implements IStorage {
       .values(insertAuditLog)
       .returning();
     return auditLog;
+  }
+
+  // Event Registration methods
+  async createEventRegistration(registrationData: any): Promise<any> {
+    const [registration] = await db
+      .insert(eventRegistrations)
+      .values(registrationData)
+      .returning();
+    return registration;
+  }
+
+  async getEventRegistrations(eventId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(eventRegistrations)
+      .where(eq(eventRegistrations.eventId, eventId));
+  }
+
+  async getUserEventRegistration(eventId: number, userId: number): Promise<any> {
+    const [registration] = await db
+      .select()
+      .from(eventRegistrations)
+      .where(and(eq(eventRegistrations.eventId, eventId), eq(eventRegistrations.userId, userId)));
+    return registration || undefined;
+  }
+
+  async updateEventRegistrationStatus(registrationId: number, status: string): Promise<void> {
+    await db
+      .update(eventRegistrations)
+      .set({ status: status as any })
+      .where(eq(eventRegistrations.id, registrationId));
   }
 
 }
