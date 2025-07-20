@@ -216,7 +216,7 @@ export default function TimeClock() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-600" />
-            Time Clock System - Manual Entry Available
+            Time Clock System - With Manual Entry
           </CardTitle>
         </CardHeader>
         <CardContent>
