@@ -138,6 +138,7 @@ export function EventList() {
 
     setEditFormData({
       name: event.name,
+      eventType: event.eventType,
       startDate: event.startDate,
       endDate: event.endDate,
       startTime: event.startTime || "",
@@ -462,6 +463,25 @@ export function EventList() {
                       value={editFormData.name || ""}
                       onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-eventType">Event Type</Label>
+                    <Select
+                      value={editFormData.eventType || "Practice"}
+                      onValueChange={(value) => setEditFormData({ ...editFormData, eventType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Practice">Practice</SelectItem>
+                        <SelectItem value="School Activity">School Activity</SelectItem>
+                        <SelectItem value="Tournament">Tournament</SelectItem>
+                        <SelectItem value="Camp">Camp</SelectItem>
+                        <SelectItem value="Team Camp">Team Camp</SelectItem>
+                        <SelectItem value="Social">Social</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
