@@ -690,38 +690,49 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                         .reduce((groups, event) => {
                           const key = `${event.time}-${event.title}`;
                           if (!groups[key]) {
+                            // Split multi-court strings and flatten into individual courts
+                            const courtList = event.court.includes(',') 
+                              ? event.court.split(',').map(c => c.trim())
+                              : [event.court];
+                            
                             groups[key] = {
                               event: event,
                               count: 1,
-                              courts: [event.court],
+                              courts: courtList,
                               allEvents: [event]
                             };
                           } else {
                             groups[key].count++;
                             groups[key].allEvents.push(event);
-                            if (!groups[key].courts.includes(event.court)) {
-                              groups[key].courts.push(event.court);
-                            }
+                            
+                            // Split multi-court strings and add individual courts
+                            const courtList = event.court.includes(',') 
+                              ? event.court.split(',').map(c => c.trim())
+                              : [event.court];
+                            
+                            courtList.forEach(court => {
+                              if (!groups[key].courts.includes(court)) {
+                                groups[key].courts.push(court);
+                              }
+                            });
                           }
                           return groups;
                         }, {} as Record<string, { event: ScheduleEvent; count: number; courts: string[]; allEvents: ScheduleEvent[] }>);
 
                       const consolidatedEvents = Object.values(groupedEvents).slice(0, 3);
                       
-                      // Debug: log the consolidated events
-                      console.log('Consolidated events for day:', day.date, consolidatedEvents.map(g => ({
-                        title: g.event.title,
-                        time: g.event.time,
-                        courts: g.courts,
-                        courtCount: g.courts.length
-                      })));
-                      
                       return consolidatedEvents.map((group, index) => (
                         <div
                           key={`${group.event.id}-${index}`}
                           className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
-                          title={`${group.event.time} - ${group.event.title}${group.courts.length > 1 ? ` (${group.courts.length} courts)` : ''} - ${group.courts.join(', ')}`}
-                          onClick={() => setSelectedEvent(group.event, {courts: Array.from(new Set(group.courts)).sort(), count: group.courts.length})}
+                          title={`${group.event.time} - ${group.event.title}${(() => {
+                            const uniqueCourts = Array.from(new Set(group.courts)).sort();
+                            return uniqueCourts.length > 1 ? ` (${uniqueCourts.length} courts)` : '';
+                          })()} - ${Array.from(new Set(group.courts)).sort().join(', ')}`}
+                          onClick={() => {
+                            const uniqueCourts = Array.from(new Set(group.courts)).sort();
+                            setSelectedEvent(group.event, {courts: uniqueCourts, count: uniqueCourts.length});
+                          }}
                           style={{
                             backgroundColor: getEventColor(group.event.eventType || "Practice")
                           }}
@@ -732,7 +743,10 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                             e.currentTarget.style.backgroundColor = getEventColor(group.event.eventType || "Practice");
                           }}
                         >
-                          {formatTime(group.event.time)} {group.event.title}{group.courts.length > 1 ? ` (${group.courts.length} courts)` : ''}
+                          {formatTime(group.event.time)} {group.event.title}{(() => {
+                            const uniqueCourts = Array.from(new Set(group.courts));
+                            return uniqueCourts.length > 1 ? ` (${uniqueCourts.length} courts)` : '';
+                          })()}
                         </div>
                       ));
                     })()}
