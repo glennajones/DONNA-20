@@ -2352,20 +2352,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Signature data is required" });
       }
 
+      if (!req.user || !req.user.userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
       const document = await storage.getDocument(documentId);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
 
       // Check if user has already signed
-      const existingSignature = await storage.getUserDocumentSignature(documentId, req.user.id);
+      const existingSignature = await storage.getUserDocumentSignature(documentId, req.user.userId);
       if (existingSignature) {
         return res.status(400).json({ message: "Document already signed by this user" });
       }
 
       const signature = await storage.createDocumentSignature({
         documentId,
-        userId: req.user.id,
+        userId: req.user.userId,
         signatureData,
         signatureType: signatureType || 'canvas',
         ipAddress: req.ip,
@@ -2375,7 +2379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the sign action
       await storage.createDocumentAuditLog({
         documentId: document.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         action: 'sign',
         details: { signatureType },
         ipAddress: req.ip,
