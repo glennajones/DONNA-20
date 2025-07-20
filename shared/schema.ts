@@ -268,7 +268,9 @@ export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   startDate: text("start_date").notNull(), // YYYY-MM-DD format
-  endDate: text("end_date").notNull(), // YYYY-MM-DD format
+  endDate: text("end_date"), // YYYY-MM-DD format - optional for single day events
+  startTime: text("start_time"), // HH:MM format - optional
+  endTime: text("end_time"), // HH:MM format - optional
   location: text("location").notNull(),
   players: integer("players").notNull().default(0),
   courts: integer("courts").notNull().default(0),
