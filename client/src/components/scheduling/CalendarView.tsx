@@ -693,16 +693,18 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                             groups[key] = {
                               event: event,
                               count: 1,
-                              courts: [event.court]
+                              courts: [event.court],
+                              allEvents: [event]
                             };
                           } else {
                             groups[key].count++;
+                            groups[key].allEvents.push(event);
                             if (!groups[key].courts.includes(event.court)) {
                               groups[key].courts.push(event.court);
                             }
                           }
                           return groups;
-                        }, {} as Record<string, { event: ScheduleEvent; count: number; courts: string[] }>);
+                        }, {} as Record<string, { event: ScheduleEvent; count: number; courts: string[]; allEvents: ScheduleEvent[] }>);
 
                       const consolidatedEvents = Object.values(groupedEvents).slice(0, 3);
                       
@@ -710,8 +712,8 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                         <div
                           key={`${group.event.id}-${index}`}
                           className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
-                          title={`${group.event.time} - ${group.event.title}${group.count > 1 ? ` (${group.count}x)` : ''} - ${group.courts.join(', ')}`}
-                          onClick={() => setSelectedEvent(group.event, {courts: group.courts, count: group.count})}
+                          title={`${group.event.time} - ${group.event.title}${group.courts.length > 1 ? ` (${group.courts.length} courts)` : ''} - ${group.courts.join(', ')}`}
+                          onClick={() => setSelectedEvent(group.event, {courts: [...new Set(group.courts.sort())], count: group.courts.length})}
                           style={{
                             backgroundColor: getEventColor(group.event.eventType || "Practice")
                           }}
@@ -722,7 +724,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                             e.currentTarget.style.backgroundColor = getEventColor(group.event.eventType || "Practice");
                           }}
                         >
-                          {formatTime(group.event.time)} {group.event.title}{group.count > 1 ? ` (${group.count})` : ''}
+                          {formatTime(group.event.time)} {group.event.title}{group.courts.length > 1 ? ` (${group.courts.length} courts)` : ''}
                         </div>
                       ));
                     })()}
