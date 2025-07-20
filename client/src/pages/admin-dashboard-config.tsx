@@ -27,34 +27,27 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+interface RolePermission {
+  widgetId: number;
+  canView: boolean;
+  canManage: boolean;
+}
+
 export default function AdminDashboardConfig() {
   const { hasRole } = useAuth();
   const queryClient = useQueryClient();
   const [selectedRole, setSelectedRole] = useState<string>("admin");
 
-  // Redirect if not admin
-  if (!hasRole(["admin"])) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Access Denied</h1>
-            <p className="text-gray-600 mt-2">You need admin privileges to access this page.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Fetch dashboard widgets
   const { data: widgets = [], isLoading: widgetsLoading } = useQuery({
     queryKey: ['/api/admin/dashboard-widgets'],
+    enabled: hasRole(["admin"]), // Only fetch if admin
   });
 
   // Fetch role permissions
-  const { data: rolePermissions = [], isLoading: permissionsLoading } = useQuery({
+  const { data: rolePermissions = [] as RolePermission[], isLoading: permissionsLoading } = useQuery({
     queryKey: ['/api/admin/role-permissions', selectedRole],
+    enabled: hasRole(["admin"]), // Only fetch if admin
   });
 
   // Mutation to update role permissions
@@ -99,8 +92,24 @@ export default function AdminDashboardConfig() {
     { name: "Admin", component: "admin-settings", description: "System settings and user management", defaultRoles: ["admin"] },
   ];
 
+  // Redirect if not admin - placed after all hooks
+  if (!hasRole(["admin"])) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">Access Denied</h1>
+            <p className="text-gray-600 mt-2">You need admin privileges to access this page.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const togglePermission = (widgetId: number, type: 'canView' | 'canManage', currentValue: boolean) => {
-    const permission = rolePermissions.find((p: any) => p.widgetId === widgetId);
+    const typedPermissions = rolePermissions as RolePermission[];
+    const permission = typedPermissions.find((p: RolePermission) => p.widgetId === widgetId);
     
     updatePermissionsMutation.mutate({
       role: selectedRole,
@@ -176,7 +185,8 @@ export default function AdminDashboardConfig() {
                     </TableHeader>
                     <TableBody>
                       {defaultWidgets.map((widget, index) => {
-                        const permission = rolePermissions.find((p: any) => p.widgetId === index + 1);
+                        const typedPermissions = rolePermissions as RolePermission[];
+                        const permission = typedPermissions.find((p: RolePermission) => p.widgetId === index + 1);
                         const canView = permission?.canView || widget.defaultRoles.includes(selectedRole);
                         const canManage = permission?.canManage || (selectedRole === 'admin' && widget.defaultRoles.includes('admin'));
                         

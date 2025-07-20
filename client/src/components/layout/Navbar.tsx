@@ -121,7 +121,7 @@ export function Navbar() {
 
           <div className="flex items-center space-x-4">
             <Badge variant={getRoleBadgeVariant(user?.role || "")}>
-              {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
+              {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}
             </Badge>
             
             <span className="text-sm text-gray-700">{user?.name}</span>
