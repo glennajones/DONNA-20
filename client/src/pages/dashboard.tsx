@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import TimeClockWidget from "@/components/widgets/TimeClockWidget";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
   Calendar, 
@@ -25,11 +27,19 @@ import {
   GraduationCap,
   Headphones,
   UserX,
-  ClipboardList
+  ClipboardList,
+  Clock,
+  AlertCircle
 } from "lucide-react";
 
 export default function Dashboard() {
   const { user, hasRole } = useAuth();
+
+  // Fetch pending manual time entries that need admin approval
+  const { data: pendingEntries = [] } = useQuery({
+    queryKey: ['/api/timeclock/pending'],
+    enabled: hasRole(['admin']),
+  });
 
   const stats = [
     {
@@ -218,26 +228,20 @@ export default function Dashboard() {
     },
   ];
 
-  const activities = [
-    {
-      icon: UserPlus,
-      text: "New player Sarah Johnson joined the team",
-      time: "2h ago",
-      color: "bg-green-500",
-    },
-    {
-      icon: Calendar,
-      text: "Training session scheduled for tomorrow",
-      time: "4h ago",
-      color: "bg-blue-500",
-    },
-    {
-      icon: Trophy,
-      text: "Tournament registration opens next week",
-      time: "1d ago",
-      color: "bg-yellow-500",
-    },
-  ];
+  // Create activities from pending time clock entries that need admin approval
+  const activities = pendingEntries.map((entry: any) => {
+    const timeAgo = new Date(entry.submittedAt).toLocaleString();
+    const actionText = entry.action === 'clock-in' ? 'Clock In' : 'Clock Out';
+    
+    return {
+      icon: Clock,
+      text: `Manual ${actionText} request from ${entry.user?.name || 'User'} - needs approval`,
+      time: timeAgo,
+      color: "bg-orange-500",
+      reason: entry.reason,
+      entryId: entry.id
+    };
+  });
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#56A0D3' }}>
@@ -318,43 +322,71 @@ export default function Dashboard() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Activity */}
+          {/* Recent Activity - Manual Time Clock Approvals */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Manual Time Entries Pending Approval
+                {activities.length > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {activities.length}
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flow-root">
-                <ul className="-mb-8">
-                  {activities.map((activity, index) => {
-                    const Icon = activity.icon;
-                    return (
-                      <li key={index}>
-                        <div className="relative pb-8">
-                          {index !== activities.length - 1 && (
-                            <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
-                          )}
-                          <div className="relative flex space-x-3">
-                            <div>
-                              <span className={`h-8 w-8 rounded-full ${activity.color} flex items-center justify-center ring-8 ring-white`}>
-                                <Icon className="h-4 w-4 text-white" />
-                              </span>
-                            </div>
-                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+              {activities.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No manual time entries pending approval</p>
+                </div>
+              ) : (
+                <div className="flow-root">
+                  <ul className="-mb-8">
+                    {activities.map((activity, index) => {
+                      const Icon = activity.icon;
+                      return (
+                        <li key={activity.entryId}>
+                          <div className="relative pb-8">
+                            {index !== activities.length - 1 && (
+                              <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
+                            )}
+                            <div className="relative flex space-x-3">
                               <div>
-                                <p className="text-sm text-gray-500">{activity.text}</p>
+                                <span className={`h-8 w-8 rounded-full ${activity.color} flex items-center justify-center ring-8 ring-white`}>
+                                  <Icon className="h-4 w-4 text-white" />
+                                </span>
                               </div>
-                              <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                {activity.time}
+                              <div className="min-w-0 flex-1 pt-1.5">
+                                <div className="flex justify-between space-x-4">
+                                  <div className="flex-1">
+                                    <p className="text-sm text-gray-900 font-medium">{activity.text}</p>
+                                    {activity.reason && (
+                                      <p className="text-sm text-gray-500 mt-1">
+                                        <span className="font-medium">Reason:</span> {activity.reason}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                    {activity.time}
+                                  </div>
+                                </div>
+                                <div className="mt-2">
+                                  <Link href="/coach-resources">
+                                    <Button size="sm" variant="outline" className="text-xs">
+                                      Review & Approve
+                                    </Button>
+                                  </Link>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
 
