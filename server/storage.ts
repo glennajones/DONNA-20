@@ -1092,7 +1092,7 @@ export class DatabaseStorage implements IStorage {
     const [registration] = await db
       .select()
       .from(eventRegistrations)
-      .where(and(eq(eventRegistrations.eventId, eventId), eq(eventRegistrations.userId, userId)));
+      .where(and(eq(eventRegistrations.eventId, eventId), eq(eventRegistrations.registeredBy, userId)));
     return registration || undefined;
   }
 

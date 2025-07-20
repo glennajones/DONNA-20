@@ -2421,8 +2421,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const registrationData = {
         ...req.body,
-        userId: req.user.userId,
-        status: 'pending',
+        registeredBy: req.user.userId,
+        status: 'registered',
         registrationFee: '25.00'
       };
 

@@ -47,26 +47,28 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
     registrationType: user?.role === "parent" ? "parent" : "player",
   });
 
-  // Fetch player profile data if user is a player
+  // Fetch player profile data if user is a player or parent
   useEffect(() => {
-    const fetchPlayerProfile = async () => {
-      if (user?.role === "player" && isOpen) {
-        try {
-          const token = localStorage.getItem('auth_token');
-          const response = await fetch('/api/players', {
+    const fetchProfileData = async () => {
+      if (!isOpen) return;
+
+      try {
+        const token = localStorage.getItem('auth_token');
+        
+        if (user?.role === "player") {
+          // Fetch player profile
+          const playersResponse = await fetch('/api/players', {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           
-          if (response.ok) {
-            const players = await response.json();
-            // Find the player profile that matches the current user's name
+          if (playersResponse.ok) {
+            const players = await playersResponse.json();
             const currentPlayerProfile = players.find(player => 
               player.name === user.name && player.status === "active"
             );
             
             if (currentPlayerProfile) {
               setPlayerProfile(currentPlayerProfile);
-              // Pre-fill form with player data
               setFormData(prev => ({
                 ...prev,
                 playerName: currentPlayerProfile.name || "",
@@ -76,13 +78,54 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
               }));
             }
           }
-        } catch (error) {
-          console.error('Failed to fetch player profile:', error);
+        } else if (user?.role === "parent") {
+          // Fetch parent profile and children
+          const [playersResponse, parentsResponse] = await Promise.all([
+            fetch('/api/players', {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            }),
+            fetch('/api/parents', {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            })
+          ]);
+          
+          if (playersResponse.ok && parentsResponse.ok) {
+            const players = await playersResponse.json();
+            const parents = await parentsResponse.json();
+            
+            // Find parent profile that matches current user
+            const currentParentProfile = parents.find(parent => 
+              parent.name === user.name
+            );
+            
+            if (currentParentProfile && currentParentProfile.children.length > 0) {
+              // Get the first active child's profile
+              const firstActiveChild = players.find(player => 
+                currentParentProfile.children.includes(player.id) && player.status === "active"
+              );
+              
+              if (firstActiveChild) {
+                setPlayerProfile({ ...firstActiveChild, isParentRegistration: true });
+                setFormData(prev => ({
+                  ...prev,
+                  playerName: firstActiveChild.name || "",
+                  playerEmail: firstActiveChild.contact || "",
+                  playerPhone: firstActiveChild.phone || "",
+                  playerDateOfBirth: firstActiveChild.dateOfBirth || "",
+                  parentName: currentParentProfile.name || "",
+                  parentEmail: currentParentProfile.email || "",
+                  parentPhone: currentParentProfile.phone || "",
+                }));
+              }
+            }
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch profile data:', error);
       }
     };
 
-    fetchPlayerProfile();
+    fetchProfileData();
   }, [user, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -243,7 +286,11 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
                       <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
                           <AlertCircle className="h-4 w-4" />
-                          <span className="text-sm">Information pre-filled from your active player profile</span>
+                          <span className="text-sm">
+                            {playerProfile.isParentRegistration 
+                              ? "Information pre-filled from your child's active player profile and parent profile"
+                              : "Information pre-filled from your active player profile"}
+                          </span>
                         </div>
                       </div>
                     )}
