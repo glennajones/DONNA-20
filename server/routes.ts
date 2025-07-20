@@ -274,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .flatMap(budgetEvent => 
               (budgetEvent.assignedCourts as string[]).map(court => ({
                 id: `budget-${budgetEvent.id}-${court}`,
-                title: `${budgetEvent.name} (Budget Event)`,
+                title: budgetEvent.name,
                 court,
                 date: budgetEvent.startDate,
                 time: budgetEvent.startTime!,
@@ -288,13 +288,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament" as const,
                 participants: [],
                 coach: "",
-                description: `Budget Event - ${budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts'}`,
+                description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
                 status: "scheduled" as const,
                 createdBy: budgetEvent.createdBy,
                 createdAt: budgetEvent.createdAt,
                 updatedAt: budgetEvent.updatedAt,
-                // Mark as budget event for styling
-                isBudgetEvent: true,
+                // Remove budget event distinction for unified display
                 budgetEventId: budgetEvent.id
               }))
             );
@@ -1108,7 +1107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament", // Default for budget events
                 participants: [], // Can be populated later
                 coach: "", // Can be populated later
-                description: `Budget Event - ${event.assignedCourts?.join(', ') || 'Multiple Courts'}`,
+                description: event.assignedCourts?.join(', ') || 'Multiple Courts',
                 status: "scheduled",
                 createdBy: req.user.userId
               });
@@ -1151,7 +1150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // First, remove any existing schedule events for this budget event
           const existingScheduleEvents = await storage.getScheduleEventsByEventName(updatedEvent.name);
           for (const scheduleEvent of existingScheduleEvents) {
-            if (scheduleEvent.description && scheduleEvent.description.includes("Budget Event")) {
+            if (scheduleEvent.budgetEventId) {
               await storage.deleteScheduleEvent(scheduleEvent.id);
             }
           }
@@ -1184,7 +1183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 eventType: "tournament",
                 participants: [],
                 coach: "",
-                description: `Budget Event - ${updatedEvent.assignedCourts?.join(', ') || 'Multiple Courts'}`,
+                description: updatedEvent.assignedCourts?.join(', ') || 'Multiple Courts',
                 status: "scheduled",
                 createdBy: req.user.userId
               });
