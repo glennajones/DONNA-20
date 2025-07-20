@@ -1,8 +1,8 @@
 import React from "react";
 import Navbar from "@/components/layout/Navbar";
-import TimeClock from "../modules/Coach/TimeClock";
-import PracticeLibrary from "../modules/Coach/PracticeLibrary";
-import GameTools from "../modules/Coach/GameTools";
+import TimeClock from "@/modules/Coach/TimeClock";
+import PracticeLibrary from "@/modules/Coach/PracticeLibrary";
+import GameTools from "@/modules/Coach/GameTools";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, GraduationCap } from "lucide-react";
 import { Link } from "wouter";

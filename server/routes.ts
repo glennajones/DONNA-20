@@ -1811,18 +1811,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Time Clock Routes
   app.post('/api/timeclock', authenticateToken, async (req: any, res) => {
     try {
-      const { action, timestamp } = req.body;
+      const { action, timestamp, reason, isManual } = req.body;
       
-      await storage.createTimeClockEntry({
+      if (!action || !["clock-in", "clock-out"].includes(action)) {
+        return res.status(400).json({ error: "Invalid action" });
+      }
+
+      const entry = await storage.createTimeClockEntry({
         userId: req.user.userId,
         action,
-        timestamp: new Date(timestamp)
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        isManual: isManual || false,
+        status: isManual ? 'pending' : 'approved',
+        reason: reason || null,
       });
 
-      res.json({ success: true });
+      res.json(entry);
     } catch (error) {
       console.error('Time clock error:', error);
       res.status(500).json({ error: 'Failed to record time' });
+    }
+  });
+
+  // Get pending manual time entries (admin only)
+  app.get('/api/timeclock/pending', authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admin only." });
+      }
+
+      const pendingEntries = await storage.getPendingTimeClockEntries();
+      res.json(pendingEntries);
+    } catch (error) {
+      console.error('Failed to fetch pending entries:', error);
+      res.status(500).json({ error: 'Failed to fetch pending entries' });
+    }
+  });
+
+  // Approve manual time entry (admin only)
+  app.post('/api/timeclock/:entryId/approve', authenticateToken, async (req: any, res) => {
+    try {
+      const entryId = parseInt(req.params.entryId);
+      
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admin only." });
+      }
+
+      const approvedEntry = await storage.approveTimeClockEntry(entryId, req.user.userId);
+      
+      if (!approvedEntry) {
+        return res.status(404).json({ error: "Entry not found" });
+      }
+
+      res.json(approvedEntry);
+    } catch (error) {
+      console.error('Failed to approve entry:', error);
+      res.status(500).json({ error: 'Failed to approve entry' });
+    }
+  });
+
+  // Reject manual time entry (admin only)
+  app.post('/api/timeclock/:entryId/reject', authenticateToken, async (req: any, res) => {
+    try {
+      const entryId = parseInt(req.params.entryId);
+      
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admin only." });
+      }
+
+      const rejectedEntry = await storage.rejectTimeClockEntry(entryId, req.user.userId);
+      
+      if (!rejectedEntry) {
+        return res.status(404).json({ error: "Entry not found" });
+      }
+
+      res.json(rejectedEntry);
+    } catch (error) {
+      console.error('Failed to reject entry:', error);
+      res.status(500).json({ error: 'Failed to reject entry' });
     }
   });
 

@@ -520,6 +520,11 @@ export const timeClockEntries = pgTable('time_clock_entries', {
   userId: integer('user_id').notNull().references(() => users.id),
   action: varchar('action', { length: 20 }).notNull(), // 'clock-in' or 'clock-out'
   timestamp: timestamp('timestamp').notNull().defaultNow(),
+  isManual: boolean('is_manual').notNull().default(false), // true for manual entries
+  status: varchar('status', { length: 20 }).notNull().default('approved'), // 'pending', 'approved', 'rejected'
+  reason: text('reason'), // reason for manual entry
+  approvedBy: integer('approved_by').references(() => users.id), // admin who approved/rejected
+  approvedAt: timestamp('approved_at'), // when approved/rejected
   createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
@@ -654,6 +659,7 @@ export const coachOutreachLogsRelations = relations(coachOutreachLogs, ({ one })
 export const insertTimeClockEntrySchema = createInsertSchema(timeClockEntries).omit({
   id: true,
   createdAt: true,
+  approvedAt: true,
 });
 
 export const insertPracticePlanSchema = createInsertSchema(practicePlans).omit({

@@ -83,7 +83,7 @@ import {
 
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, ne, desc } from "drizzle-orm";
+import { eq, and, gte, lte, ne, desc, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -902,6 +902,41 @@ export class DatabaseStorage implements IStorage {
     return entry;
   }
 
+  async getPendingTimeClockEntries(): Promise<TimeClockEntry[]> {
+    return await db.select().from(timeClockEntries)
+      .where(and(
+        eq(timeClockEntries.isManual, true),
+        eq(timeClockEntries.status, 'pending')
+      ))
+      .orderBy(desc(timeClockEntries.createdAt));
+  }
+
+  async approveTimeClockEntry(entryId: number, adminUserId: number): Promise<TimeClockEntry | undefined> {
+    const [entry] = await db
+      .update(timeClockEntries)
+      .set({
+        status: 'approved',
+        approvedBy: adminUserId,
+        approvedAt: new Date()
+      })
+      .where(eq(timeClockEntries.id, entryId))
+      .returning();
+    return entry;
+  }
+
+  async rejectTimeClockEntry(entryId: number, adminUserId: number): Promise<TimeClockEntry | undefined> {
+    const [entry] = await db
+      .update(timeClockEntries)
+      .set({
+        status: 'rejected',
+        approvedBy: adminUserId,
+        approvedAt: new Date()
+      })
+      .where(eq(timeClockEntries.id, entryId))
+      .returning();
+    return entry;
+  }
+
   async getTodayTimeClockEntries(userId: number): Promise<TimeClockEntry[]> {
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -911,14 +946,18 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(timeClockEntries.userId, userId),
         gte(timeClockEntries.timestamp, startOfDay),
-        lte(timeClockEntries.timestamp, endOfDay)
+        lte(timeClockEntries.timestamp, endOfDay),
+        eq(timeClockEntries.status, 'approved')
       ))
       .orderBy(timeClockEntries.timestamp);
   }
 
   async getAllTimeClockEntries(userId: number): Promise<TimeClockEntry[]> {
     return await db.select().from(timeClockEntries)
-      .where(eq(timeClockEntries.userId, userId))
+      .where(and(
+        eq(timeClockEntries.userId, userId),
+        eq(timeClockEntries.status, 'approved')
+      ))
       .orderBy(desc(timeClockEntries.timestamp));
   }
 
