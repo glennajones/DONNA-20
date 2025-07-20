@@ -3,6 +3,7 @@ import Navbar from "@/components/layout/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import TimeClockWidget from "@/components/widgets/TimeClockWidget";
 import { 
   Users, 
   Calendar, 
@@ -210,6 +211,15 @@ export default function Dashboard() {
             );
           })}
         </div>
+
+        {/* Coach Time Clock Widget */}
+        {hasRole(["coach"]) && (
+          <div className="mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <TimeClockWidget />
+            </div>
+          </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
