@@ -42,6 +42,7 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+  const [consolidatedEventData, setConsolidatedEventData] = useState<{courts: string[], count: number} | null>(null);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
   const { user } = useAuth();
 
@@ -169,10 +170,16 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
       {navigationHeader}
       {viewType === "day" && renderDayView(events, dateRange, setSelectedEvent)}
       {viewType === "week" && renderWeekView(events, dateRange, setSelectedEvent)}
-      {viewType === "month" && renderMonthView(events, dateRange, setSelectedEvent)}
+      {viewType === "month" && renderMonthView(events, dateRange, (event, consolidatedData) => {
+        setSelectedEvent(event);
+        setConsolidatedEventData(consolidatedData || null);
+      })}
       
       {/* Event Details Modal */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+      <Dialog open={!!selectedEvent} onOpenChange={() => {
+        setSelectedEvent(null);
+        setConsolidatedEventData(null);
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Event Details</DialogTitle>
@@ -219,7 +226,7 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
                 
                 <div>
                   <span className="font-medium text-gray-600">Court(s):</span>
-                  <p>{selectedEvent.court}</p>
+                  <p>{consolidatedEventData ? consolidatedEventData.courts.join(', ') : selectedEvent.court}</p>
                 </div>
                 
                 <div>
@@ -627,7 +634,7 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
   );
 }
 
-function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent) => void) {
+function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to: string }, setSelectedEvent: (event: ScheduleEvent, consolidatedData?: {courts: string[], count: number}) => void) {
   const monthDays = getMonthDays(dateRange.from);
   const today = new Date().toISOString().split('T')[0];
   
@@ -704,7 +711,7 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                           key={`${group.event.id}-${index}`}
                           className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
                           title={`${group.event.time} - ${group.event.title}${group.count > 1 ? ` (${group.count}x)` : ''} - ${group.courts.join(', ')}`}
-                          onClick={() => setSelectedEvent(group.event)}
+                          onClick={() => setSelectedEvent(group.event, {courts: group.courts, count: group.count})}
                           style={{
                             backgroundColor: getEventColor(group.event.eventType || "Practice")
                           }}
