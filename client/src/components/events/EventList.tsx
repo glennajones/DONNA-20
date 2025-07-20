@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -32,6 +33,12 @@ export function EventList() {
   const [actualRevenue, setActualRevenue] = useState<number>(0);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Event>>({});
+
+  // Available courts from the scheduling system
+  const availableCourts = [
+    "Court 1", "Court 2", "Court 3", "Court 4", 
+    "Court 5", "Court 6", "Court 7", "Beach 1", "Beach 2"
+  ];
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["/api/events"],
@@ -139,6 +146,7 @@ export function EventList() {
       players: event.players,
       courts: event.courts,
       coaches: event.coaches,
+      assignedCourts: Array.isArray(event.assignedCourts) ? event.assignedCourts : [],
       feePerPlayer: event.feePerPlayer,
       status: event.status,
       coachRates: coachRates,
@@ -205,6 +213,15 @@ export function EventList() {
         miscExpenses: miscExpenses.filter((_, i) => i !== index)
       });
     }
+  };
+
+  // Court assignment handlers for edit form
+  const toggleEditCourt = (court: string) => {
+    const currentCourts = (editFormData.assignedCourts as string[]) || [];
+    const updatedCourts = currentCourts.includes(court) 
+      ? currentCourts.filter(c => c !== court)
+      : [...currentCourts, court];
+    setEditFormData({ ...editFormData, assignedCourts: updatedCourts });
   };
 
   const canManageEvents = user?.role === "admin" || user?.role === "manager";
@@ -533,6 +550,40 @@ export function EventList() {
                       onChange={(e) => setEditFormData({ ...editFormData, coaches: Number(e.target.value) || 0 })}
                     />
                   </div>
+                </div>
+
+                {/* Court Assignment */}
+                <div className="space-y-3">
+                  <Label>Assigned Courts</Label>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Select specific courts for this event.
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {availableCourts.map(court => (
+                      <div key={court} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-court-${court}`}
+                          checked={((editFormData.assignedCourts as string[]) || []).includes(court)}
+                          onCheckedChange={() => toggleEditCourt(court)}
+                        />
+                        <Label 
+                          htmlFor={`edit-court-${court}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {court}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {((editFormData.assignedCourts as string[]) || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {((editFormData.assignedCourts as string[]) || []).map(court => (
+                        <Badge key={court} variant="outline" className="text-xs">
+                          {court}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

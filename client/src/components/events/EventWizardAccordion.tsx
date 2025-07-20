@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle } from "lucide-react";
@@ -39,8 +40,15 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const [players, setPlayers] = useState(0);
   const [playersPerCourt, setPlayersPerCourt] = useState(6);
   const [playersPerCoach, setPlayersPerCoach] = useState(12);
+  const [assignedCourts, setAssignedCourts] = useState<string[]>([]);
   const courts = playersPerCourt > 0 ? Math.ceil(players / playersPerCourt) : 0;
   const coaches = playersPerCoach > 0 ? Math.ceil(players / playersPerCoach) : 0;
+
+  // Available courts from the scheduling system
+  const availableCourts = [
+    "Court 1", "Court 2", "Court 3", "Court 4", 
+    "Court 5", "Court 6", "Court 7", "Beach 1", "Beach 2"
+  ];
 
   // Budget & Pricing
   const [feePerPlayer, setFeePerPlayer] = useState(0);
@@ -74,6 +82,15 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Court selection handlers
+  const toggleCourt = (court: string) => {
+    setAssignedCourts(prev => 
+      prev.includes(court) 
+        ? prev.filter(c => c !== court)
+        : [...prev, court]
+    );
+  };
+
   // Validation functions
   const isBasicComplete = basic.name && basic.startDate && basic.location;
   const isResourceComplete = players > 0 && playersPerCourt > 0 && playersPerCoach > 0;
@@ -98,6 +115,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
         players,
         courts,
         coaches,
+        assignedCourts,
         feePerPlayer: feePerPlayer.toString(),
         coachRates,
         miscExpenses,
@@ -120,6 +138,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       // Reset form
       setBasic({ name: "", startDate: "", endDate: "", startTime: "", endTime: "", location: "" });
       setPlayers(0);
+      setAssignedCourts([]);
       setFeePerPlayer(0);
       setCoachRates([{ profile: "", rate: 0 }]);
       setMiscExpenses([{ item: "", cost: 0 }]);
@@ -329,6 +348,40 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                       </div>
                     </div>
                   )}
+
+                  {/* Court Assignment */}
+                  <div className="space-y-3">
+                    <Label>Assign Courts (Optional)</Label>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Select specific courts for this event. If none selected, courts can be assigned later.
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {availableCourts.map(court => (
+                        <div key={court} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`court-${court}`}
+                            checked={assignedCourts.includes(court)}
+                            onCheckedChange={() => toggleCourt(court)}
+                          />
+                          <Label 
+                            htmlFor={`court-${court}`}
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            {court}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {assignedCourts.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {assignedCourts.map(court => (
+                          <Badge key={court} variant="outline" className="text-xs">
+                            {court}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
@@ -457,6 +510,18 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                   <p>{coaches} coaches needed</p>
                   {eventDurationHours > 0 && (
                     <p>{eventDurationHours.toFixed(1)} hours</p>
+                  )}
+                  {assignedCourts.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-xs text-gray-500">Assigned courts:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {assignedCourts.map(court => (
+                          <Badge key={court} variant="outline" className="text-xs">
+                            {court}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

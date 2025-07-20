@@ -275,6 +275,7 @@ export const events = pgTable("events", {
   players: integer("players").notNull().default(0),
   courts: integer("courts").notNull().default(0),
   coaches: integer("coaches").notNull().default(0),
+  assignedCourts: text("assigned_courts").array().notNull().default([]), // specific court assignments
   feePerPlayer: decimal("fee_per_player", { precision: 10, scale: 2 }).notNull().default("0.00"),
   coachRates: json("coach_rates").notNull().default([]), // array of {profile: string, rate: number}
   miscExpenses: json("misc_expenses").notNull().default([]), // array of {item: string, cost: number}
