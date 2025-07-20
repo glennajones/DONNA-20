@@ -216,7 +216,7 @@ export default function TimeClock() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-blue-600" />
-            Time Clock System - With Manual Entry
+            Time Clock System
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -258,39 +258,33 @@ export default function TimeClock() {
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={handleClockAction}
-                    disabled={clockMutation.isPending}
-                    className={`flex-1 ${clockedIn ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
-                  >
-                    {clockMutation.isPending ? (
-                      "Processing..."
-                    ) : (
-                      <>
-                        {clockedIn ? (
-                          <Square className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Play className="h-4 w-4 mr-2" />
-                        )}
-                        {clockedIn ? "Clock Out" : "Clock In"}
-                      </>
-                    )}
-                  </Button>
-                </div>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={handleClockAction}
+                  disabled={clockMutation.isPending}
+                  className={`flex-1 ${clockedIn ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
+                >
+                  {clockMutation.isPending ? (
+                    "Processing..."
+                  ) : (
+                    <>
+                      {clockedIn ? (
+                        <Square className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      {clockedIn ? "Clock Out" : "Clock In"}
+                    </>
+                  )}
+                </Button>
 
-                <div className="border-t pt-4">
-                  <p className="text-sm text-gray-600 mb-3">
-                    Need to add a missed punch? Use manual entry below (requires admin approval):
-                  </p>
-                  <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Manual Time Entry
-                      </Button>
-                    </DialogTrigger>
+                <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Manual Entry
+                    </Button>
+                  </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Add Manual Time Entry</DialogTitle>
@@ -362,7 +356,6 @@ export default function TimeClock() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                </div>
               </div>
             </TabsContent>
 
