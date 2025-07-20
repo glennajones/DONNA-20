@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
+import Navbar from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, DollarSign, TrendingUp, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, DollarSign, TrendingUp, CheckCircle, Clock, CalendarDays, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import EventRegistrationModal from '@/components/scheduling/EventRegistrationModal';
 
 export default function MyDashboard() {
   const [activities, setActivities] = useState([]);
+  const [availableEvents, setAvailableEvents] = useState([]);
   const [payments, setPayments] = useState([]);
   const [performance, setPerformance] = useState({ matches: 0, goals: 0, assists: 0 });
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,6 +41,15 @@ export default function MyDashboard() {
         }).slice(0, 5); // Show only next 5 activities
         
         setActivities(upcoming);
+
+        // Also set available events for registration (showing next 30 days)
+        const availableForRegistration = events.filter(event => {
+          const eventDate = new Date(event.date);
+          const now = new Date();
+          const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          return eventDate >= now && eventDate <= thirtyDaysFromNow;
+        });
+        setAvailableEvents(availableForRegistration);
       }
 
       // Fetch payment information (mock for now - would integrate with actual payment system)
@@ -59,6 +74,25 @@ export default function MyDashboard() {
     }
   };
 
+  const handleEventRegistration = (event) => {
+    setSelectedEvent(event);
+    setIsRegistrationModalOpen(true);
+  };
+
+  const handleRegistrationSuccess = () => {
+    toast({
+      title: "Registration Successful",
+      description: "You have successfully registered for the event!",
+    });
+    setIsRegistrationModalOpen(false);
+    fetchDashboardData(); // Refresh data
+  };
+
+  const handleRegistrationClose = () => {
+    setIsRegistrationModalOpen(false);
+    setSelectedEvent(null);
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -75,11 +109,13 @@ export default function MyDashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <TrendingUp className="h-8 w-8 text-blue-600" />
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Dashboard</h1>
-      </div>
+    <>
+      <Navbar />
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Dashboard</h1>
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upcoming Activities */}
@@ -185,6 +221,81 @@ export default function MyDashboard() {
           )}
         </CardContent>
       </Card>
-    </div>
+
+      {/* Training Calendar - Available Events for Registration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-blue-600" />
+            Training Calendar - Register for Events
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {availableEvents.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No upcoming events available for registration</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {availableEvents.slice(0, 6).map((event) => (
+                <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border hover:border-blue-300 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-gray-900 dark:text-white">{event.title}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {event.eventType || 'Training'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(event.date).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {event.startTime} - {event.endTime}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        📍 {event.court}
+                      </div>
+                    </div>
+                    {event.coach && (
+                      <p className="text-xs text-gray-500 mt-1">Coach: {event.coach}</p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => handleEventRegistration(event)}
+                    size="sm"
+                    className="ml-4 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <UserPlus className="h-3 w-3 mr-1" />
+                    Register
+                  </Button>
+                </div>
+              ))}
+              {availableEvents.length > 6 && (
+                <div className="text-center pt-4">
+                  <p className="text-sm text-gray-500">
+                    Showing 6 of {availableEvents.length} available events
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Event Registration Modal */}
+      {selectedEvent && (
+        <EventRegistrationModal
+          event={selectedEvent}
+          isOpen={isRegistrationModalOpen}
+          onClose={handleRegistrationClose}
+          onSuccess={handleRegistrationSuccess}
+        />
+      )}
+      </div>
+    </>
   );
 }
