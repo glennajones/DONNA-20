@@ -100,6 +100,14 @@ export default function UserManagement() {
   const handleEdit = (user) => {
     setFormData({ ...user, password: '' });
     setIsEditing(true);
+    
+    // Scroll to the form to make it clear that edit mode is active
+    setTimeout(() => {
+      const formElement = document.querySelector('[data-form-container]');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const handleUpdate = async () => {
@@ -225,7 +233,7 @@ export default function UserManagement() {
       </div>
 
       {/* Add/Edit User Form */}
-      <Card>
+      <Card data-form-container>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {isEditing ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
