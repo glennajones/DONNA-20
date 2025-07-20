@@ -239,7 +239,7 @@ export default function Dashboard() {
     : allNavigationCards;
 
   // Create activities from pending time clock entries that need admin approval
-  const activities = pendingEntries.map((entry: any) => {
+  const activities = (pendingEntries as any[]).map((entry: any) => {
     const timeAgo = new Date(entry.submittedAt).toLocaleString();
     const actionText = entry.action === 'clock-in' ? 'Clock In' : 'Clock Out';
     
@@ -372,7 +372,7 @@ export default function Dashboard() {
               ) : (
                 <div className="flow-root">
                   <ul className="-mb-8">
-                    {activities.map((activity, index) => {
+                    {activities.map((activity: any, index: number) => {
                       const Icon = activity.icon;
                       return (
                         <li key={activity.entryId}>

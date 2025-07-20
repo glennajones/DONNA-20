@@ -115,7 +115,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   };
 
   // Validation functions
-  const isBasicComplete = basic.name && basic.startDate && basic.eventType;
+  const isBasicComplete = Boolean(basic.name && basic.startDate && basic.eventType);
   const isResourceComplete = players > 0 && playersPerCourt > 0 && playersPerCoach > 0;
   const isBudgetComplete = feePerPlayer >= 0; // Allow $0 for free events
   const canSubmit = isBasicComplete && isResourceComplete && isBudgetComplete;
