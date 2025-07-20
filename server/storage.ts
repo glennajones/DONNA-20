@@ -183,7 +183,19 @@ export interface IStorage {
   createPracticePlan(plan: InsertPracticePlan): Promise<PracticePlan>;
   updatePracticePlan(id: number, plan: Partial<InsertPracticePlan>): Promise<PracticePlan | undefined>;
   deletePracticePlan(id: number): Promise<boolean>;
+
+  // Coach Matching methods
+  getCoach(id: number): Promise<Coach | undefined>;
+  getCoaches(): Promise<Coach[]>;
+  createCoach(coach: InsertCoach): Promise<Coach>;
+  updateCoach(id: number, coach: Partial<InsertCoach>): Promise<Coach | undefined>;
+  deleteCoach(id: number): Promise<boolean>;
   
+  getCoachOutreachLog(id: number): Promise<CoachOutreachLog | undefined>;
+  getCoachOutreachLogsByEvent(eventId: number): Promise<CoachOutreachLog[]>;
+  createCoachOutreachLog(log: InsertCoachOutreachLog): Promise<CoachOutreachLog>;
+  updateCoachOutreachLog(id: number, log: Partial<InsertCoachOutreachLog>): Promise<CoachOutreachLog | undefined>;
+  deleteCoachOutreachLog(id: number): Promise<boolean>;
 
 }
 
@@ -884,6 +896,68 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
+  // Coach Matching methods
+  async getCoach(id: number): Promise<Coach | undefined> {
+    const [coach] = await db.select().from(coaches).where(eq(coaches.id, id));
+    return coach || undefined;
+  }
+
+  async getCoaches(): Promise<Coach[]> {
+    return await db.select().from(coaches);
+  }
+
+  async createCoach(insertCoach: InsertCoach): Promise<Coach> {
+    const [coach] = await db
+      .insert(coaches)
+      .values(insertCoach)
+      .returning();
+    return coach;
+  }
+
+  async updateCoach(id: number, coachUpdate: Partial<InsertCoach>): Promise<Coach | undefined> {
+    const [coach] = await db
+      .update(coaches)
+      .set({ ...coachUpdate, updatedAt: new Date() })
+      .where(eq(coaches.id, id))
+      .returning();
+    return coach || undefined;
+  }
+
+  async deleteCoach(id: number): Promise<boolean> {
+    const result = await db.delete(coaches).where(eq(coaches.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getCoachOutreachLog(id: number): Promise<CoachOutreachLog | undefined> {
+    const [log] = await db.select().from(coachOutreachLogs).where(eq(coachOutreachLogs.id, id));
+    return log || undefined;
+  }
+
+  async getCoachOutreachLogsByEvent(eventId: number): Promise<CoachOutreachLog[]> {
+    return await db.select().from(coachOutreachLogs).where(eq(coachOutreachLogs.eventId, eventId));
+  }
+
+  async createCoachOutreachLog(insertLog: InsertCoachOutreachLog): Promise<CoachOutreachLog> {
+    const [log] = await db
+      .insert(coachOutreachLogs)
+      .values(insertLog)
+      .returning();
+    return log;
+  }
+
+  async updateCoachOutreachLog(id: number, logUpdate: Partial<InsertCoachOutreachLog>): Promise<CoachOutreachLog | undefined> {
+    const [log] = await db
+      .update(coachOutreachLogs)
+      .set(logUpdate)
+      .where(eq(coachOutreachLogs.id, id))
+      .returning();
+    return log || undefined;
+  }
+
+  async deleteCoachOutreachLog(id: number): Promise<boolean> {
+    const result = await db.delete(coachOutreachLogs).where(eq(coachOutreachLogs.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
 
 }
 

@@ -110,6 +110,12 @@ export function Navbar() {
                   Admin Settings
                 </Link>
               )}
+              
+              {(hasRole("admin") || hasRole("manager")) && (
+                <Link href="/coach-matching" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Coach Matching
+                </Link>
+              )}
             </div>
           </div>
 

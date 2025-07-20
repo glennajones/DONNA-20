@@ -23,6 +23,7 @@ import CoachResourcesPage from "./pages/coach-resources";
 import PlayerDashboardPage from "./pages/player-dashboard";
 import ParentDashboardPage from "./pages/parent-dashboard";
 import AdminSettingsPage from "./pages/admin-settings";
+import CoachMatchingPage from "./pages/coach-matching";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/player-dashboard" component={PlayerDashboardPage} />
       <Route path="/parent-dashboard" component={ParentDashboardPage} />
       <Route path="/admin-settings" component={AdminSettingsPage} />
+      <Route path="/coach-matching" component={CoachMatchingPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />

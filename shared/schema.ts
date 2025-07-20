@@ -506,6 +506,36 @@ export const gameStats = pgTable('game_stats', {
   createdAt: timestamp('created_at').notNull().defaultNow()
 });
 
+// Coach Matching & Outreach Tables
+export const coaches = pgTable('coaches', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  specialties: text('specialties').array().notNull().default([]), // volleyball specialties
+  availabilityWindows: json('availability_windows').notNull().default([]), // time windows available
+  pastEventRatings: integer('past_event_ratings').array().notNull().default([]), // array of 1-5 ratings
+  preferredChannel: text('preferred_channel', { enum: ['email', 'sms'] }).notNull().default('email'),
+  location: text('location'),
+  hourlyRate: decimal('hourly_rate', { precision: 8, scale: 2 }),
+  status: text('status', { enum: ['active', 'inactive', 'unavailable'] }).notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const coachOutreachLogs = pgTable('coach_outreach_logs', {
+  id: serial('id').primaryKey(),
+  eventId: integer('event_id').notNull().references(() => scheduleEvents.id),
+  coachId: integer('coach_id').notNull().references(() => coaches.id),
+  attemptNumber: integer('attempt_number').notNull().default(1),
+  channel: text('channel', { enum: ['email', 'sms'] }).notNull(),
+  messageId: text('message_id'),
+  response: text('response', { enum: ['accept', 'decline', 'escalated'] }),
+  responseDetails: text('response_details'), // any additional notes
+  timestamp: timestamp('timestamp').defaultNow(),
+  remindersSent: integer('reminders_sent').notNull().default(0),
+});
+
 // Coach Resources Relations
 export const timeClockEntriesRelations = relations(timeClockEntries, ({ one }) => ({
   user: one(users, {
@@ -532,6 +562,18 @@ export const gameStatsRelations = relations(gameStats, ({ one }) => ({
   createdBy: one(users, {
     fields: [gameStats.createdBy],
     references: [users.id]
+  })
+}));
+
+// Coach Matching Relations
+export const coachOutreachLogsRelations = relations(coachOutreachLogs, ({ one }) => ({
+  event: one(scheduleEvents, {
+    fields: [coachOutreachLogs.eventId],
+    references: [scheduleEvents.id]
+  }),
+  coach: one(coaches, {
+    fields: [coachOutreachLogs.coachId],
+    references: [coaches.id]
   })
 }));
 
@@ -566,3 +608,20 @@ export type InsertGameLineup = z.infer<typeof insertGameLineupSchema>;
 export type GameLineup = typeof gameLineups.$inferSelect;
 export type InsertGameStat = z.infer<typeof insertGameStatSchema>;
 export type GameStat = typeof gameStats.$inferSelect;
+
+// Coach Matching Schemas
+export const insertCoachSchema = createInsertSchema(coaches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCoachOutreachLogSchema = createInsertSchema(coachOutreachLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertCoach = z.infer<typeof insertCoachSchema>;
+export type Coach = typeof coaches.$inferSelect;
+export type InsertCoachOutreachLog = z.infer<typeof insertCoachOutreachLogSchema>;
+export type CoachOutreachLog = typeof coachOutreachLogs.$inferSelect;

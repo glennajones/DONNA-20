@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
-import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema } from "@shared/schema";
+import { loginSchema, insertRegistrationSchema, insertPaymentSchema, insertScheduleEventSchema, insertPlayerSchema, insertParentSchema, insertEventSchema, insertEvaluationSchema, insertGoogleCalendarTokenSchema, insertPodcastEpisodeSchema, insertPodcastCommentSchema, insertPodcastPollVoteSchema, insertCoachSchema, insertCoachOutreachLogSchema } from "@shared/schema";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
@@ -1773,6 +1773,287 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Delete user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Coach Management Routes
+  app.get("/api/coaches", authenticateToken, async (req: any, res) => {
+    try {
+      const coaches = await storage.getCoaches();
+      res.json(coaches);
+    } catch (error) {
+      console.error("Get coaches error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/coaches/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const coach = await storage.getCoach(parseInt(id));
+      
+      if (!coach) {
+        return res.status(404).json({ message: "Coach not found" });
+      }
+      
+      res.json(coach);
+    } catch (error) {
+      console.error("Get coach error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coaches", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can create coaches
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const coachData = insertCoachSchema.parse(req.body);
+      const coach = await storage.createCoach(coachData);
+      res.status(201).json(coach);
+    } catch (error) {
+      console.error("Create coach error:", error);
+      res.status(400).json({ message: "Invalid coach data" });
+    }
+  });
+
+  app.put("/api/coaches/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update coaches
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const coachData = req.body;
+      
+      const updatedCoach = await storage.updateCoach(parseInt(id), coachData);
+      
+      if (!updatedCoach) {
+        return res.status(404).json({ message: "Coach not found" });
+      }
+      
+      res.json(updatedCoach);
+    } catch (error) {
+      console.error("Update coach error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/coaches/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete coaches
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteCoach(parseInt(id));
+      
+      if (!success) {
+        return res.status(404).json({ message: "Coach not found" });
+      }
+      
+      res.json({ message: "Coach deleted successfully" });
+    } catch (error) {
+      console.error("Delete coach error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Coach Matching Routes
+  app.get("/api/coach-match", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId, limit = 5 } = req.query;
+      
+      if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+      }
+
+      // Get event details
+      const event = await storage.getScheduleEvent(parseInt(eventId));
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Get all coaches
+      const allCoaches = await storage.getCoaches();
+      const activeCoaches = allCoaches.filter(coach => coach.status === 'active');
+
+      // Simple scoring algorithm (in a real app, this would be more sophisticated)
+      const scoredCoaches = activeCoaches.map(coach => {
+        let score = 0;
+        
+        // Base score for being active
+        score += 1;
+        
+        // Bonus for having specialties
+        if (coach.specialties && coach.specialties.length > 0) {
+          score += coach.specialties.length * 0.5;
+        }
+        
+        // Bonus for having past ratings
+        if (coach.pastEventRatings && coach.pastEventRatings.length > 0) {
+          const avgRating = coach.pastEventRatings.reduce((sum, rating) => sum + rating, 0) / coach.pastEventRatings.length;
+          score += avgRating;
+        }
+        
+        return { ...coach, matchScore: score };
+      });
+
+      // Sort by score and limit results
+      const bestMatches = scoredCoaches
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, parseInt(limit));
+
+      res.json(bestMatches);
+    } catch (error) {
+      console.error("Coach match error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Coach Outreach Routes
+  app.post("/api/coach-outreach/initiate", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can initiate outreach
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { eventId, coachIds, config = {} } = req.body;
+
+      if (!eventId || !coachIds || !Array.isArray(coachIds)) {
+        return res.status(400).json({ message: "Event ID and coach IDs are required" });
+      }
+
+      // Create outreach logs for each coach
+      const logs = [];
+      for (const coachId of coachIds) {
+        const coach = await storage.getCoach(coachId);
+        if (coach && coach.status === 'active') {
+          const log = await storage.createCoachOutreachLog({
+            eventId: parseInt(eventId),
+            coachId: coachId,
+            attemptNumber: 1,
+            channel: coach.preferredChannel,
+            messageId: `init-${Date.now()}-${coachId}`,
+            response: null,
+            responseDetails: null,
+            remindersSent: 0
+          });
+          logs.push(log);
+        }
+      }
+
+      res.json({ status: 'initiated', logs: logs.length });
+    } catch (error) {
+      console.error("Initiate outreach error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach-outreach/response", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId, coachId, response, responseDetails = null } = req.body;
+
+      if (!eventId || !coachId || !response) {
+        return res.status(400).json({ message: "Event ID, coach ID, and response are required" });
+      }
+
+      // Find the outreach log
+      const logs = await storage.getCoachOutreachLogsByEvent(parseInt(eventId));
+      const log = logs.find(l => l.coachId === parseInt(coachId) && !l.response);
+
+      if (!log) {
+        return res.status(404).json({ message: "Outreach log not found" });
+      }
+
+      // Update the log with the response
+      await storage.updateCoachOutreachLog(log.id, {
+        response: response,
+        responseDetails: responseDetails
+      });
+
+      // If accepted, assign coach to event
+      if (response === 'accept') {
+        await storage.updateScheduleEvent(parseInt(eventId), {
+          coach: `Coach ${coachId}` // In a real app, this would use the coach's name
+        });
+      }
+
+      res.json({ status: 'updated' });
+    } catch (error) {
+      console.error("Handle response error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/coach-outreach/status", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId } = req.query;
+
+      if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+      }
+
+      const logs = await storage.getCoachOutreachLogsByEvent(parseInt(eventId));
+      
+      // Enhance logs with coach information
+      const enhancedLogs = await Promise.all(logs.map(async (log) => {
+        const coach = await storage.getCoach(log.coachId);
+        return {
+          ...log,
+          coachName: coach ? coach.name : `Coach ${log.coachId}`,
+          coachEmail: coach ? coach.email : null
+        };
+      }));
+
+      res.json(enhancedLogs);
+    } catch (error) {
+      console.error("Get outreach status error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach-outreach/escalate", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins can escalate
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { eventId, config = {} } = req.body;
+      const handOffAfter = config.handOffAfter || 7; // days
+
+      if (!eventId) {
+        return res.status(400).json({ message: "Event ID is required" });
+      }
+
+      const logs = await storage.getCoachOutreachLogsByEvent(parseInt(eventId));
+      const now = new Date();
+      let escalatedCount = 0;
+
+      for (const log of logs) {
+        if (!log.response && log.timestamp) {
+          const daysSinceContact = Math.floor((now.getTime() - new Date(log.timestamp).getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysSinceContact >= handOffAfter) {
+            await storage.updateCoachOutreachLog(log.id, {
+              response: 'escalated',
+              responseDetails: 'Automatically escalated due to no response'
+            });
+            escalatedCount++;
+          }
+        }
+      }
+
+      res.json({ status: 'escalated', count: escalatedCount });
+    } catch (error) {
+      console.error("Escalate outreach error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
