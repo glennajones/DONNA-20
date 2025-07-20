@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle, Tag, Repeat } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { TimeSelect } from "@/components/ui/time-select";
 import type { InsertEvent } from "@shared/schema";
 
 interface CoachRate {
@@ -401,20 +402,20 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="startTime">Start Time</Label>
-                      <Input
+                      <TimeSelect
                         id="startTime"
-                        type="time"
                         value={basic.startTime}
-                        onChange={(e) => setBasic({ ...basic, startTime: e.target.value })}
+                        onChange={(value) => setBasic({ ...basic, startTime: value })}
+                        placeholder="Select start time"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="endTime">End Time</Label>
-                      <Input
+                      <TimeSelect
                         id="endTime"
-                        type="time"
                         value={basic.endTime}
-                        onChange={(e) => setBasic({ ...basic, endTime: e.target.value })}
+                        onChange={(value) => setBasic({ ...basic, endTime: value })}
+                        placeholder="Select end time"
                       />
                     </div>
                   </div>

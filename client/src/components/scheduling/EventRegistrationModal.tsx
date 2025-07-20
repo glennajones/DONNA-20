@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Clock, MapPin, Users, DollarSign, AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { formatTime24To12 } from "@/lib/timeUtils";
 
 interface EventRegistrationModalProps {
   isOpen: boolean;
@@ -195,7 +196,8 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
     const endMinutes = hours * 60 + minutes + (event.duration || 120);
     const endHours = Math.floor(endMinutes / 60);
     const endMins = endMinutes % 60;
-    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+    const endTimeStr = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+    return formatTime24To12(endTimeStr);
   })();
 
   return (
@@ -233,7 +235,7 @@ export default function EventRegistrationModal({ isOpen, onClose, event }: Event
                 
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-500" />
-                  <span>{event.time} - {endTime}</span>
+                  <span>{formatTime24To12(event.time)} - {endTime}</span>
                 </div>
                 
                 <div className="flex items-center gap-2">

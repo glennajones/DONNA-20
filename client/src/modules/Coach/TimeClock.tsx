@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Clock, Plus, Check, X, AlertCircle, History, Play, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { TimeSelect } from "@/components/ui/time-select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { TimeClockEntry } from "@shared/schema";
@@ -311,11 +312,11 @@ export default function TimeClock() {
                         </div>
                         <div>
                           <Label htmlFor="time">Time</Label>
-                          <Input
+                          <TimeSelect
                             id="time"
-                            type="time"
                             value={manualTime}
-                            onChange={(e) => setManualTime(e.target.value)}
+                            onChange={(value) => setManualTime(value)}
+                            placeholder="Select time"
                           />
                         </div>
                       </div>
