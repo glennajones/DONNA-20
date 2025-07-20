@@ -4,18 +4,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import type { Event } from "@shared/schema";
+
+interface CoachRate {
+  profile: string;
+  rate: number;
+}
+
+interface MiscExpense {
+  item: string;
+  cost: number;
+}
 
 export function EventList() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [actualRevenue, setActualRevenue] = useState<number>(0);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<Event>>({});
 
   const { data: events, isLoading, error } = useQuery({
     queryKey: ["/api/events"],
@@ -63,6 +79,8 @@ export function EventList() {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       setEditingEvent(null);
       setActualRevenue(0);
+      setShowEditDialog(false);
+      setEditFormData({});
       toast({
         title: "Success",
         description: "Event updated successfully",
@@ -101,6 +119,87 @@ export function EventList() {
       });
     }
   };
+
+  const handleEditEvent = (event: Event) => {
+    setEditFormData({
+      name: event.name,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      location: event.location,
+      players: event.players,
+      courts: event.courts,
+      coaches: event.coaches,
+      feePerPlayer: event.feePerPlayer,
+      status: event.status,
+      coachRates: event.coachRates || [],
+      miscExpenses: event.miscExpenses || [],
+    });
+    setEditingEvent(event);
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingEvent && editFormData) {
+      updateEvent.mutate({
+        id: editingEvent.id,
+        data: editFormData
+      });
+    }
+  };
+
+  const updateCoachRate = (index: number, field: keyof CoachRate, value: string | number) => {
+    const coachRates = (editFormData.coachRates as CoachRate[]) || [];
+    const updated = [...coachRates];
+    updated[index] = { ...updated[index], [field]: field === "rate" ? Number(value) : value };
+    setEditFormData({ ...editFormData, coachRates: updated });
+  };
+
+  const addCoachRate = () => {
+    const coachRates = (editFormData.coachRates as CoachRate[]) || [];
+    setEditFormData({ 
+      ...editFormData, 
+      coachRates: [...coachRates, { profile: "", rate: 0 }] 
+    });
+  };
+
+  const removeCoachRate = (index: number) => {
+    const coachRates = (editFormData.coachRates as CoachRate[]) || [];
+    if (coachRates.length > 1) {
+      setEditFormData({
+        ...editFormData,
+        coachRates: coachRates.filter((_, i) => i !== index)
+      });
+    }
+  };
+
+  const updateMiscExpense = (index: number, field: keyof MiscExpense, value: string | number) => {
+    const miscExpenses = (editFormData.miscExpenses as MiscExpense[]) || [];
+    const updated = [...miscExpenses];
+    updated[index] = { ...updated[index], [field]: field === "cost" ? Number(value) : value };
+    setEditFormData({ ...editFormData, miscExpenses: updated });
+  };
+
+  const addMiscExpense = () => {
+    const miscExpenses = (editFormData.miscExpenses as MiscExpense[]) || [];
+    setEditFormData({ 
+      ...editFormData, 
+      miscExpenses: [...miscExpenses, { item: "", cost: 0 }] 
+    });
+  };
+
+  const removeMiscExpense = (index: number) => {
+    const miscExpenses = (editFormData.miscExpenses as MiscExpense[]) || [];
+    if (miscExpenses.length > 1) {
+      setEditFormData({
+        ...editFormData,
+        miscExpenses: miscExpenses.filter((_, i) => i !== index)
+      });
+    }
+  };
+
+  const canManageEvents = user?.role === "admin" || user?.role === "manager";
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -223,7 +322,19 @@ export function EventList() {
                         Update Revenue
                       </Button>
                       
-                      {(user?.role === "admin" || user?.role === "manager") && (
+                      {canManageEvents && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditEvent(event)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Edit2 className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                      
+                      {canManageEvents && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -263,8 +374,8 @@ export function EventList() {
       )}
 
       {/* Update Actual Revenue Dialog */}
-      {editingEvent && (
-        <AlertDialog open={!!editingEvent} onOpenChange={() => setEditingEvent(null)}>
+      {editingEvent && !showEditDialog && (
+        <AlertDialog open={!!editingEvent && !showEditDialog} onOpenChange={() => setEditingEvent(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Update Actual Revenue</AlertDialogTitle>
@@ -298,6 +409,294 @@ export function EventList() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      {/* Edit Event Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Make changes to "{editingEvent?.name}" event details
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 py-4">
+            {/* Edit Form */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Basic Information
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="edit-name">Event Name</Label>
+                    <Input
+                      id="edit-name"
+                      value={editFormData.name || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-startDate">Start Date</Label>
+                      <Input
+                        id="edit-startDate"
+                        type="date"
+                        value={editFormData.startDate || ""}
+                        onChange={(e) => setEditFormData({ ...editFormData, startDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-endDate">End Date</Label>
+                      <Input
+                        id="edit-endDate"
+                        type="date"
+                        value={editFormData.endDate || ""}
+                        onChange={(e) => setEditFormData({ ...editFormData, endDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-startTime">Start Time</Label>
+                      <Input
+                        id="edit-startTime"
+                        type="time"
+                        value={editFormData.startTime || ""}
+                        onChange={(e) => setEditFormData({ ...editFormData, startTime: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-endTime">End Time</Label>
+                      <Input
+                        id="edit-endTime"
+                        type="time"
+                        value={editFormData.endTime || ""}
+                        onChange={(e) => setEditFormData({ ...editFormData, endTime: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-location">Location</Label>
+                    <Input
+                      id="edit-location"
+                      value={editFormData.location || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Resource Planning */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Resources
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="edit-players">Players</Label>
+                    <Input
+                      id="edit-players"
+                      type="number"
+                      value={editFormData.players || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, players: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-courts">Courts</Label>
+                    <Input
+                      id="edit-courts"
+                      type="number"
+                      value={editFormData.courts || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, courts: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-coaches">Coaches</Label>
+                    <Input
+                      id="edit-coaches"
+                      type="number"
+                      value={editFormData.coaches || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, coaches: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Budget */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Budget
+                </h4>
+                <div>
+                  <Label htmlFor="edit-feePerPlayer">Fee per Player ($)</Label>
+                  <Input
+                    id="edit-feePerPlayer"
+                    type="number"
+                    value={editFormData.feePerPlayer || ""}
+                    onChange={(e) => setEditFormData({ ...editFormData, feePerPlayer: e.target.value })}
+                  />
+                </div>
+
+                {/* Coach Rates */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Coach Rates</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addCoachRate}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Coach
+                    </Button>
+                  </div>
+                  {((editFormData.coachRates as CoachRate[]) || []).map((coach, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder="Coach profile"
+                        value={coach.profile}
+                        onChange={(e) => updateCoachRate(index, "profile", e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Hourly Rate"
+                        value={coach.rate}
+                        onChange={(e) => updateCoachRate(index, "rate", e.target.value)}
+                        className="w-32"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeCoachRate(index)}
+                        disabled={((editFormData.coachRates as CoachRate[]) || []).length === 1}
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Miscellaneous Expenses */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Miscellaneous Expenses</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addMiscExpense}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Expense
+                    </Button>
+                  </div>
+                  {((editFormData.miscExpenses as MiscExpense[]) || []).map((expense, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder="Expense item"
+                        value={expense.item}
+                        onChange={(e) => updateMiscExpense(index, "item", e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Cost"
+                        value={expense.cost}
+                        onChange={(e) => updateMiscExpense(index, "cost", e.target.value)}
+                        className="w-32"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeMiscExpense(index)}
+                        disabled={((editFormData.miscExpenses as MiscExpense[]) || []).length === 1}
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Status */}
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={editFormData.status || "planning"} onValueChange={(value) => setEditFormData({ ...editFormData, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Live Summary Sidebar */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Event Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {editFormData.name && (
+                    <div>
+                      <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400">Event</h4>
+                      <p className="font-semibold">{editFormData.name}</p>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Players:</span>
+                      <span>{editFormData.players || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Courts:</span>
+                      <span>{editFormData.courts || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Coaches:</span>
+                      <span>{editFormData.coaches || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Fee per Player:</span>
+                      <span>${editFormData.feePerPlayer || "0"}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+              disabled={updateEvent.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateEvent.isPending}
+              className="bg-[#56A0D3] hover:bg-[#4A90C2]"
+            >
+              {updateEvent.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
