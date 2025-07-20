@@ -207,8 +207,9 @@ export default function Dashboard() {
       title: "Podcast",
       description: "Volleyball podcast episodes",
       icon: Headphones,
-      href: "/podcast",
+      href: "https://www.unitedvolleyball.club/pages/better-together-a-united-podcast",
       color: "from-indigo-500 to-indigo-600",
+      external: true,
     },
     {
       title: "Forms, Checklists & Reports",
@@ -304,25 +305,44 @@ export default function Dashboard() {
               if (card.roles && !hasRole(card.roles)) return null;
               
               const Icon = card.icon;
-              return (
-                <Link key={card.title} href={card.href}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer group">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col items-center text-center space-y-3">
-                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${card.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                          <Icon className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
-                            {card.title}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {card.description}
-                          </p>
-                        </div>
+              const CardComponent = ({ children }: { children: React.ReactNode }) => (
+                <Card className="hover:shadow-md transition-shadow cursor-pointer group">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col items-center text-center space-y-3">
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${card.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <Icon className="h-6 w-6 text-white" />
                       </div>
-                    </CardContent>
-                  </Card>
+                      {children}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+
+              return card.external ? (
+                <a key={card.title} href={card.href} target="_blank" rel="noopener noreferrer">
+                  <CardComponent>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                        {card.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {card.description}
+                      </p>
+                    </div>
+                  </CardComponent>
+                </a>
+              ) : (
+                <Link key={card.title} href={card.href}>
+                  <CardComponent>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 group-hover:text-primary transition-colors">
+                        {card.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {card.description}
+                      </p>
+                    </div>
+                  </CardComponent>
                 </Link>
               );
             })}
