@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Users, MapPin, DollarSign, User, Plus, Trash2, CheckCircle, AlertCircle, Tag, Repeat } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -70,6 +70,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
   // Duplication state
   const [duplicateEvent, setDuplicateEvent] = useState(false);
+  const [recurringModalOpen, setRecurringModalOpen] = useState(false);
   const [recurringSettings, setRecurringSettings] = useState({
     frequency: "weekly" as "weekly" | "daily" | "monthly",
     daysOfWeek: [] as string[],
@@ -712,7 +713,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
             </div>
 
             {duplicateEvent && (
-              <Dialog>
+              <Dialog open={recurringModalOpen} onOpenChange={setRecurringModalOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full">
                     Configure Recurring Events
@@ -721,6 +722,9 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Create Recurring Events</DialogTitle>
+                    <DialogDescription>
+                      Set up the schedule for repeating this event automatically.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -811,6 +815,17 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                       </p>
                     </div>
                   </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setRecurringModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={() => setRecurringModalOpen(false)}
+                      className="bg-[#56A0D3] hover:bg-[#4A90C2]"
+                    >
+                      Save Settings
+                    </Button>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
