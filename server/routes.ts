@@ -185,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { registrationId } = req.query;
       
-      let payments;
+      let payments: any[] = [];
       if (registrationId) {
         payments = await storage.getPaymentsByRegistration(parseInt(registrationId));
       } else {
@@ -288,7 +288,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: budgetEvent.eventType || "Practice", // Use the actual event type from budget events
+                  eventType: budgetEvent.eventType === "Practice" ? "practice" : 
+                             budgetEvent.eventType === "Tournament" ? "tournament" :
+                             budgetEvent.eventType === "School Activity" ? "training" : 
+                             "practice", // Map to compatible types
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -313,7 +316,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: budgetEvent.eventType || "Practice", // Use the actual event type from budget events
+                  eventType: budgetEvent.eventType === "Practice" ? "practice" : 
+                             budgetEvent.eventType === "Tournament" ? "tournament" :
+                             budgetEvent.eventType === "School Activity" ? "training" : 
+                             "practice", // Map to compatible types
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -326,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
           
-          events = [...events, ...scheduleCompatibleEvents];
+          events = [...events, ...scheduleCompatibleEvents as any];
         } catch (budgetEventsError) {
           console.warn("Failed to include budget events in schedule:", budgetEventsError);
         }
@@ -1132,7 +1138,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: event.startDate,
                 time: event.startTime,
                 duration: durationMinutes,
-                eventType: event.eventType || "Practice", // Use actual event type
+                eventType: event.eventType === "Practice" ? "practice" : 
+                          event.eventType === "Tournament" ? "tournament" :
+                          event.eventType === "School Activity" ? "training" : 
+                          "practice", // Map to compatible types
                 participants: [], // Can be populated later
                 coach: "", // Can be populated later
                 description: event.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -1178,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // First, remove any existing schedule events for this budget event
           const existingScheduleEvents = await storage.getScheduleEventsByEventName(updatedEvent.name);
           for (const scheduleEvent of existingScheduleEvents) {
-            if (scheduleEvent.budgetEventId) {
+            if ((scheduleEvent as any).budgetEventId) {
               await storage.deleteScheduleEvent(scheduleEvent.id);
             }
           }
@@ -1208,7 +1217,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: updatedEvent.startDate,
                 time: updatedEvent.startTime,
                 duration: durationMinutes,
-                eventType: updatedEvent.eventType || "Practice", // Use actual event type
+                eventType: updatedEvent.eventType === "Practice" ? "practice" : 
+                          updatedEvent.eventType === "Tournament" ? "tournament" :
+                          updatedEvent.eventType === "School Activity" ? "training" : 
+                          "practice", // Map to compatible types
                 participants: [],
                 coach: "",
                 description: updatedEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -1497,7 +1509,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.createTeamAssignments(assignments);
+      await storage.createTeamAssignments(assignments.map(a => ({
+        ...a,
+        playerId: null
+      })));
       
       res.json(teams);
     } catch (error) {
