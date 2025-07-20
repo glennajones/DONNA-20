@@ -77,6 +77,7 @@ export default function AdminDashboardConfig() {
     { id: "admin", name: "Admin", color: "destructive" },
     { id: "manager", name: "Manager", color: "default" },
     { id: "coach", name: "Coach", color: "secondary" },
+    { id: "staff", name: "Staff", color: "secondary" },
     { id: "player", name: "Player", color: "outline" },
     { id: "parent", name: "Parent", color: "outline" },
   ];
@@ -86,7 +87,7 @@ export default function AdminDashboardConfig() {
     { name: "Training & Scheduling", component: "training", description: "Manage training sessions", defaultRoles: ["admin", "manager", "coach"] },
     { name: "Communication", component: "communication", description: "Team communication tools", defaultRoles: ["admin", "manager", "coach"] },
     { name: "Events", component: "events", description: "Event planning and budgeting", defaultRoles: ["admin", "manager"] },
-    { name: "Coach Resources", component: "coach-resources", description: "Tools for coaching teams", defaultRoles: ["admin", "manager", "coach"] },
+    { name: "Coach Resources", component: "coach-resources", description: "Tools for coaching teams", defaultRoles: ["admin", "manager", "coach", "staff"] },
     { name: "Podcast", component: "podcast", description: "Volleyball podcast episodes", defaultRoles: ["admin", "manager", "coach", "player", "parent"] },
     { name: "Forms, Checklists & Reports", component: "forms", description: "Create forms and generate reports", defaultRoles: ["admin", "manager"] },
     { name: "Admin", component: "admin-settings", description: "System settings and user management", defaultRoles: ["admin"] },

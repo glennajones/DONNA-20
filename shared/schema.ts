@@ -8,7 +8,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
-  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent"] }).notNull(),
+  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
 });
 
 export const registrations = pgTable("registrations", {
@@ -829,7 +829,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 
 export const rolePermissions = pgTable("role_permissions", {
   id: serial("id").primaryKey(),
-  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent"] }).notNull(),
+  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
   widgetId: integer("widget_id").references(() => dashboardWidgets.id),
   canView: boolean("can_view").notNull().default(false),
   canManage: boolean("can_manage").notNull().default(false),

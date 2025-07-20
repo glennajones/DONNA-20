@@ -337,7 +337,26 @@ The application is designed to be easily deployable to platforms like Replit, wi
 - **Enhanced expense tracking** with quantity support for accurate budget planning
 - **Consistent design language** across all new components
 
-### Files Modified Today
+### Staff Role Implementation (July 20, 2025)
+- **Added "Staff" role** to the system for administrative personnel who need time tracking capabilities but don't coach
+- **Automatic user creation** system implemented when coaches, players, or parents are added to their respective databases
+- **Updated role-based permissions** to include staff access to Coach Resources module only
+- **Enhanced admin configuration** with staff role options in dashboard permissions matrix
+
+#### Technical Implementation
+- **Schema updates**: Added "staff" to role enums in users and rolePermissions tables  
+- **Storage layer**: Added helper functions for auto-creating user accounts with unique usernames and temporary passwords
+- **Navbar updates**: Staff role now has access to Coach Resources section
+- **Admin interface**: UserManagement component includes staff role with secondary badge styling
+- **Database migration**: Pushed schema changes to include staff role support
+
+#### User Experience Improvements
+- **Streamlined user management** with automatic account creation reducing manual overhead
+- **Time tracking access** for staff members who assist with registration, cleaning, and admin tasks
+- **Role-based dashboard** correctly shows staff permissions (Coach Resources only)
+- **Consistent styling** with staff role using secondary badge variant matching coaches
+
+### Files Modified Previously (Time Clock & Events)
 1. **client/src/modules/Coach/TimeClock.tsx**
    - Implemented 2-column layout (grid grid-cols-1 lg:grid-cols-2)
    - Added "Recent Activity" side panel with last 8 entries
@@ -369,3 +388,40 @@ The application is designed to be easily deployable to platforms like Replit, wi
    - Documented all changes with implementation details
    - Added technical specifications and user experience improvements
    - Created permanent record of today's enhancements
+
+### Files Modified Today (Staff Role & Auto User Creation)
+1. **shared/schema.ts**
+   - Added "staff" to role enum in users table (line 14)
+   - Added "staff" to role enum in rolePermissions table (line 835)
+   - Updated schema to support staff role across all permission structures
+
+2. **server/storage.ts** 
+   - Added generateUniqueUsername() helper method for automatic username creation
+   - Added generateTemporaryPassword() helper for secure temp passwords
+   - Added createUserAccount() helper for automatic user creation workflow
+   - Modified createPlayer(), createParent(), createCoach() to auto-create user accounts
+   - Enhanced storage layer with role-based user management automation
+
+3. **client/src/pages/admin-dashboard-config.tsx**
+   - Added staff role to roles array with secondary badge styling (line 83)
+   - Updated Coach Resources defaultRoles to include "staff" access (line 93)
+   - Enhanced permission matrix to support staff time tracking needs
+
+4. **server/routes.ts**
+   - Added staff role permissions for dashboard widgets (lines 2975-2984)
+   - Updated widget default roles to include staff for Coach Resources (line 2921)
+   - Enhanced role-based permission system for staff access control
+
+5. **client/src/components/layout/Navbar.tsx**
+   - Updated Coach Resources navigation to include staff role access (line 88)
+   - Extended role-based navigation for staff time tracking capabilities
+
+6. **client/src/modules/Admin/UserManagement.jsx**
+   - Added "Staff" option to role selection dropdown (line 277)
+   - Updated getRoleBadgeVariant() to include staff with secondary styling (line 190)
+   - Changed default role in form to "staff" for new user creation (line 19)
+   - Updated all form reset operations to use "staff" as default role
+
+7. **Database Migration**
+   - Executed `npm run db:push` to apply staff role schema changes
+   - Successfully updated role enums in users and rolePermissions tables

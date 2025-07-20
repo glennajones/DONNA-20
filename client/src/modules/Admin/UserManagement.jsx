@@ -13,7 +13,7 @@ import { Link } from "wouter";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
-  const [formData, setFormData] = useState({ id: null, name: '', username: '', password: '', role: 'coach' });
+  const [formData, setFormData] = useState({ id: null, name: '', username: '', password: '', role: 'staff' });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -79,7 +79,7 @@ export default function UserManagement() {
 
       if (response.ok) {
         await fetchUsers();
-        setFormData({ id: null, name: '', username: '', password: '', role: 'coach' });
+        setFormData({ id: null, name: '', username: '', password: '', role: 'staff' });
         toast({
           title: "Success",
           description: "User created successfully."
@@ -136,7 +136,7 @@ export default function UserManagement() {
 
       if (response.ok) {
         await fetchUsers();
-        setFormData({ id: null, name: '', username: '', password: '', role: 'coach' });
+        setFormData({ id: null, name: '', username: '', password: '', role: 'staff' });
         setIsEditing(false);
         toast({
           title: "Success",
@@ -187,12 +187,13 @@ export default function UserManagement() {
       case 'admin': return 'destructive';
       case 'manager': return 'default';
       case 'coach': return 'secondary';
+      case 'staff': return 'secondary';
       default: return 'outline';
     }
   };
 
   const handleCancel = () => {
-    setFormData({ id: null, name: '', username: '', password: '', role: 'coach' });
+    setFormData({ id: null, name: '', username: '', password: '', role: 'staff' });
     setIsEditing(false);
   };
 
@@ -271,6 +272,7 @@ export default function UserManagement() {
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="coach">Coach</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>

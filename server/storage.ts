@@ -253,6 +253,49 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper method to generate unique username from name
+  private async generateUniqueUsername(name: string): Promise<string> {
+    const baseUsername = name.toLowerCase()
+      .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric characters
+      .substring(0, 10); // Limit to 10 characters
+    
+    let username = baseUsername;
+    let counter = 1;
+    
+    // Check if username exists and add number if needed
+    while (await this.getUserByUsername(username)) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+    
+    return username;
+  }
+
+  // Helper method to generate temporary password
+  private generateTemporaryPassword(): string {
+    return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+  }
+
+  // Helper method to automatically create user account
+  private async createUserAccount(name: string, email: string | null, role: "coach" | "player" | "parent" | "staff"): Promise<User | undefined> {
+    try {
+      const username = await this.generateUniqueUsername(name);
+      const tempPassword = this.generateTemporaryPassword();
+      
+      const newUser = await this.createUser({
+        name: name,
+        username: username,
+        password: tempPassword,
+        role: role
+      });
+      
+      console.log(`Auto-created user account: ${username} (temp password: ${tempPassword}) for ${name}`);
+      return newUser;
+    } catch (error) {
+      console.error(`Failed to auto-create user account for ${name}:`, error);
+      return undefined;
+    }
+  }
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
@@ -486,6 +529,10 @@ export class DatabaseStorage implements IStorage {
       .insert(players)
       .values(insertPlayer)
       .returning();
+    
+    // Automatically create user account for player
+    await this.createUserAccount(player.name, player.contact, "player");
+    
     return player;
   }
 
@@ -518,6 +565,10 @@ export class DatabaseStorage implements IStorage {
       .insert(parents)
       .values(insertParent)
       .returning();
+    
+    // Automatically create user account for parent
+    await this.createUserAccount(parent.name, parent.contact, "parent");
+    
     return parent;
   }
 
@@ -1007,6 +1058,10 @@ export class DatabaseStorage implements IStorage {
       .insert(coaches)
       .values(insertCoach)
       .returning();
+    
+    // Automatically create user account for coach
+    await this.createUserAccount(coach.name, coach.email, "coach");
+    
     return coach;
   }
 
