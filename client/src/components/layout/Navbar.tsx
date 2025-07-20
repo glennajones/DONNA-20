@@ -106,8 +106,8 @@ export function Navbar() {
               </a>
               
               {hasRole("admin") && (
-                <Link href="/admin" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
-                  Admin Panel
+                <Link href="/admin-settings" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                  Admin Settings
                 </Link>
               )}
             </div>

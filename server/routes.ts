@@ -1662,6 +1662,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // User Management Routes (Admin only)
+  app.get("/api/users", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can access user management
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const users = await storage.getUsers();
+      // Remove passwords from response
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Get users error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/users", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can create users
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { name, username, password, role } = req.body;
+
+      if (!name || !username || !password || !role) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      const user = await storage.createUser({
+        name: name.trim(),
+        username: username.trim(),
+        password: password,
+        role: role
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Create user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/users/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can update users
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const { name, username, password, role } = req.body;
+
+      if (!name || !username || !role) {
+        return res.status(400).json({ message: "Name, username, and role are required" });
+      }
+
+      const updateData: any = {
+        name: name.trim(),
+        username: username.trim(),
+        role: role
+      };
+
+      // Only update password if provided
+      if (password && password.trim()) {
+        updateData.password = password;
+      }
+
+      const user = await storage.updateUser(parseInt(id), updateData);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/users/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can delete users
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const userId = parseInt(id);
+
+      // Prevent admin from deleting themselves
+      if (userId === req.user.userId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const success = await storage.deleteUser(userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

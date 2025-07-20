@@ -22,6 +22,7 @@ import PodcastPage from "./pages/podcast";
 import CoachResourcesPage from "./pages/coach-resources";
 import PlayerDashboardPage from "./pages/player-dashboard";
 import ParentDashboardPage from "./pages/parent-dashboard";
+import AdminSettingsPage from "./pages/admin-settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/coach-resources" component={CoachResourcesPage} />
       <Route path="/player-dashboard" component={PlayerDashboardPage} />
       <Route path="/parent-dashboard" component={ParentDashboardPage} />
+      <Route path="/admin-settings" component={AdminSettingsPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
