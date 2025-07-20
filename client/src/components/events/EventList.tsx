@@ -68,8 +68,11 @@ export function EventList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      // Also invalidate calendar/schedule queries since they show the same events
-      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+      // Invalidate all schedule queries (with any date range parameters)
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/schedule"],
+        exact: false  // This will invalidate all queries that start with "/api/schedule"
+      });
       toast({
         title: "Success",
         description: "Event deleted successfully",
@@ -94,8 +97,11 @@ export function EventList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      // Also invalidate calendar/schedule queries since they show the same events
-      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+      // Invalidate all schedule queries (with any date range parameters)
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/schedule"],
+        exact: false  // This will invalidate all queries that start with "/api/schedule"
+      });
       setEditingEvent(null);
       setActualRevenue(0);
       setShowEditDialog(false);
@@ -282,8 +288,11 @@ export function EventList() {
           }
 
           queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-          // Also invalidate calendar/schedule queries since they show the same events
-          queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+          // Invalidate all schedule queries (with any date range parameters)
+          queryClient.invalidateQueries({ 
+            queryKey: ["/api/schedule"],
+            exact: false  // This will invalidate all queries that start with "/api/schedule"
+          });
           setEditingEvent(null);
           setActualRevenue(0);
           setShowEditDialog(false);
