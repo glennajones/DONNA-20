@@ -88,6 +88,14 @@ export function Navbar() {
                 </Link>
               )}
               
+              <Link href="/player-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                Player Zone
+              </Link>
+              
+              <Link href="/parent-dashboard" className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium">
+                Parent Zone
+              </Link>
+              
               <a 
                 href="https://www.unitedvolleyball.club/pages/better-together-a-united-podcast" 
                 target="_blank" 

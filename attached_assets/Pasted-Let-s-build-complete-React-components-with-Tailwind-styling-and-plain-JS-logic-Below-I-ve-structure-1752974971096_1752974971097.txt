@@ -1,0 +1,164 @@
+Let’s build complete React components with Tailwind styling and plain‑JS logic.
+Below I’ve structured both requested files with working code you can drop into your project.
+
+✅ src/modules/PlayerZone/MyDashboard.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from "react";
+
+// Mock data (replace with API calls)
+const mockActivities = [
+  { date: "2025-07-21", name: "Team Practice", registered: true },
+  { date: "2025-07-23", name: "Strength Training", registered: false },
+  { date: "2025-07-25", name: "Friendly Match", registered: true },
+];
+
+const mockPayments = [
+  { id: 1, label: "July Club Fee", amount: 50, due: "2025-07-25", status: "Pending" },
+];
+
+export default function MyDashboard() {
+  const [activities, setActivities] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [performance, setPerformance] = useState({ matches: 10, goals: 6, assists: 3 });
+
+  useEffect(() => {
+    // Simulate fetch
+    setActivities(mockActivities);
+    setPayments(mockPayments);
+  }, []);
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold mb-4">My Dashboard</h1>
+
+      {/* Calendar Section */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">📅 Club Activities</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {activities.map((act) => (
+            <div
+              key={act.date}
+              className={`border rounded p-3 ${
+                act.registered ? "bg-green-100 border-green-400" : "bg-gray-100"
+              }`}
+            >
+              <p className="font-bold">{act.name}</p>
+              <p className="text-sm text-gray-600">{act.date}</p>
+              {act.registered && <span className="text-green-700 text-sm">✔️ Registered</span>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Payments Section */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">💰 Upcoming Payments</h2>
+        <ul className="divide-y">
+          {payments.map((pay) => (
+            <li key={pay.id} className="py-2 flex justify-between">
+              <span>{pay.label} - Due {pay.due}</span>
+              <span className="font-semibold text-red-600">${pay.amount} ({pay.status})</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Performance Summary */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">📈 Performance Summary</h2>
+        <div className="flex space-x-6">
+          <div><span className="font-bold">{performance.matches}</span> Matches</div>
+          <div><span className="font-bold">{performance.goals}</span> Goals</div>
+          <div><span className="font-bold">{performance.assists}</span> Assists</div>
+        </div>
+      </section>
+    </div>
+  );
+}
+✅ src/modules/ParentZone/ChildDashboard.jsx
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from "react";
+
+// Mock data
+const childActivities = [
+  { date: "2025-07-22", name: "Junior Practice", registered: true },
+  { date: "2025-07-27", name: "Mini Tournament", registered: false },
+];
+
+const openInvoices = [
+  { id: 101, label: "Summer Camp Fee", amount: 80, status: "Open" },
+];
+
+export default function ChildDashboard() {
+  const [activities, setActivities] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+
+  useEffect(() => {
+    setActivities(childActivities);
+    setInvoices(openInvoices);
+  }, []);
+
+  const handleMessageCoach = () => {
+    alert("Opening message dialog to coach...");
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold mb-4">Child Dashboard</h1>
+
+      {/* Child Calendar */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">📅 Child’s Calendar</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {activities.map((act) => (
+            <div
+              key={act.date}
+              className={`border rounded p-3 ${
+                act.registered ? "bg-green-100 border-green-400" : "bg-gray-100"
+              }`}
+            >
+              <p className="font-bold">{act.name}</p>
+              <p className="text-sm text-gray-600">{act.date}</p>
+              {act.registered && <span className="text-green-700 text-sm">✔️ Registered</span>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Billing Center */}
+      <section className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">💳 Billing Center</h2>
+        <ul className="divide-y">
+          {invoices.map((inv) => (
+            <li key={inv.id} className="py-2 flex justify-between">
+              <span>{inv.label}</span>
+              <span className="font-semibold text-red-600">${inv.amount} ({inv.status})</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Message Coach */}
+      <section className="bg-white shadow rounded p-4 flex justify-between items-center">
+        <h2 className="text-lg font-semibold">✉️ Message Coach</h2>
+        <button
+          onClick={handleMessageCoach}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Message Coach
+        </button>
+      </section>
+    </div>
+  );
+}
+💡 Integration Tips:
+
+Both components are self‑contained with mocked data. Replace with API calls as needed.
+
+Tailwind classes ensure responsive layouts.
+
+Add routing or parent containers as per your app.

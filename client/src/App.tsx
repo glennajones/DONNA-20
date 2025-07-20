@@ -20,6 +20,8 @@ import PerformancePage from "./pages/performance";
 import IntegrationsPage from "./pages/integrations";
 import PodcastPage from "./pages/podcast";
 import CoachResourcesPage from "./pages/coach-resources";
+import PlayerDashboardPage from "./pages/player-dashboard";
+import ParentDashboardPage from "./pages/parent-dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,6 +41,8 @@ function Router() {
       <Route path="/integrations" component={IntegrationsPage} />
       <Route path="/podcast" component={PodcastPage} />
       <Route path="/coach-resources" component={CoachResourcesPage} />
+      <Route path="/player-dashboard" component={PlayerDashboardPage} />
+      <Route path="/parent-dashboard" component={ParentDashboardPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
