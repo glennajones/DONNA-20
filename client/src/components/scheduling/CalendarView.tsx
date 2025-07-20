@@ -53,12 +53,13 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
   };
 
   const { data: scheduleData, isLoading, error } = useQuery({
-    queryKey: ["/api/schedule", dateRange.from, dateRange.to, "unified"],
+    queryKey: ["/api/schedule", dateRange.from, dateRange.to, "unified", viewType],
     queryFn: async () => {
       const params = new URLSearchParams({
         from: dateRange.from,
         to: dateRange.to,
         includeEvents: "true", // Include budget events in the unified view
+        viewType: viewType, // Pass view type to backend
       });
       const response = await fetch(`/api/schedule?${params}`, {
         headers: {

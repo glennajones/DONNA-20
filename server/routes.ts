@@ -271,32 +271,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
               (!from || event.startDate >= from) &&
               (!to || event.startDate <= to)
             )
-            .flatMap(budgetEvent => 
-              (budgetEvent.assignedCourts as string[]).map(court => ({
-                id: `budget-${budgetEvent.id}-${court}`,
-                title: budgetEvent.name,
-                court,
-                date: budgetEvent.startDate,
-                time: budgetEvent.startTime!,
-                duration: budgetEvent.startTime && budgetEvent.endTime ? 
-                  Math.max(
-                    Math.round(
-                      (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
-                       new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
-                    ), 30
-                  ) : 120,
-                eventType: "tournament" as const,
-                participants: [],
-                coach: "",
-                description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
-                status: "scheduled" as const,
-                createdBy: budgetEvent.createdBy,
-                createdAt: budgetEvent.createdAt,
-                updatedAt: budgetEvent.updatedAt,
-                // Remove budget event distinction for unified display
-                budgetEventId: budgetEvent.id
-              }))
-            );
+            .flatMap(budgetEvent => {
+              // For day view, create separate entries for each court
+              // For week/month view, we need to show the event with all courts
+              if (req.query.viewType === 'day') {
+                return (budgetEvent.assignedCourts as string[]).map(court => ({
+                  id: `budget-${budgetEvent.id}-${court}`,
+                  title: budgetEvent.name,
+                  court,
+                  date: budgetEvent.startDate,
+                  time: budgetEvent.startTime!,
+                  duration: budgetEvent.startTime && budgetEvent.endTime ? 
+                    Math.max(
+                      Math.round(
+                        (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                         new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                      ), 30
+                    ) : 120,
+                  eventType: "tournament" as const,
+                  participants: [],
+                  coach: "",
+                  description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
+                  status: "scheduled" as const,
+                  createdBy: budgetEvent.createdBy,
+                  createdAt: budgetEvent.createdAt,
+                  updatedAt: budgetEvent.updatedAt,
+                  budgetEventId: budgetEvent.id
+                }));
+              } else {
+                // For week/month view, create single event with all courts
+                return [{
+                  id: `budget-${budgetEvent.id}`,
+                  title: budgetEvent.name,
+                  court: (budgetEvent.assignedCourts as string[]).join(', '),
+                  date: budgetEvent.startDate,
+                  time: budgetEvent.startTime!,
+                  duration: budgetEvent.startTime && budgetEvent.endTime ? 
+                    Math.max(
+                      Math.round(
+                        (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                         new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                      ), 30
+                    ) : 120,
+                  eventType: "tournament" as const,
+                  participants: [],
+                  coach: "",
+                  description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
+                  status: "scheduled" as const,
+                  createdBy: budgetEvent.createdBy,
+                  createdAt: budgetEvent.createdAt,
+                  updatedAt: budgetEvent.updatedAt,
+                  budgetEventId: budgetEvent.id
+                }];
+              }
+            });
           
           events = [...events, ...scheduleCompatibleEvents];
         } catch (budgetEventsError) {
