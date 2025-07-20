@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X } from "lucide-react";
+import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 import type { Event } from "@shared/schema";
@@ -33,6 +33,13 @@ export function EventList() {
   const [actualRevenue, setActualRevenue] = useState<number>(0);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Event>>({});
+  const [enableRecurring, setEnableRecurring] = useState(false);
+  const [recurringSettings, setRecurringSettings] = useState({
+    frequency: "weekly" as "weekly" | "daily" | "monthly",
+    daysOfWeek: [] as string[],
+    endDate: "",
+    occurrences: 1,
+  });
 
   // Available courts from the scheduling system
   const availableCourts = [
@@ -88,6 +95,13 @@ export function EventList() {
       setActualRevenue(0);
       setShowEditDialog(false);
       setEditFormData({});
+      setEnableRecurring(false);
+      setRecurringSettings({
+        frequency: "weekly",
+        daysOfWeek: [],
+        endDate: "",
+        occurrences: 1,
+      });
       toast({
         title: "Success",
         description: "Event updated successfully",
@@ -155,14 +169,144 @@ export function EventList() {
     });
     setEditingEvent(event);
     setShowEditDialog(true);
+    setEnableRecurring(false);
+    setRecurringSettings({
+      frequency: "weekly",
+      daysOfWeek: [],
+      endDate: "",
+      occurrences: 1,
+    });
   };
 
-  const handleSaveEdit = () => {
+  // Helper function to generate recurring event dates
+  const generateRecurringDates = () => {
+    const dates = [];
+    const startDate = new Date(editFormData.startDate || editingEvent?.startDate || "");
+    
+    if (!enableRecurring) {
+      return [{ startDate: editFormData.startDate || editingEvent?.startDate, endDate: editFormData.endDate || editFormData.startDate || editingEvent?.endDate || editingEvent?.startDate }];
+    }
+
+    if (recurringSettings.frequency === "weekly" && recurringSettings.daysOfWeek.length > 0) {
+      const endDate = recurringSettings.endDate ? new Date(recurringSettings.endDate) : null;
+      const maxOccurrences = recurringSettings.occurrences;
+      let currentDate = new Date(startDate);
+      let occurrenceCount = 0;
+
+      // Find the first occurrence based on selected days
+      const dayMap = {
+        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+        Thursday: 4, Friday: 5, Saturday: 6
+      };
+
+      while (occurrenceCount < maxOccurrences && (!endDate || currentDate <= endDate)) {
+        const dayName = Object.keys(dayMap).find(key => dayMap[key as keyof typeof dayMap] === currentDate.getDay());
+        
+        if (dayName && recurringSettings.daysOfWeek.includes(dayName)) {
+          // Use local date formatting to avoid timezone shifts
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          dates.push({ startDate: dateStr, endDate: dateStr });
+          occurrenceCount++;
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else if (recurringSettings.frequency === "daily") {
+      for (let i = 0; i < recurringSettings.occurrences; i++) {
+        const eventDate = new Date(startDate);
+        eventDate.setDate(startDate.getDate() + i);
+        // Use local date formatting to avoid timezone shifts
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        dates.push({ startDate: dateStr, endDate: dateStr });
+      }
+    } else if (recurringSettings.frequency === "monthly") {
+      for (let i = 0; i < recurringSettings.occurrences; i++) {
+        const eventDate = new Date(startDate);
+        eventDate.setMonth(startDate.getMonth() + i);
+        // Use local date formatting to avoid timezone shifts
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        dates.push({ startDate: dateStr, endDate: dateStr });
+      }
+    }
+
+    return dates.length > 0 ? dates : [{ startDate: editFormData.startDate || editingEvent?.startDate, endDate: editFormData.endDate || editFormData.startDate || editingEvent?.endDate || editingEvent?.startDate }];
+  };
+
+  const handleSaveEdit = async () => {
     if (editingEvent && editFormData) {
-      updateEvent.mutate({
-        id: editingEvent.id,
-        data: editFormData
-      });
+      try {
+        if (enableRecurring) {
+          // Create multiple events based on recurring settings
+          const eventDates = generateRecurringDates();
+          const createdEvents = [];
+
+          for (let i = 0; i < eventDates.length; i++) {
+            const { startDate, endDate } = eventDates[i];
+            const eventName = eventDates.length > 1 ? `${editFormData.name} #${i + 1}` : editFormData.name;
+            
+            const eventData = {
+              ...editFormData,
+              name: eventName,
+              startDate: startDate,
+              endDate: endDate,
+            };
+
+            if (i === 0) {
+              // Update the original event
+              await updateEvent.mutateAsync({
+                id: editingEvent.id,
+                data: eventData
+              });
+            } else {
+              // Create new events for additional occurrences
+              const response = await apiRequest("/api/events", {
+                method: "POST",
+                body: JSON.stringify(eventData),
+              });
+              createdEvents.push(await response.json());
+            }
+          }
+
+          queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+          setEditingEvent(null);
+          setActualRevenue(0);
+          setShowEditDialog(false);
+          setEditFormData({});
+          setEnableRecurring(false);
+          setRecurringSettings({
+            frequency: "weekly",
+            daysOfWeek: [],
+            endDate: "",
+            occurrences: 1,
+          });
+          
+          toast({
+            title: "Success",
+            description: `Created ${eventDates.length} recurring events`,
+          });
+        } else {
+          // Regular single event update
+          updateEvent.mutate({
+            id: editingEvent.id,
+            data: editFormData
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update event",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -536,6 +680,120 @@ export function EventList() {
 
               <Separator />
 
+              {/* Recurring Options */}
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Repeat className="h-4 w-4" />
+                  Recurring Options
+                </h4>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="enable-recurring"
+                      checked={enableRecurring}
+                      onCheckedChange={(checked) => setEnableRecurring(!!checked)}
+                    />
+                    <Label htmlFor="enable-recurring" className="text-sm">
+                      Create recurring events from this event
+                    </Label>
+                  </div>
+
+                  {enableRecurring && (
+                    <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="frequency">Frequency</Label>
+                          <Select
+                            value={recurringSettings.frequency}
+                            onValueChange={(value: "weekly" | "daily" | "monthly") => 
+                              setRecurringSettings({ ...recurringSettings, frequency: value, daysOfWeek: [] })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="occurrences">Number of Events</Label>
+                          <Input
+                            id="occurrences"
+                            type="number"
+                            min="1"
+                            max="50"
+                            value={recurringSettings.occurrences}
+                            onChange={(e) => setRecurringSettings({ 
+                              ...recurringSettings, 
+                              occurrences: Math.max(1, Number(e.target.value) || 1) 
+                            })}
+                          />
+                        </div>
+                      </div>
+
+                      {recurringSettings.frequency === "weekly" && (
+                        <div>
+                          <Label className="text-sm font-medium">Days of Week</Label>
+                          <div className="grid grid-cols-7 gap-2 mt-2">
+                            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(day => (
+                              <div key={day} className="flex items-center space-x-1">
+                                <Checkbox
+                                  id={`day-${day}`}
+                                  checked={recurringSettings.daysOfWeek.includes(day)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setRecurringSettings({
+                                        ...recurringSettings,
+                                        daysOfWeek: [...recurringSettings.daysOfWeek, day]
+                                      });
+                                    } else {
+                                      setRecurringSettings({
+                                        ...recurringSettings,
+                                        daysOfWeek: recurringSettings.daysOfWeek.filter(d => d !== day)
+                                      });
+                                    }
+                                  }}
+                                />
+                                <Label htmlFor={`day-${day}`} className="text-xs">
+                                  {day.slice(0, 3)}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="recurring-end-date">End Date (Optional)</Label>
+                        <Input
+                          id="recurring-end-date"
+                          type="date"
+                          value={recurringSettings.endDate}
+                          onChange={(e) => setRecurringSettings({ ...recurringSettings, endDate: e.target.value })}
+                        />
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          Leave empty to use the "Number of Events" setting
+                        </p>
+                      </div>
+
+                      <div className="text-sm text-blue-700 dark:text-blue-300">
+                        <strong>Preview:</strong> This will create {recurringSettings.frequency === "weekly" && recurringSettings.daysOfWeek.length === 0 
+                          ? "0" 
+                          : recurringSettings.occurrences} event{recurringSettings.occurrences !== 1 ? "s" : ""} 
+                        {recurringSettings.frequency === "weekly" && recurringSettings.daysOfWeek.length > 0 && 
+                          ` on ${recurringSettings.daysOfWeek.join(", ")}`}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
               {/* Resource Planning */}
               <div className="space-y-4">
                 <h4 className="font-semibold flex items-center gap-2">
@@ -860,7 +1118,12 @@ export function EventList() {
               disabled={updateEvent.isPending}
               className="bg-[#56A0D3] hover:bg-[#4A90C2]"
             >
-              {updateEvent.isPending ? "Saving..." : "Save Changes"}
+              {updateEvent.isPending 
+                ? "Saving..." 
+                : enableRecurring 
+                  ? `Update & Create ${recurringSettings.occurrences} Event${recurringSettings.occurrences !== 1 ? 's' : ''}` 
+                  : "Save Changes"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>
