@@ -111,6 +111,7 @@ export interface IStorage {
   // Schedule methods
   getScheduleEvent(id: number): Promise<ScheduleEvent | undefined>;
   getScheduleEvents(from?: string, to?: string): Promise<ScheduleEvent[]>;
+  getScheduleEventsByEventName(eventName: string): Promise<ScheduleEvent[]>;
   createScheduleEvent(event: InsertScheduleEvent): Promise<ScheduleEvent>;
   updateScheduleEvent(id: number, event: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined>;
   deleteScheduleEvent(id: number): Promise<boolean>;
@@ -388,6 +389,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     return await query;
+  }
+
+  async getScheduleEventsByEventName(eventName: string): Promise<ScheduleEvent[]> {
+    return await db.select().from(scheduleEvents).where(eq(scheduleEvents.title, eventName));
   }
 
   async createScheduleEvent(insertEvent: InsertScheduleEvent): Promise<ScheduleEvent> {

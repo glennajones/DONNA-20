@@ -254,8 +254,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { from, to } = req.query;
-      const events = await storage.getScheduleEvents(from as string, to as string);
+      const { from, to, includeEvents } = req.query;
+      let events = await storage.getScheduleEvents(from as string, to as string);
+      
+      // Optionally include budget events that have court assignments and times
+      if (includeEvents === "true") {
+        try {
+          const budgetEvents = await storage.getEvents();
+          const scheduleCompatibleEvents = budgetEvents
+            .filter(event => 
+              event.assignedCourts && 
+              Array.isArray(event.assignedCourts) && 
+              event.assignedCourts.length > 0 && 
+              event.startTime && 
+              event.endTime &&
+              (!from || event.startDate >= from) &&
+              (!to || event.startDate <= to)
+            )
+            .flatMap(budgetEvent => 
+              (budgetEvent.assignedCourts as string[]).map(court => ({
+                id: `budget-${budgetEvent.id}-${court}`,
+                title: `${budgetEvent.name} (Budget Event)`,
+                court,
+                date: budgetEvent.startDate,
+                time: budgetEvent.startTime!,
+                duration: budgetEvent.startTime && budgetEvent.endTime ? 
+                  Math.max(
+                    Math.round(
+                      (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                       new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                    ), 30
+                  ) : 120,
+                eventType: "tournament" as const,
+                participants: [],
+                coach: "",
+                description: `Budget Event - ${budgetEvent.location}`,
+                status: "scheduled" as const,
+                createdBy: budgetEvent.createdBy,
+                createdAt: budgetEvent.createdAt,
+                updatedAt: budgetEvent.updatedAt,
+                // Mark as budget event for styling
+                isBudgetEvent: true,
+                budgetEventId: budgetEvent.id
+              }))
+            );
+          
+          events = [...events, ...scheduleCompatibleEvents];
+        } catch (budgetEventsError) {
+          console.warn("Failed to include budget events in schedule:", budgetEventsError);
+        }
+      }
+      
       res.json({ events });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -1024,6 +1073,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const event = await storage.createEvent(eventData);
+      
+      // Auto-create schedule entries for assigned courts if times are provided
+      if (event.assignedCourts && Array.isArray(event.assignedCourts) && 
+          event.assignedCourts.length > 0 && event.startTime && event.endTime) {
+        
+        try {
+          // Calculate event duration in minutes
+          const startTime = new Date(`2000-01-01T${event.startTime}`);
+          const endTime = new Date(`2000-01-01T${event.endTime}`);
+          if (endTime <= startTime) {
+            endTime.setDate(endTime.getDate() + 1); // Handle overnight events
+          }
+          const durationMs = endTime.getTime() - startTime.getTime();
+          const durationMinutes = Math.max(Math.round(durationMs / (1000 * 60)), 30); // Minimum 30 minutes
+
+          // Create schedule entry for each assigned court
+          for (const court of event.assignedCourts) {
+            // Check for conflicts before creating
+            const hasConflict = await storage.checkScheduleConflict(
+              court,
+              event.startDate,
+              event.startTime,
+              durationMinutes
+            );
+
+            if (!hasConflict) {
+              await storage.createScheduleEvent({
+                title: event.name,
+                court: court,
+                date: event.startDate,
+                time: event.startTime,
+                duration: durationMinutes,
+                eventType: "tournament", // Default for budget events
+                participants: [], // Can be populated later
+                coach: "", // Can be populated later
+                description: `Budget Event - ${event.location}`,
+                status: "scheduled",
+                createdBy: req.user.userId
+              });
+            }
+          }
+        } catch (scheduleError) {
+          console.warn("Failed to create schedule entries for event:", scheduleError);
+          // Don't fail the event creation if schedule creation fails
+        }
+      }
+      
       res.status(201).json(event);
     } catch (error) {
       console.error("Create event error:", error);
@@ -1045,6 +1141,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!updatedEvent) {
         return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Update related schedule events if court assignments or times changed
+      if (updatedEvent.assignedCourts && Array.isArray(updatedEvent.assignedCourts) && 
+          updatedEvent.assignedCourts.length > 0 && updatedEvent.startTime && updatedEvent.endTime) {
+        
+        try {
+          // First, remove any existing schedule events for this budget event
+          const existingScheduleEvents = await storage.getScheduleEventsByEventName(updatedEvent.name);
+          for (const scheduleEvent of existingScheduleEvents) {
+            if (scheduleEvent.description && scheduleEvent.description.includes("Budget Event")) {
+              await storage.deleteScheduleEvent(scheduleEvent.id);
+            }
+          }
+          
+          // Calculate event duration in minutes
+          const startTime = new Date(`2000-01-01T${updatedEvent.startTime}`);
+          const endTime = new Date(`2000-01-01T${updatedEvent.endTime}`);
+          if (endTime <= startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+          }
+          const durationMs = endTime.getTime() - startTime.getTime();
+          const durationMinutes = Math.max(Math.round(durationMs / (1000 * 60)), 30);
+
+          // Create new schedule entries for updated court assignments
+          for (const court of updatedEvent.assignedCourts) {
+            const hasConflict = await storage.checkScheduleConflict(
+              court,
+              updatedEvent.startDate,
+              updatedEvent.startTime,
+              durationMinutes
+            );
+
+            if (!hasConflict) {
+              await storage.createScheduleEvent({
+                title: updatedEvent.name,
+                court: court,
+                date: updatedEvent.startDate,
+                time: updatedEvent.startTime,
+                duration: durationMinutes,
+                eventType: "tournament",
+                participants: [],
+                coach: "",
+                description: `Budget Event - ${updatedEvent.location}`,
+                status: "scheduled",
+                createdBy: req.user.userId
+              });
+            }
+          }
+        } catch (scheduleError) {
+          console.warn("Failed to update schedule entries for event:", scheduleError);
+        }
       }
       
       res.json(updatedEvent);
