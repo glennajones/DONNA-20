@@ -145,7 +145,11 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
         const dayName = Object.keys(dayMap).find(key => dayMap[key as keyof typeof dayMap] === currentDate.getDay());
         
         if (dayName && recurringSettings.daysOfWeek.includes(dayName)) {
-          const dateStr = currentDate.toISOString().split('T')[0];
+          // Use local date formatting to avoid timezone shifts
+          const year = currentDate.getFullYear();
+          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+          const day = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
           dates.push({ startDate: dateStr, endDate: dateStr });
           occurrenceCount++;
         }
@@ -156,14 +160,22 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       for (let i = 0; i < recurringSettings.occurrences; i++) {
         const eventDate = new Date(startDate);
         eventDate.setDate(startDate.getDate() + i);
-        const dateStr = eventDate.toISOString().split('T')[0];
+        // Use local date formatting to avoid timezone shifts
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         dates.push({ startDate: dateStr, endDate: dateStr });
       }
     } else if (recurringSettings.frequency === "monthly") {
       for (let i = 0; i < recurringSettings.occurrences; i++) {
         const eventDate = new Date(startDate);
         eventDate.setMonth(startDate.getMonth() + i);
-        const dateStr = eventDate.toISOString().split('T')[0];
+        // Use local date formatting to avoid timezone shifts
+        const year = eventDate.getFullYear();
+        const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+        const day = String(eventDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         dates.push({ startDate: dateStr, endDate: dateStr });
       }
     }
