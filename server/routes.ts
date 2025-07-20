@@ -288,10 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: budgetEvent.eventType === "Practice" ? "practice" : 
-                             budgetEvent.eventType === "Tournament" ? "tournament" :
-                             budgetEvent.eventType === "School Activity" ? "training" : 
-                             "practice", // Map to compatible types
+                  eventType: budgetEvent.eventType, // Use original eventType from budget events
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
@@ -316,10 +313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                          new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
                       ), 30
                     ) : 120,
-                  eventType: budgetEvent.eventType === "Practice" ? "practice" : 
-                             budgetEvent.eventType === "Tournament" ? "tournament" :
-                             budgetEvent.eventType === "School Activity" ? "training" : 
-                             "practice", // Map to compatible types
+                  eventType: budgetEvent.eventType, // Use original eventType from budget events
                   participants: [],
                   coach: "",
                   description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
