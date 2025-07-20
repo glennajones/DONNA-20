@@ -201,10 +201,10 @@ export default function Dashboard() {
       color: "from-indigo-500 to-indigo-600",
     },
     {
-      title: "Reports",
-      description: "Generate and view reports",
+      title: "Forms, Checklists & Reports",
+      description: "Create forms and generate reports",
       icon: ClipboardList,
-      href: "/reports",
+      href: "/forms",
       color: "from-orange-500 to-orange-600",
       roles: ["admin", "manager"],
     },
