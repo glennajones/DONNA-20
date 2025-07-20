@@ -2901,6 +2901,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard Configuration Routes (Admin only)
+  app.get("/api/admin/dashboard-widgets", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can access dashboard configuration
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Return default widgets for now (in real implementation, these would be stored in DB)
+      const defaultWidgets = [
+        { id: 1, name: "Members", component: "members", description: "Player and parent management", defaultRoles: ["admin", "manager"], isActive: true },
+        { id: 2, name: "Training & Scheduling", component: "training", description: "Manage training sessions", defaultRoles: ["admin", "manager", "coach"], isActive: true },
+        { id: 3, name: "Communication", component: "communication", description: "Team communication tools", defaultRoles: ["admin", "manager", "coach"], isActive: true },
+        { id: 4, name: "Events", component: "events", description: "Event planning and budgeting", defaultRoles: ["admin", "manager"], isActive: true },
+        { id: 5, name: "Coach Resources", component: "coach-resources", description: "Tools for coaching teams", defaultRoles: ["admin", "manager", "coach"], isActive: true },
+        { id: 6, name: "Podcast", component: "podcast", description: "Volleyball podcast episodes", defaultRoles: ["admin", "manager", "coach", "player", "parent"], isActive: true },
+        { id: 7, name: "Forms, Checklists & Reports", component: "forms", description: "Create forms and generate reports", defaultRoles: ["admin", "manager"], isActive: true },
+        { id: 8, name: "Admin", component: "admin-settings", description: "System settings and user management", defaultRoles: ["admin"], isActive: true },
+      ];
+
+      res.json(defaultWidgets);
+    } catch (error) {
+      console.error("Get dashboard widgets error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/admin/role-permissions/:role", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can access role permissions
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { role } = req.params;
+      
+      // Return default permissions based on role (in real implementation, these would be stored in DB)
+      const defaultPermissions = {
+        admin: [
+          { widgetId: 1, canView: true, canManage: true },
+          { widgetId: 2, canView: true, canManage: true },
+          { widgetId: 3, canView: true, canManage: true },
+          { widgetId: 4, canView: true, canManage: true },
+          { widgetId: 5, canView: true, canManage: true },
+          { widgetId: 6, canView: true, canManage: true },
+          { widgetId: 7, canView: true, canManage: true },
+          { widgetId: 8, canView: true, canManage: true },
+        ],
+        manager: [
+          { widgetId: 1, canView: true, canManage: true },
+          { widgetId: 2, canView: true, canManage: true },
+          { widgetId: 3, canView: true, canManage: true },
+          { widgetId: 4, canView: true, canManage: true },
+          { widgetId: 5, canView: true, canManage: false },
+          { widgetId: 6, canView: true, canManage: false },
+          { widgetId: 7, canView: true, canManage: true },
+          { widgetId: 8, canView: false, canManage: false },
+        ],
+        coach: [
+          { widgetId: 1, canView: true, canManage: false },
+          { widgetId: 2, canView: true, canManage: false },
+          { widgetId: 3, canView: true, canManage: false },
+          { widgetId: 4, canView: true, canManage: false },
+          { widgetId: 5, canView: true, canManage: false },
+          { widgetId: 6, canView: true, canManage: false },
+          { widgetId: 7, canView: false, canManage: false },
+          { widgetId: 8, canView: false, canManage: false },
+        ],
+        player: [
+          { widgetId: 1, canView: false, canManage: false },
+          { widgetId: 2, canView: true, canManage: false },
+          { widgetId: 3, canView: false, canManage: false },
+          { widgetId: 4, canView: true, canManage: false },
+          { widgetId: 5, canView: false, canManage: false },
+          { widgetId: 6, canView: true, canManage: false },
+          { widgetId: 7, canView: false, canManage: false },
+          { widgetId: 8, canView: false, canManage: false },
+        ],
+        parent: [
+          { widgetId: 1, canView: false, canManage: false },
+          { widgetId: 2, canView: true, canManage: false },
+          { widgetId: 3, canView: false, canManage: false },
+          { widgetId: 4, canView: true, canManage: false },
+          { widgetId: 5, canView: false, canManage: false },
+          { widgetId: 6, canView: true, canManage: false },
+          { widgetId: 7, canView: false, canManage: false },
+          { widgetId: 8, canView: false, canManage: false },
+        ],
+      };
+
+      res.json(defaultPermissions[role] || []);
+    } catch (error) {
+      console.error("Get role permissions error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/admin/role-permissions", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admin can update role permissions
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { role, widgetId, canView, canManage } = req.body;
+
+      // In a real implementation, this would update the database
+      // For now, we'll just return success
+      console.log(`Updated permissions for ${role} on widget ${widgetId}: view=${canView}, manage=${canManage}`);
+
+      res.json({ 
+        message: "Permissions updated successfully",
+        role,
+        widgetId,
+        canView,
+        canManage
+      });
+    } catch (error) {
+      console.error("Update role permissions error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

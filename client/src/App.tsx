@@ -23,6 +23,7 @@ import CoachResourcesPage from "./pages/coach-resources";
 import PlayerDashboardPage from "./pages/player-dashboard";
 import ParentDashboardPage from "./pages/parent-dashboard";
 import AdminSettingsPage from "./pages/admin-settings";
+import AdminDashboardConfigPage from "./pages/admin-dashboard-config";
 import CoachMatchingPage from "./pages/coach-matching";
 import DocumentsPage from "./pages/documents";
 import NotFound from "@/pages/not-found";
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/player-dashboard" component={PlayerDashboardPage} />
       <Route path="/parent-dashboard" component={ParentDashboardPage} />
       <Route path="/admin-settings" component={AdminSettingsPage} />
+      <Route path="/admin-dashboard-config" component={AdminDashboardConfigPage} />
       <Route path="/coach-matching" component={CoachMatchingPage} />
       <Route path="/documents" component={DocumentsPage} />
       <Route path="/dashboard">

@@ -814,3 +814,83 @@ export type InsertDocumentSignature = z.infer<typeof insertDocumentSignatureSche
 export type DocumentSignature = typeof documentSignatures.$inferSelect;
 export type InsertDocumentAuditLog = z.infer<typeof insertDocumentAuditLogSchema>;
 export type DocumentAuditLog = typeof documentAuditLogs.$inferSelect;
+
+// Dashboard Configuration Schema
+export const dashboardWidgets = pgTable("dashboard_widgets", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  component: text("component").notNull(), // component identifier
+  description: text("description"),
+  defaultRoles: text("default_roles").array().notNull().default([]), // roles that have this widget by default
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  role: text("role", { enum: ["admin", "manager", "coach", "player", "parent"] }).notNull(),
+  widgetId: integer("widget_id").references(() => dashboardWidgets.id),
+  canView: boolean("can_view").notNull().default(false),
+  canManage: boolean("can_manage").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userDashboardConfig = pgTable("user_dashboard_config", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  widgetId: integer("widget_id").references(() => dashboardWidgets.id).notNull(),
+  position: integer("position").notNull().default(0),
+  isVisible: boolean("is_visible").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Relations for Dashboard Configuration
+export const dashboardWidgetsRelations = relations(dashboardWidgets, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+  userConfigs: many(userDashboardConfig),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  widget: one(dashboardWidgets, {
+    fields: [rolePermissions.widgetId],
+    references: [dashboardWidgets.id],
+  }),
+}));
+
+export const userDashboardConfigRelations = relations(userDashboardConfig, ({ one }) => ({
+  user: one(users, {
+    fields: [userDashboardConfig.userId],
+    references: [users.id],
+  }),
+  widget: one(dashboardWidgets, {
+    fields: [userDashboardConfig.widgetId],
+    references: [dashboardWidgets.id],
+  }),
+}));
+
+// Types for Dashboard Configuration
+export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserDashboardConfigSchema = createInsertSchema(userDashboardConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
+export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertUserDashboardConfig = z.infer<typeof insertUserDashboardConfigSchema>;
+export type UserDashboardConfig = typeof userDashboardConfig.$inferSelect;

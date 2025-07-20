@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Volleyball, LogOut, User, Settings, Users } from "lucide-react";
+import { Volleyball, LogOut, User, Settings, Users, Layout } from "lucide-react";
 import { Link } from "wouter";
 
 export function Navbar() {
@@ -145,6 +145,14 @@ export function Navbar() {
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
+                {hasRole(["admin"]) && (
+                  <Link href="/admin-dashboard-config">
+                    <DropdownMenuItem>
+                      <Layout className="mr-2 h-4 w-4" />
+                      <span>Dashboard Config</span>
+                    </DropdownMenuItem>
+                  </Link>
+                )}
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
