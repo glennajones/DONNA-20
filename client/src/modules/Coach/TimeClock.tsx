@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, Plus, Check, X, AlertCircle, History, Play, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -37,20 +36,6 @@ export default function TimeClock() {
         },
       });
       if (!response.ok) throw new Error("Failed to fetch today's entries");
-      return response.json();
-    },
-  });
-
-  // Query for time clock history
-  const { data: historyEntries } = useQuery({
-    queryKey: ["/api/timeclock/history"],
-    queryFn: async () => {
-      const response = await fetch("/api/timeclock/history", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch history");
       return response.json();
     },
   });
@@ -203,7 +188,7 @@ export default function TimeClock() {
   const formatTime = (hours: number) => {
     const h = Math.floor(hours);
     const m = Math.floor((hours - h) * 60);
-    return `${h}h ${m}m`;
+    return `${h.toString().padStart(1, '0')}.${Math.round((m / 60) * 100).toString().padStart(2, '0')} hrs`;
   };
 
   const formatDateTime = (timestamp: string) => {
@@ -213,244 +198,175 @@ export default function TimeClock() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
-            Time Clock System
+            <Clock className="h-5 w-5" />
+            Time Clock
           </CardTitle>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <History className="h-4 w-4" />
+          </Button>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="current" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="current">Current Status</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-              {user?.role === "admin" && (
-                <TabsTrigger value="pending">
-                  Pending Approval {pendingEntries?.length > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs">
-                      {pendingEntries.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              )}
-            </TabsList>
+        <CardContent className="space-y-6">
+          {/* Hours Display */}
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-900">
+              {formatTime(totalHours)}
+            </div>
+            <div className="text-sm text-gray-600">Total Hours Today</div>
+          </div>
 
-            {/* Current Status Tab */}
-            <TabsContent value="current" className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">Status</div>
-                  <Badge variant={clockedIn ? "default" : "secondary"} className="text-sm">
-                    {clockedIn ? "Clocked In" : "Clocked Out"}
-                  </Badge>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">Today's Hours</div>
-                  <div className="font-semibold text-blue-600 text-lg">
-                    {formatTime(totalHours)}
-                  </div>
-                </div>
-              </div>
-
-              {clockedIn && lastClockIn && (
-                <div className="text-center text-sm text-gray-500">
-                  Started: {new Date(lastClockIn).toLocaleTimeString()}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <Button 
-                  onClick={handleClockAction}
-                  disabled={clockMutation.isPending}
-                  className={`flex-1 ${clockedIn ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}
-                >
-                  {clockMutation.isPending ? (
-                    "Processing..."
+          {/* Clock Buttons */}
+          <div className="flex justify-center gap-3">
+            <Button 
+              onClick={handleClockAction}
+              disabled={clockMutation.isPending}
+              className={clockedIn ? 'bg-red-500 hover:bg-red-600 text-white px-6' : 'bg-blue-500 hover:bg-blue-600 text-white px-6'}
+            >
+              {clockMutation.isPending ? (
+                "Processing..."
+              ) : (
+                <>
+                  {clockedIn ? (
+                    <Square className="h-4 w-4 mr-2" />
                   ) : (
-                    <>
-                      {clockedIn ? (
-                        <Square className="h-4 w-4 mr-2" />
-                      ) : (
-                        <Play className="h-4 w-4 mr-2" />
-                      )}
-                      {clockedIn ? "Clock Out" : "Clock In"}
-                    </>
+                    <Play className="h-4 w-4 mr-2" />
                   )}
+                  {clockedIn ? "Clock Out" : "Clock In"}
+                </>
+              )}
+            </Button>
+
+            <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Manual Entry
                 </Button>
-
-                <Dialog open={manualEntryOpen} onOpenChange={setManualEntryOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Manual Entry
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Manual Time Entry</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          <strong>Manual Entry Process:</strong> This entry will be submitted to administrators for approval. 
-                          You'll be able to see the status in your History tab. Please provide a clear reason for the manual entry.
-                        </p>
-                      </div>
-                      <div>
-                        <Label htmlFor="action">Action</Label>
-                        <select
-                          id="action"
-                          value={manualAction}
-                          onChange={(e) => setManualAction(e.target.value as "clock-in" | "clock-out")}
-                          className="w-full p-2 border rounded"
-                        >
-                          <option value="clock-in">Clock In</option>
-                          <option value="clock-out">Clock Out</option>
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="date">Date</Label>
-                          <Input
-                            id="date"
-                            type="date"
-                            value={manualDate}
-                            onChange={(e) => setManualDate(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="time">Time</Label>
-                          <Input
-                            id="time"
-                            type="time"
-                            value={manualTime}
-                            onChange={(e) => setManualTime(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="reason">Reason for Manual Entry</Label>
-                        <Textarea
-                          id="reason"
-                          value={manualReason}
-                          onChange={(e) => setManualReason(e.target.value)}
-                          placeholder="Explain why you need to manually add this time entry..."
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={handleManualEntry}
-                          disabled={manualEntryMutation.isPending}
-                          className="flex-1"
-                        >
-                          {manualEntryMutation.isPending ? "Submitting..." : "Submit for Approval"}
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setManualEntryOpen(false)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </TabsContent>
-
-            {/* History Tab */}
-            <TabsContent value="history" className="space-y-4">
-              <div className="space-y-3">
-                {historyEntries && historyEntries.length > 0 ? (
-                  historyEntries.slice(0, 20).map((entry: TimeClockEntry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium capitalize">{entry.action.replace('-', ' ')}</div>
-                        <div className="text-sm text-gray-600">{formatDateTime(entry.timestamp)}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {entry.isManual && (
-                          <Badge variant="secondary" className="text-xs">
-                            Manual
-                          </Badge>
-                        )}
-                        <Badge 
-                          variant={entry.status === 'approved' ? 'default' : entry.status === 'pending' ? 'secondary' : 'destructive'}
-                          className="text-xs"
-                        >
-                          {entry.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No time entries found
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Manual Time Entry</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Manual Entry Process:</strong> This entry will be submitted to administrators for approval. 
+                      You'll be able to see the status in your History. Please provide a clear reason for the manual entry.
+                    </p>
                   </div>
-                )}
-              </div>
-            </TabsContent>
+                  <div>
+                    <Label htmlFor="action">Action</Label>
+                    <select
+                      id="action"
+                      value={manualAction}
+                      onChange={(e) => setManualAction(e.target.value as "clock-in" | "clock-out")}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="clock-in">Clock In</option>
+                      <option value="clock-out">Clock Out</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="date">Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={manualDate}
+                        onChange={(e) => setManualDate(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="time">Time</Label>
+                      <Input
+                        id="time"
+                        type="time"
+                        value={manualTime}
+                        onChange={(e) => setManualTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="reason">Reason for Manual Entry</Label>
+                    <Textarea
+                      id="reason"
+                      value={manualReason}
+                      onChange={(e) => setManualReason(e.target.value)}
+                      placeholder="Explain why you need to manually add this time entry..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleManualEntry}
+                      disabled={manualEntryMutation.isPending}
+                      className="flex-1"
+                    >
+                      {manualEntryMutation.isPending ? "Submitting..." : "Submit for Approval"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setManualEntryOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-            {/* Pending Approval Tab (Admin Only) */}
-            {user?.role === "admin" && (
-              <TabsContent value="pending" className="space-y-4">
-                <div className="space-y-3">
-                  {pendingEntries && pendingEntries.length > 0 ? (
-                    pendingEntries.map((entry: TimeClockEntry & { user?: { name: string } }) => (
-                      <div key={entry.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <div className="font-medium">
-                              Manual {entry.action.replace('-', ' ')} Request
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              User ID: {entry.userId} • {formatDateTime(entry.timestamp)}
-                            </div>
-                            {entry.reason && (
-                              <div className="text-sm text-gray-700 mt-2 p-2 bg-white rounded border">
-                                <strong>Reason:</strong> {entry.reason}
-                              </div>
-                            )}
-                          </div>
-                          <Badge variant="secondary">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Pending
-                          </Badge>
+          {/* Admin Approval Section - Only show if admin and has pending entries */}
+          {user?.role === "admin" && pendingEntries && pendingEntries.length > 0 && (
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">
+                Pending Manual Entries ({pendingEntries.length})
+              </h3>
+              <div className="space-y-3">
+                {pendingEntries.slice(0, 3).map((entry: TimeClockEntry) => (
+                  <div key={entry.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="text-sm">
+                        <div className="font-medium">
+                          Manual {entry.action.replace('-', ' ')} Request
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => approveMutation.mutate(entry.id)}
-                            disabled={approveMutation.isPending || rejectMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => rejectMutation.mutate(entry.id)}
-                            disabled={approveMutation.isPending || rejectMutation.isPending}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
+                        <div className="text-gray-600">
+                          User ID: {entry.userId} • {formatDateTime(entry.timestamp)}
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Check className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      No pending approvals
                     </div>
-                  )}
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
+                    {entry.reason && (
+                      <div className="text-xs text-gray-700 mb-2 p-2 bg-white rounded border">
+                        <strong>Reason:</strong> {entry.reason}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => approveMutation.mutate(entry.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 h-6"
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => rejectMutation.mutate(entry.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        className="text-xs px-2 py-1 h-6"
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
