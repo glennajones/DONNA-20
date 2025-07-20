@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Volleyball, Lock, User } from "lucide-react";
+import { Loader2, Volleyball, Lock, User, Eye, EyeOff } from "lucide-react";
 
 export default function LoginForm() {
   const { login, isLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,14 +79,26 @@ export default function LoginForm() {
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                       id="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="pl-9"
+                      className="pl-9 pr-10"
                       required
                       disabled={isLoading}
                     />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-3 h-4 w-4 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={isLoading}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -113,6 +126,8 @@ export default function LoginForm() {
                 <div><strong>Admin:</strong> admin / admin123</div>
                 <div><strong>Manager:</strong> manager / manager123</div>
                 <div><strong>Coach:</strong> coach / coach123</div>
+                <div><strong>Player:</strong> player / player123</div>
+                <div><strong>Parent:</strong> parent / parent123</div>
               </div>
             </div>
           </CardContent>
