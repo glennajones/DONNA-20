@@ -22,6 +22,7 @@ export default function TimeClock() {
   const [manualDate, setManualDate] = useState("");
   const [manualTime, setManualTime] = useState("");
   const [manualReason, setManualReason] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -54,6 +55,21 @@ export default function TimeClock() {
       return response.json();
     },
     enabled: user?.role === "admin",
+  });
+
+  // Query for history entries
+  const { data: historyEntries } = useQuery({
+    queryKey: ["/api/timeclock/history"],
+    queryFn: async () => {
+      const response = await fetch("/api/timeclock/history", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Failed to fetch history");
+      return response.json();
+    },
+    enabled: historyOpen, // Only fetch when dialog is open
   });
 
   // Calculate hours and status from today's entries
@@ -216,9 +232,59 @@ export default function TimeClock() {
             <Clock className="h-5 w-5" />
             Time Clock
           </CardTitle>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <History className="h-4 w-4" />
-          </Button>
+          <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View History">
+                <History className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Time Clock History</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-96 overflow-y-auto space-y-3">
+                {historyEntries && historyEntries.length > 0 ? (
+                  historyEntries.map((entry: TimeClockEntry) => (
+                    <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium capitalize flex items-center gap-2">
+                          {entry.action.replace('-', ' ')}
+                          {entry.isManual && (
+                            <Badge variant="secondary" className="text-xs">
+                              Manual
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600">{formatDateTime(entry.timestamp)}</div>
+                        {entry.reason && (
+                          <div className="text-xs text-gray-500 mt-1 italic">
+                            Reason: {entry.reason}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={
+                            entry.status === 'approved' ? 'default' : 
+                            entry.status === 'pending' ? 'secondary' : 
+                            'destructive'
+                          }
+                          className="text-xs"
+                        >
+                          {entry.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    No time entries found
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Hours Display */}
