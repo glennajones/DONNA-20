@@ -57,18 +57,45 @@ export default function AdminDashboardConfig() {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/role-permissions'] });
-      toast({
-        title: "Permissions Updated",
-        description: "Role permissions have been successfully updated.",
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/admin/role-permissions', variables.role] });
+      
+      // Snapshot the previous value
+      const previousPermissions = queryClient.getQueryData(['/api/admin/role-permissions', variables.role]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(['/api/admin/role-permissions', variables.role], (old: any) => {
+        if (!old) return old;
+        return old.map((perm: RolePermission) => 
+          perm.widgetId === variables.widgetId 
+            ? { ...perm, canView: variables.canView, canManage: variables.canManage }
+            : perm
+        );
       });
+      
+      // Return a context object with the snapshotted value
+      return { previousPermissions, variables };
     },
-    onError: () => {
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousPermissions) {
+        queryClient.setQueryData(['/api/admin/role-permissions', variables.role], context.previousPermissions);
+      }
       toast({
         title: "Update Failed",
         description: "Failed to update permissions. Please try again.",
         variant: "destructive",
+      });
+    },
+    onSettled: (_, __, variables) => {
+      // Always refetch after error or success to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/role-permissions', variables.role] });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Permissions Updated",
+        description: "Role permissions have been successfully updated.",
       });
     },
   });
