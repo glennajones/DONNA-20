@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, varchar, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, varchar, json, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -625,3 +625,98 @@ export type InsertCoach = z.infer<typeof insertCoachSchema>;
 export type Coach = typeof coaches.$inferSelect;
 export type InsertCoachOutreachLog = z.infer<typeof insertCoachOutreachLogSchema>;
 export type CoachOutreachLog = typeof coachOutreachLogs.$inferSelect;
+
+// Documents & e-Signatures Tables
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  version: varchar("version", { length: 50 }).default("1.0"),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  filePath: varchar("file_path", { length: 500 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  expirationType: varchar("expiration_type", { length: 50 }).default("never"), // never, date, renewal
+  expirationDate: timestamp("expiration_date"),
+  renewalRule: jsonb("renewal_rule"), // JSON for renewal configuration
+  reminderSchedule: jsonb("reminder_schedule"), // JSON for reminder settings
+  allowedRoles: text("allowed_roles").array().default(["admin", "manager"]),
+  requiresSignature: boolean("requires_signature").default(false),
+  status: varchar("status", { length: 50 }).default("active"), // active, archived, expired
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const documentSignatures = pgTable("document_signatures", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").references(() => documents.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  signatureData: text("signature_data").notNull(), // Base64 encoded signature image
+  signatureType: varchar("signature_type", { length: 50 }).default("canvas"), // canvas, typed, uploaded
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  signedAt: timestamp("signed_at").defaultNow().notNull(),
+});
+
+export const documentAuditLogs = pgTable("document_audit_logs", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").references(() => documents.id).notNull(),
+  userId: integer("user_id").references(() => users.id),
+  action: varchar("action", { length: 100 }).notNull(), // view, download, sign, edit, delete, upload
+  details: jsonb("details"), // Additional action-specific data
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// Document Relations
+export const documentRelations = relations(documents, ({ many }) => ({
+  signatures: many(documentSignatures),
+  auditLogs: many(documentAuditLogs),
+}));
+
+export const documentSignatureRelations = relations(documentSignatures, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentSignatures.documentId],
+    references: [documents.id]
+  }),
+  user: one(users, {
+    fields: [documentSignatures.userId],
+    references: [users.id]
+  })
+}));
+
+export const documentAuditLogRelations = relations(documentAuditLogs, ({ one }) => ({
+  document: one(documents, {
+    fields: [documentAuditLogs.documentId],
+    references: [documents.id]
+  }),
+  user: one(users, {
+    fields: [documentAuditLogs.userId],
+    references: [users.id]
+  })
+}));
+
+// Document Schemas
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentSignatureSchema = createInsertSchema(documentSignatures).omit({
+  id: true,
+  signedAt: true,
+});
+
+export const insertDocumentAuditLogSchema = createInsertSchema(documentAuditLogs).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
+export type InsertDocumentSignature = z.infer<typeof insertDocumentSignatureSchema>;
+export type DocumentSignature = typeof documentSignatures.$inferSelect;
+export type InsertDocumentAuditLog = z.infer<typeof insertDocumentAuditLogSchema>;
+export type DocumentAuditLog = typeof documentAuditLogs.$inferSelect;

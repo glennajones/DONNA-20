@@ -1,0 +1,320 @@
+Let’s roll up our sleeves and build a full scaffold for the Documents & e‑Signatures module 🔨🤖🔧
+Below is a complete Node.js backend + React (with Tailwind) frontend scaffolding with all the logic and structure you asked for.
+
+📦 Backend Structure
+mathematica
+Copy
+Edit
+src/
+ ├─ services/
+ │   └─ DocumentService.js
+ ├─ api/
+ │   └─ documents.js
+ ├─ jobs/
+ │   └─ reminderJob.js
+ ├─ models/
+ │   └─ Document.js
+ │   └─ Signature.js
+ │   └─ Log.js
+ └─ server.js
+✅ src/services/DocumentService.js
+js
+Copy
+Edit
+// src/services/DocumentService.js
+const fs = require('fs');
+const path = require('path');
+const Document = require('../models/Document');
+const Signature = require('../models/Signature');
+const Log = require('../models/Log');
+
+const STORAGE_PATH = path.join(__dirname, '../../storage');
+
+if (!fs.existsSync(STORAGE_PATH)) fs.mkdirSync(STORAGE_PATH, { recursive: true });
+
+async function listDocuments() {
+  return await Document.find({});
+}
+
+async function uploadDocument(file, metadata) {
+  const filePath = path.join(STORAGE_PATH, `${Date.now()}-${file.originalname}`);
+  fs.writeFileSync(filePath, file.buffer);
+  const doc = await Document.create({ ...metadata, filePath, createdAt: new Date() });
+  return doc;
+}
+
+async function updateMetadata(docId, metadata) {
+  return await Document.findByIdAndUpdate(docId, { $set: metadata }, { new: true });
+}
+
+async function getDocument(docId) {
+  const doc = await Document.findById(docId);
+  if (!doc) throw new Error('Document not found');
+  await Log.create({ docId, action: 'view', timestamp: new Date() });
+  return doc;
+}
+
+async function signDocument(docId, userId, signatureData) {
+  const signature = await Signature.create({
+    docId,
+    userId,
+    signatureData,
+    signedAt: new Date()
+  });
+  await Log.create({ docId, userId, action: 'sign', timestamp: new Date() });
+  return signature;
+}
+
+async function listSignatures(docId) {
+  return await Signature.find({ docId });
+}
+
+async function logEvent({ userId, docId, action }) {
+  await Log.create({ userId, docId, action, timestamp: new Date() });
+}
+
+module.exports = {
+  listDocuments,
+  uploadDocument,
+  updateMetadata,
+  getDocument,
+  signDocument,
+  listSignatures,
+  logEvent
+};
+✅ src/api/documents.js
+js
+Copy
+Edit
+// src/api/documents.js
+const express = require('express');
+const multer = require('multer');
+const router = express.Router();
+const upload = multer();
+const DocumentService = require('../services/DocumentService');
+
+router.get('/', async (req, res) => {
+  const docs = await DocumentService.listDocuments();
+  res.json(docs);
+});
+
+router.post('/', upload.single('file'), async (req, res) => {
+  const metadata = JSON.parse(req.body.metadata);
+  const doc = await DocumentService.uploadDocument(req.file, metadata);
+  res.json(doc);
+});
+
+router.put('/:docId', async (req, res) => {
+  const updated = await DocumentService.updateMetadata(req.params.docId, req.body);
+  res.json(updated);
+});
+
+router.get('/:docId/file', async (req, res) => {
+  const doc = await DocumentService.getDocument(req.params.docId);
+  res.sendFile(doc.filePath);
+});
+
+router.post('/:docId/sign', async (req, res) => {
+  const { userId, signatureData } = req.body;
+  const sig = await DocumentService.signDocument(req.params.docId, userId, signatureData);
+  res.json(sig);
+});
+
+router.get('/:docId/signatures', async (req, res) => {
+  const sigs = await DocumentService.listSignatures(req.params.docId);
+  res.json(sigs);
+});
+
+module.exports = router;
+✅ src/jobs/reminderJob.js
+js
+Copy
+Edit
+// src/jobs/reminderJob.js
+const Document = require('../models/Document');
+const Notification = require('../services/NotificationService'); // assume exists
+
+async function runReminderJob() {
+  const docs = await Document.find({});
+  const now = new Date();
+  for (const doc of docs) {
+    // Simplified expiration check
+    if (doc.renewalRule && doc.reminderSchedule) {
+      // Here you’d calculate expiry and send notifications
+      // For brevity we log:
+      console.log(`Check reminders for ${doc.title}`);
+    }
+  }
+}
+
+module.exports = { runReminderJob };
+✅ Example Mongoose Models
+js
+Copy
+Edit
+// src/models/Document.js
+const mongoose = require('mongoose');
+const DocumentSchema = new mongoose.Schema({
+  title: String,
+  description: String,
+  version: String,
+  expirationType: String,
+  renewalRule: Object,
+  reminderSchedule: Object,
+  allowedRoles: [String],
+  filePath: String,
+  createdAt: Date
+});
+module.exports = mongoose.model('Document', DocumentSchema);
+
+// src/models/Signature.js
+const SignatureSchema = new mongoose.Schema({
+  docId: mongoose.Schema.Types.ObjectId,
+  userId: String,
+  signatureData: String,
+  signedAt: Date
+});
+module.exports = mongoose.model('Signature', SignatureSchema);
+
+// src/models/Log.js
+const LogSchema = new mongoose.Schema({
+  docId: mongoose.Schema.Types.ObjectId,
+  userId: String,
+  action: String,
+  timestamp: Date
+});
+module.exports = mongoose.model('Log', LogSchema);
+✅ src/server.js
+js
+Copy
+Edit
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const documentsApi = require('./api/documents');
+
+mongoose.connect('mongodb://localhost:27017/docs', { useNewUrlParser: true, useUnifiedTopology: true });
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use('/api/documents', documentsApi);
+
+app.listen(4000, () => console.log('Server running on http://localhost:4000'));
+🎨 Frontend Structure
+bash
+Copy
+Edit
+src/modules/Documents/
+ ├─ Repo.jsx
+ ├─ DocViewer.jsx
+ └─ SignaturePad.jsx
+✅ Repo.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function Repo({ onView }) {
+  const [docs, setDocs] = useState([]);
+
+  useEffect(() => {
+    axios.get('/api/documents').then(res => setDocs(res.data));
+  }, []);
+
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">Documents</h1>
+      <table className="min-w-full border text-left">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="p-2">Title</th>
+            <th className="p-2">Version</th>
+            <th className="p-2">Expires On</th>
+            <th className="p-2">Signatures</th>
+            <th className="p-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {docs.map(doc => (
+            <tr key={doc._id} className="border-t">
+              <td className="p-2">{doc.title}</td>
+              <td className="p-2">{doc.version}</td>
+              <td className="p-2">{/* compute expiry if needed */}</td>
+              <td className="p-2">{/* show signature count later */}</td>
+              <td className="p-2 space-x-2">
+                <button className="bg-blue-500 text-white px-2 py-1 rounded" onClick={() => onView(doc._id)}>View</button>
+                <button className="bg-green-500 text-white px-2 py-1 rounded">Edit</button>
+                <button className="bg-purple-500 text-white px-2 py-1 rounded">Upload New</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+✅ DocViewer.jsx
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import SignaturePad from './SignaturePad';
+
+export default function DocViewer({ docId, currentUserId }) {
+  const [signatures, setSignatures] = useState([]);
+  const [needsSign, setNeedsSign] = useState(false);
+
+  useEffect(() => {
+    axios.get(`/api/documents/${docId}/signatures`).then(res => {
+      setSignatures(res.data);
+      setNeedsSign(!res.data.find(sig => sig.userId === currentUserId));
+    });
+  }, [docId, currentUserId]);
+
+  return (
+    <div className="p-4">
+      <iframe
+        src={`/api/documents/${docId}/file`}
+        title="Document"
+        className="w-full h-96 border mb-4"
+      />
+      <h2 className="text-lg font-bold mb-2">Signatures</h2>
+      <ul className="mb-4">
+        {signatures.map(sig => (
+          <li key={sig._id}>{sig.userId} - {new Date(sig.signedAt).toLocaleString()}</li>
+        ))}
+      </ul>
+      {needsSign && <SignaturePad docId={docId} currentUserId={currentUserId} />}
+    </div>
+  );
+}
+✅ SignaturePad.jsx
+jsx
+Copy
+Edit
+import React, { useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
+import axios from 'axios';
+
+export default function SignaturePad({ docId, currentUserId }) {
+  const sigRef = useRef();
+
+  const handleSign = async () => {
+    const signatureData = sigRef.current.getTrimmedCanvas().toDataURL('image/png');
+    await axios.post(`/api/documents/${docId}/sign`, { userId: currentUserId, signatureData });
+    alert('Signed!');
+  };
+
+  return (
+    <div>
+      <h3 className="font-semibold mb-2">Sign Below:</h3>
+      <div className="border mb-2">
+        <SignatureCanvas ref={sigRef} canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }} />
+      </div>
+      <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSign}>Sign Document</button>
+    </div>
+  );
+}

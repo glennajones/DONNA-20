@@ -21,6 +21,9 @@ import {
   practicePlans,
   coaches,
   coachOutreachLogs,
+  documents,
+  documentSignatures,
+  documentAuditLogs,
 
   type User, 
   type InsertUser, 
@@ -64,6 +67,12 @@ import {
   type InsertCoach,
   type CoachOutreachLog,
   type InsertCoachOutreachLog,
+  type Document,
+  type InsertDocument,
+  type DocumentSignature,
+  type InsertDocumentSignature,
+  type DocumentAuditLog,
+  type InsertDocumentAuditLog,
 
 } from "@shared/schema";
 import { db } from "./db";
@@ -202,6 +211,23 @@ export interface IStorage {
   createCoachOutreachLog(log: InsertCoachOutreachLog): Promise<CoachOutreachLog>;
   updateCoachOutreachLog(id: number, log: Partial<InsertCoachOutreachLog>): Promise<CoachOutreachLog | undefined>;
   deleteCoachOutreachLog(id: number): Promise<boolean>;
+
+  // Document methods
+  getDocument(id: number): Promise<Document | undefined>;
+  getDocuments(): Promise<Document[]>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<boolean>;
+
+  // Document Signature methods
+  getDocumentSignature(id: number): Promise<DocumentSignature | undefined>;
+  getDocumentSignatures(documentId: number): Promise<DocumentSignature[]>;
+  createDocumentSignature(signature: InsertDocumentSignature): Promise<DocumentSignature>;
+  getUserDocumentSignature(documentId: number, userId: number): Promise<DocumentSignature | undefined>;
+
+  // Document Audit Log methods
+  getDocumentAuditLogs(documentId: number): Promise<DocumentAuditLog[]>;
+  createDocumentAuditLog(auditLog: InsertDocumentAuditLog): Promise<DocumentAuditLog>;
 
 }
 
@@ -963,6 +989,81 @@ export class DatabaseStorage implements IStorage {
   async deleteCoachOutreachLog(id: number): Promise<boolean> {
     const result = await db.delete(coachOutreachLogs).where(eq(coachOutreachLogs.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Document methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document || undefined;
+  }
+
+  async getDocuments(): Promise<Document[]> {
+    return await db.select().from(documents).orderBy(desc(documents.createdAt));
+  }
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const [document] = await db
+      .insert(documents)
+      .values(insertDocument)
+      .returning();
+    return document;
+  }
+
+  async updateDocument(id: number, documentUpdate: Partial<InsertDocument>): Promise<Document | undefined> {
+    const [document] = await db
+      .update(documents)
+      .set({ ...documentUpdate, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return document || undefined;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    const result = await db.delete(documents).where(eq(documents.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Document Signature methods
+  async getDocumentSignature(id: number): Promise<DocumentSignature | undefined> {
+    const [signature] = await db.select().from(documentSignatures).where(eq(documentSignatures.id, id));
+    return signature || undefined;
+  }
+
+  async getDocumentSignatures(documentId: number): Promise<DocumentSignature[]> {
+    return await db.select().from(documentSignatures).where(eq(documentSignatures.documentId, documentId));
+  }
+
+  async createDocumentSignature(insertSignature: InsertDocumentSignature): Promise<DocumentSignature> {
+    const [signature] = await db
+      .insert(documentSignatures)
+      .values(insertSignature)
+      .returning();
+    return signature;
+  }
+
+  async getUserDocumentSignature(documentId: number, userId: number): Promise<DocumentSignature | undefined> {
+    const [signature] = await db
+      .select()
+      .from(documentSignatures)
+      .where(and(eq(documentSignatures.documentId, documentId), eq(documentSignatures.userId, userId)));
+    return signature || undefined;
+  }
+
+  // Document Audit Log methods
+  async getDocumentAuditLogs(documentId: number): Promise<DocumentAuditLog[]> {
+    return await db
+      .select()
+      .from(documentAuditLogs)
+      .where(eq(documentAuditLogs.documentId, documentId))
+      .orderBy(desc(documentAuditLogs.timestamp));
+  }
+
+  async createDocumentAuditLog(insertAuditLog: InsertDocumentAuditLog): Promise<DocumentAuditLog> {
+    const [auditLog] = await db
+      .insert(documentAuditLogs)
+      .values(insertAuditLog)
+      .returning();
+    return auditLog;
   }
 
 }

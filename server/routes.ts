@@ -2058,6 +2058,354 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document management API routes
+  
+  // Configure multer for document file uploads
+  const documentStorage = multer.memoryStorage();
+  const documentUpload = multer({ 
+    storage: documentStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req: any, file: any, cb: any) => {
+      // Accept PDF, DOC, DOCX files
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and TXT files are allowed.'), false);
+      }
+    }
+  });
+
+  // Ensure uploads directory exists
+  const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+
+  // Get all documents
+  app.get("/api/documents", authenticateToken, async (req: any, res) => {
+    try {
+      const documents = await storage.getDocuments();
+      
+      // Filter documents based on user role
+      const filteredDocuments = documents.filter(doc => {
+        if (!doc.allowedRoles || doc.allowedRoles.length === 0) {
+          return true; // No restrictions
+        }
+        return doc.allowedRoles.includes(req.user.role);
+      });
+
+      res.json(filteredDocuments);
+    } catch (error) {
+      console.error("Failed to fetch documents:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get document by ID
+  app.get("/api/documents/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const document = await storage.getDocument(parseInt(req.params.id));
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check role permissions
+      if (document.allowedRoles && document.allowedRoles.length > 0) {
+        if (!document.allowedRoles.includes(req.user.role)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      // Log the view action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'view',
+        details: { userAgent: req.headers['user-agent'] },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json(document);
+    } catch (error) {
+      console.error("Failed to fetch document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Upload new document
+  app.post("/api/documents", authenticateToken, documentUpload.single('file'), async (req: any, res) => {
+    try {
+      // Only admins and managers can upload documents
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "File is required" });
+      }
+
+      const { title, description, version, allowedRoles, requiresSignature, expirationType, expirationDate } = req.body;
+
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+      }
+
+      // Save file to uploads directory
+      const fileName = `${Date.now()}-${req.file.originalname}`;
+      const filePath = path.join(UPLOADS_DIR, fileName);
+      fs.writeFileSync(filePath, req.file.buffer);
+
+      // Parse allowed roles
+      let parsedAllowedRoles = ["admin", "manager"];
+      if (allowedRoles) {
+        try {
+          parsedAllowedRoles = JSON.parse(allowedRoles);
+        } catch (e) {
+          // Use default if parsing fails
+        }
+      }
+
+      const document = await storage.createDocument({
+        title,
+        description: description || null,
+        version: version || "1.0",
+        fileName: req.file.originalname,
+        filePath,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        expirationType: expirationType || "never",
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
+        allowedRoles: parsedAllowedRoles,
+        requiresSignature: requiresSignature === 'true' || requiresSignature === true,
+        status: "active"
+      });
+
+      // Log the upload action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'upload',
+        details: { fileName: req.file.originalname, fileSize: req.file.size },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Failed to upload document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update document metadata
+  app.put("/api/documents/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can update documents
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const documentId = parseInt(req.params.id);
+      const updateData = req.body;
+
+      // Remove fields that shouldn't be updated directly
+      delete updateData.id;
+      delete updateData.filePath;
+      delete updateData.fileName;
+      delete updateData.fileSize;
+      delete updateData.mimeType;
+      delete updateData.createdAt;
+
+      const document = await storage.updateDocument(documentId, updateData);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Log the edit action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'edit',
+        details: { updatedFields: Object.keys(updateData) },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json(document);
+    } catch (error) {
+      console.error("Failed to update document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Download document file
+  app.get("/api/documents/:id/download", authenticateToken, async (req: any, res) => {
+    try {
+      const document = await storage.getDocument(parseInt(req.params.id));
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check role permissions
+      if (document.allowedRoles && document.allowedRoles.length > 0) {
+        if (!document.allowedRoles.includes(req.user.role)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      // Log the download action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'download',
+        details: { fileName: document.fileName },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      // Send file
+      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      res.setHeader('Content-Type', document.mimeType);
+      res.sendFile(path.resolve(document.filePath));
+    } catch (error) {
+      console.error("Failed to download document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Delete document
+  app.delete("/api/documents/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins can delete documents
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Delete file from filesystem
+      try {
+        fs.unlinkSync(document.filePath);
+      } catch (fileError) {
+        console.warn("Failed to delete file:", fileError);
+      }
+
+      const deleted = await storage.deleteDocument(documentId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete document" });
+      }
+
+      // Log the delete action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'delete',
+        details: { fileName: document.fileName },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json({ message: "Document deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get document signatures
+  app.get("/api/documents/:id/signatures", authenticateToken, async (req: any, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      const signatures = await storage.getDocumentSignatures(documentId);
+      res.json(signatures);
+    } catch (error) {
+      console.error("Failed to fetch signatures:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Sign document
+  app.post("/api/documents/:id/sign", authenticateToken, async (req: any, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const { signatureData, signatureType } = req.body;
+
+      if (!signatureData) {
+        return res.status(400).json({ message: "Signature data is required" });
+      }
+
+      const document = await storage.getDocument(documentId);
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check if user has already signed
+      const existingSignature = await storage.getUserDocumentSignature(documentId, req.user.id);
+      if (existingSignature) {
+        return res.status(400).json({ message: "Document already signed by this user" });
+      }
+
+      const signature = await storage.createDocumentSignature({
+        documentId,
+        userId: req.user.id,
+        signatureData,
+        signatureType: signatureType || 'canvas',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      // Log the sign action
+      await storage.createDocumentAuditLog({
+        documentId: document.id,
+        userId: req.user.id,
+        action: 'sign',
+        details: { signatureType },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.status(201).json(signature);
+    } catch (error) {
+      console.error("Failed to sign document:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get document audit logs
+  app.get("/api/documents/:id/audit", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can view audit logs
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const documentId = parseInt(req.params.id);
+      const auditLogs = await storage.getDocumentAuditLogs(documentId);
+      res.json(auditLogs);
+    } catch (error) {
+      console.error("Failed to fetch audit logs:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

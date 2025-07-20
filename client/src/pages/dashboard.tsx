@@ -110,6 +110,13 @@ export default function Dashboard() {
       href: "/integrations",
     },
     {
+      title: "Documents & e-Signatures",
+      icon: FileText,
+      color: "bg-red-50 hover:bg-red-100 border-red-200 text-red-700",
+      roles: ["admin", "manager", "coach"],
+      href: "/documents",
+    },
+    {
       title: "System Settings",
       icon: Settings,
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700",
