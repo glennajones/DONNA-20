@@ -295,3 +295,77 @@ Preferred communication style: Simple, everyday language.
 - **Type safety** through Drizzle's TypeScript integration
 
 The application is designed to be easily deployable to platforms like Replit, with proper separation of concerns and environment-specific configurations.
+
+## Recent Changes (July 20, 2025)
+
+### Time Clock System Enhancements
+- **Implemented 2-column layout** for the Time Clock widget in Coach Resources
+  - Left column: Time clock interface with hours display, clock in/out buttons, and manual entry
+  - Right column: Live "Recent Activity" panel showing last 8 time entries with timestamps and status
+  - Removed popup dialog approach in favor of better space utilization
+  - History panel displays compact entries with status badges (approved/pending/rejected)
+  - Responsive design stacks to single column on smaller screens
+
+### Admin Approval System
+- **Created AdminApprovals component** for comprehensive manual time entry management
+- **Added dedicated admin section** to Coach Resources page (visible only to admin users)
+- **Enhanced approval workflow** with two access points:
+  1. Quick approval in Time Clock section for recent entries (2 entries max)
+  2. Comprehensive AdminApprovals section for all pending entries with full details
+- **Improved UI for pending entries** showing user ID, timestamps, submission time, and reasons
+- **Role-based access control** ensures only admin users see approval interfaces
+
+### Events & Budgeting Improvements  
+- **Added quantity field** to miscellaneous expenses in event creation wizard
+- **Updated MiscExpense interface** to include quantity field with proper TypeScript typing
+- **Enhanced expense calculation** to multiply quantity × cost for accurate totals
+- **Improved form layout** with three fields: Expense item, Qty (compact 20px), Cost (28px)
+- **Updated all helper functions** (addMiscExpense, updateMiscExpense) to handle quantity
+- **Set quantity minimum value** to 1 with proper validation
+
+### Technical Implementation Details
+- **Time Clock data flow**: History query now always enabled for real-time side panel updates
+- **Expense calculations**: `totalMiscCost = miscExpenses.reduce((sum, expense) => sum + (expense.quantity * expense.cost), 0)`
+- **Component structure**: AdminApprovals component with proper error handling and loading states
+- **Database integration**: All existing time clock and events APIs work seamlessly with new features
+- **UI consistency**: Maintained existing styling patterns and responsive design principles
+
+### User Experience Improvements
+- **Better space utilization** with 2-column layout eliminating need for popup dialogs
+- **Immediate visibility** of recent time clock activity without clicking buttons
+- **Streamlined admin workflow** with dedicated approval interface
+- **Enhanced expense tracking** with quantity support for accurate budget planning
+- **Consistent design language** across all new components
+
+### Files Modified Today
+1. **client/src/modules/Coach/TimeClock.tsx**
+   - Implemented 2-column layout (grid grid-cols-1 lg:grid-cols-2)
+   - Added "Recent Activity" side panel with last 8 entries
+   - Removed history dialog state and button
+   - Updated history query to always fetch for side panel
+   - Reduced admin pending entries display from 3 to 2 for space
+
+2. **client/src/modules/Coach/AdminApprovals.tsx** (NEW FILE)
+   - Comprehensive admin interface for manual entry approvals
+   - Displays all pending entries with full details and reasons
+   - Approve/reject functionality with proper error handling
+   - Role-based access (admin only) with conditional rendering
+   - Badge showing pending count in header
+
+3. **client/src/pages/coach-resources.tsx**
+   - Added useAuth import for role checking
+   - Integrated AdminApprovals component below TimeClock
+   - Conditional rendering: only shows for admin users
+
+4. **client/src/components/events/EventWizardAccordion.tsx**
+   - Updated MiscExpense interface to include quantity field
+   - Modified miscExpenses state to include quantity: 1 as default
+   - Updated totalMiscCost calculation with quantity multiplication
+   - Enhanced form UI with 3-field layout (item, qty, cost)
+   - Updated helper functions for quantity support
+   - Set quantity field width to w-20 and cost to w-28
+
+5. **replit.md** (THIS FILE)
+   - Documented all changes with implementation details
+   - Added technical specifications and user experience improvements
+   - Created permanent record of today's enhancements
