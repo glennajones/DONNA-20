@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { EventWizard } from "@/components/events/EventWizard";
+import { EventWizardAccordion } from "@/components/events/EventWizardAccordion";
 import { EventList } from "@/components/events/EventList";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
 import { useAuth } from "@/lib/auth";
@@ -40,7 +40,7 @@ export default function EventsPage() {
 
         {canCreateEvents && (
           <TabsContent value="wizard" className="mt-6">
-            <EventWizard onComplete={handleEventCreated} />
+            <EventWizardAccordion onComplete={handleEventCreated} />
           </TabsContent>
         )}
       </Tabs>
