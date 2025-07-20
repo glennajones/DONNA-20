@@ -290,8 +290,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ) : 120,
                   eventType: budgetEvent.eventType, // Use original eventType from budget events
                   participants: [],
-                  coach: "",
-                  description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
+                  coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
+                    ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
+                    : 'TBD',
+                  description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
                   status: "scheduled" as const,
                   createdBy: budgetEvent.createdBy,
                   createdAt: budgetEvent.createdAt,
@@ -315,8 +317,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ) : 120,
                   eventType: budgetEvent.eventType, // Use original eventType from budget events
                   participants: [],
-                  coach: "",
-                  description: budgetEvent.assignedCourts?.join(', ') || 'Multiple Courts',
+                  coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
+                    ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || 'TBD'
+                    : 'TBD',
+                  description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
                   status: "scheduled" as const,
                   createdBy: budgetEvent.createdBy,
                   createdAt: budgetEvent.createdAt,
