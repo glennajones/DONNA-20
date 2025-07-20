@@ -9,6 +9,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useAuth } from "@/lib/auth";
 import EventRegistrationModal from "./EventRegistrationModal";
 
+// Event type colors - defined at module level for global access
+const getEventColor = (eventType: string) => {
+  const colorMap: Record<string, string> = {
+    "Practice": "#56A0D3",
+    "School Activity": "#10B981", 
+    "Tournament": "#FF0000",
+    "Camp": "#8B5CF6",
+    "Team Camp": "#FFA500",
+    "Social": "#EC4899"
+  };
+  return colorMap[eventType] || "#56A0D3"; // Default to blue if type not found
+};
+
+const getEventColorHover = (eventType: string) => {
+  const colorMap: Record<string, string> = {
+    "Practice": "#4A8BC2",
+    "School Activity": "#0F9971",
+    "Tournament": "#DC2626",
+    "Camp": "#7C3AED",
+    "Team Camp": "#EA580C",
+    "Social": "#DB2777"
+  };
+  return colorMap[eventType] || "#4A8BC2";
+};
+
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
 }
@@ -79,30 +104,7 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     "Beach 1", "Beach 2",
   ];
 
-  // Event type colors
-  const getEventColor = (eventType: string) => {
-    const colorMap: Record<string, string> = {
-      "Practice": "#56A0D3",
-      "School Activity": "#10B981", 
-      "Tournament": "#FF0000",
-      "Camp": "#8B5CF6",
-      "Team Camp": "#FFA500",
-      "Social": "#EC4899"
-    };
-    return colorMap[eventType] || "#56A0D3"; // Default to blue if type not found
-  };
 
-  const getEventColorHover = (eventType: string) => {
-    const colorMap: Record<string, string> = {
-      "Practice": "#4A8BC2",
-      "School Activity": "#0F9971",
-      "Tournament": "#DC2626",
-      "Camp": "#7C3AED",
-      "Team Camp": "#EA580C",
-      "Social": "#DB2777"
-    };
-    return colorMap[eventType] || "#4A8BC2";
-  };
 
   if (isLoading) {
     return (
