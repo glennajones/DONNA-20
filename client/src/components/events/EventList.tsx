@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat, User } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
-import { TimeSelect } from "@/components/ui/time-select";
+
 import type { Event } from "@shared/schema";
 
 interface CoachRate {
@@ -685,20 +685,20 @@ export function EventList() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="edit-startTime">Start Time</Label>
-                      <TimeSelect
+                      <Input
                         id="edit-startTime"
+                        type="time"
                         value={editFormData.startTime || ""}
-                        onChange={(value) => setEditFormData({ ...editFormData, startTime: value })}
-                        placeholder="Select start time"
+                        onChange={(e) => setEditFormData({ ...editFormData, startTime: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label htmlFor="edit-endTime">End Time</Label>
-                      <TimeSelect
+                      <Input
                         id="edit-endTime"
+                        type="time"
                         value={editFormData.endTime || ""}
-                        onChange={(value) => setEditFormData({ ...editFormData, endTime: value })}
-                        placeholder="Select end time"
+                        onChange={(e) => setEditFormData({ ...editFormData, endTime: e.target.value })}
                       />
                     </div>
                   </div>

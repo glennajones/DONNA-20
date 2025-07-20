@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Calendar, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { TimeSelect } from "@/components/ui/time-select";
+
 
 // Form schema that extends the base schema
 const formSchema = insertScheduleEventSchema.extend({
@@ -265,11 +265,10 @@ export default function CourtManager() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="time">Time</Label>
-                <TimeSelect
+                <Input
                   id="time"
-                  value={form.watch("time") || ""}
-                  onChange={(value) => form.setValue("time", value)}
-                  placeholder="Select time"
+                  type="time"
+                  {...form.register("time")}
                 />
               </div>
             </div>
