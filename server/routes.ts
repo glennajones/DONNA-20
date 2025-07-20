@@ -248,8 +248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Schedule/Calendar routes
   app.get("/api/schedule", authenticateToken, async (req: any, res) => {
     try {
-      // Only coaches, managers, and admins can view schedules
-      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+      // Allow all authenticated users to view schedules
+      if (!["admin", "manager", "coach", "player", "parent"].includes(req.user.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
