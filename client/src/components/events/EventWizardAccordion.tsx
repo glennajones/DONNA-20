@@ -234,6 +234,8 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       }
       
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      // Also invalidate calendar/schedule queries since they show the same events
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
       
       toast({
         title: "Success!",

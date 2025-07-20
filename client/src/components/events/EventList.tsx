@@ -67,6 +67,8 @@ export function EventList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      // Also invalidate calendar/schedule queries since they show the same events
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
       toast({
         title: "Success",
         description: "Event deleted successfully",
@@ -91,6 +93,8 @@ export function EventList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      // Also invalidate calendar/schedule queries since they show the same events
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
       setEditingEvent(null);
       setActualRevenue(0);
       setShowEditDialog(false);
@@ -277,6 +281,8 @@ export function EventList() {
           }
 
           queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+          // Also invalidate calendar/schedule queries since they show the same events
+          queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
           setEditingEvent(null);
           setActualRevenue(0);
           setShowEditDialog(false);
