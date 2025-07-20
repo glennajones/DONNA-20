@@ -20,6 +20,7 @@ interface CoachRate {
 
 interface MiscExpense {
   item: string;
+  quantity: number;
   cost: number;
 }
 
@@ -64,7 +65,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   // Budget & Pricing
   const [feePerPlayer, setFeePerPlayer] = useState(0);
   const [coachRates, setCoachRates] = useState<CoachRate[]>([{ profile: "", rate: 0 }]);
-  const [miscExpenses, setMiscExpenses] = useState<MiscExpense[]>([{ item: "", cost: 0 }]);
+  const [miscExpenses, setMiscExpenses] = useState<MiscExpense[]>([{ item: "", quantity: 1, cost: 0 }]);
 
   // Calculated values
   const projectedRevenue = players * feePerPlayer;
@@ -87,7 +88,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   
   const eventDurationHours = getEventDurationHours();
   const totalCoachCost = coachRates.reduce((sum, coach) => sum + (coach.rate * eventDurationHours), 0);
-  const totalMiscCost = miscExpenses.reduce((sum, expense) => sum + expense.cost, 0);
+  const totalMiscCost = miscExpenses.reduce((sum, expense) => sum + (expense.quantity * expense.cost), 0);
   const totalCosts = totalCoachCost + totalMiscCost;
   const netProfit = projectedRevenue - totalCosts;
 
@@ -196,12 +197,12 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
   const updateMiscExpense = (index: number, field: keyof MiscExpense, value: string | number) => {
     const updated = [...miscExpenses];
-    updated[index] = { ...updated[index], [field]: field === "cost" ? Number(value) : value };
+    updated[index] = { ...updated[index], [field]: (field === "cost" || field === "quantity") ? Number(value) : value };
     setMiscExpenses(updated);
   };
 
   const addMiscExpense = () => {
-    setMiscExpenses([...miscExpenses, { item: "", cost: 0 }]);
+    setMiscExpenses([...miscExpenses, { item: "", quantity: 1, cost: 0 }]);
   };
 
   const removeMiscExpense = (index: number) => {
@@ -494,10 +495,18 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         />
                         <Input
                           type="number"
+                          placeholder="Qty"
+                          value={expense.quantity}
+                          onChange={(e) => updateMiscExpense(index, "quantity", e.target.value)}
+                          className="w-20"
+                          min="1"
+                        />
+                        <Input
+                          type="number"
                           placeholder="Cost ($)"
                           value={expense.cost}
                           onChange={(e) => updateMiscExpense(index, "cost", e.target.value)}
-                          className="w-32"
+                          className="w-28"
                         />
                         <Button
                           type="button"
