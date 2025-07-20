@@ -670,50 +670,90 @@ function renderMonthView(events: ScheduleEvent[], dateRange: { from: string; to:
                   </div>
                   
                   <div className="space-y-1">
-                    {dayEvents
-                      .sort((a, b) => {
-                        const [aHours, aMinutes] = a.time.split(':').map(Number);
-                        const [bHours, bMinutes] = b.time.split(':').map(Number);
-                        const aTimeMinutes = aHours * 60 + aMinutes;
-                        const bTimeMinutes = bHours * 60 + bMinutes;
-                        return aTimeMinutes - bTimeMinutes;
-                      })
-                      .slice(0, 3).map(event => (
-                      <div
-                        key={event.id}
-                        className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
-                        title={`${event.time} - ${event.title} (${event.court})`}
-                        onClick={() => setSelectedEvent(event)}
-                        style={{
-                          backgroundColor: getEventColor(event.eventType || "Practice")
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = getEventColorHover(event.eventType || "Practice");
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = getEventColor(event.eventType || "Practice");
-                        }}
-                      >
-                        {formatTime(event.time)} {event.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div 
-                        className="text-xs text-gray-500 cursor-pointer hover:text-gray-700"
-                        onClick={() => {
-                          const sortedEvents = dayEvents.sort((a, b) => {
-                            const [aHours, aMinutes] = a.time.split(':').map(Number);
-                            const [bHours, bMinutes] = b.time.split(':').map(Number);
-                            const aTimeMinutes = aHours * 60 + aMinutes;
-                            const bTimeMinutes = bHours * 60 + bMinutes;
-                            return aTimeMinutes - bTimeMinutes;
-                          });
-                          setSelectedEvent(sortedEvents[3]);
-                        }}
-                      >
-                        +{dayEvents.length - 3} more
-                      </div>
-                    )}
+                    {(() => {
+                      // Group events by title and time to consolidate similar events
+                      const groupedEvents = dayEvents
+                        .sort((a, b) => {
+                          const [aHours, aMinutes] = a.time.split(':').map(Number);
+                          const [bHours, bMinutes] = b.time.split(':').map(Number);
+                          const aTimeMinutes = aHours * 60 + aMinutes;
+                          const bTimeMinutes = bHours * 60 + bMinutes;
+                          return aTimeMinutes - bTimeMinutes;
+                        })
+                        .reduce((groups, event) => {
+                          const key = `${event.time}-${event.title}`;
+                          if (!groups[key]) {
+                            groups[key] = {
+                              event: event,
+                              count: 1,
+                              courts: [event.court]
+                            };
+                          } else {
+                            groups[key].count++;
+                            if (!groups[key].courts.includes(event.court)) {
+                              groups[key].courts.push(event.court);
+                            }
+                          }
+                          return groups;
+                        }, {} as Record<string, { event: ScheduleEvent; count: number; courts: string[] }>);
+
+                      const consolidatedEvents = Object.values(groupedEvents).slice(0, 3);
+                      
+                      return consolidatedEvents.map((group, index) => (
+                        <div
+                          key={`${group.event.id}-${index}`}
+                          className="text-xs p-1 rounded text-white truncate cursor-pointer transition-colors"
+                          title={`${group.event.time} - ${group.event.title}${group.count > 1 ? ` (${group.count}x)` : ''} - ${group.courts.join(', ')}`}
+                          onClick={() => setSelectedEvent(group.event)}
+                          style={{
+                            backgroundColor: getEventColor(group.event.eventType || "Practice")
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = getEventColorHover(group.event.eventType || "Practice");
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = getEventColor(group.event.eventType || "Practice");
+                          }}
+                        >
+                          {formatTime(group.event.time)} {group.event.title}{group.count > 1 ? ` (${group.count})` : ''}
+                        </div>
+                      ));
+                    })()}
+                    {(() => {
+                      // Calculate remaining events after consolidation
+                      const groupedEvents = dayEvents
+                        .reduce((groups, event) => {
+                          const key = `${event.time}-${event.title}`;
+                          if (!groups[key]) {
+                            groups[key] = { event: event, count: 1 };
+                          } else {
+                            groups[key].count++;
+                          }
+                          return groups;
+                        }, {} as Record<string, { event: ScheduleEvent; count: number }>);
+                      
+                      const totalGroups = Object.keys(groupedEvents).length;
+                      if (totalGroups > 3) {
+                        return (
+                          <div 
+                            className="text-xs text-gray-500 cursor-pointer hover:text-gray-700"
+                            onClick={() => {
+                              const sortedEvents = dayEvents.sort((a, b) => {
+                                const [aHours, aMinutes] = a.time.split(':').map(Number);
+                                const [bHours, bMinutes] = b.time.split(':').map(Number);
+                                const aTimeMinutes = aHours * 60 + aMinutes;
+                                const bTimeMinutes = bHours * 60 + bMinutes;
+                                return aTimeMinutes - bTimeMinutes;
+                              });
+                              setSelectedEvent(sortedEvents[0]);
+                            }}
+                          >
+                            +{totalGroups - 3} more
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
               );
