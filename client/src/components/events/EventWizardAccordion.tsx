@@ -435,10 +435,15 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                     <Input
                       id="feePerPlayer"
                       type="number"
-                      placeholder="25"
+                      placeholder="25 (enter 0 for free courts)"
                       value={feePerPlayer}
                       onChange={(e) => setFeePerPlayer(Number(e.target.value) || 0)}
+                      min="0"
+                      step="0.01"
                     />
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Set to $0 to offer courts for free
+                    </div>
                   </div>
 
                   <div className="space-y-4">
