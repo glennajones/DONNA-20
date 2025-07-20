@@ -215,8 +215,9 @@ export default function AdminDashboardConfig() {
                       {defaultWidgets.map((widget, index) => {
                         const typedPermissions = rolePermissions as RolePermission[];
                         const permission = typedPermissions.find((p: RolePermission) => p.widgetId === index + 1);
-                        const canView = permission?.canView || widget.defaultRoles.includes(selectedRole);
-                        const canManage = permission?.canManage || (selectedRole === 'admin' && widget.defaultRoles.includes('admin'));
+                        // Use explicit permission values if they exist, otherwise fall back to defaults
+                        const canView = permission !== undefined ? permission.canView : widget.defaultRoles.includes(selectedRole);
+                        const canManage = permission !== undefined ? permission.canManage : (selectedRole === 'admin' && widget.defaultRoles.includes('admin'));
                         
                         return (
                           <TableRow key={widget.component}>
