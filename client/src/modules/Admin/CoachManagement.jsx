@@ -141,6 +141,8 @@ export default function CoachManagement() {
       hourlyRate: coach.hourlyRate ? coach.hourlyRate.toString() : ''
     });
     setIsEditing(true);
+    // Scroll to top of form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id) => {
@@ -230,12 +232,17 @@ export default function CoachManagement() {
       </div>
 
       {/* Add/Edit Coach Form */}
-      <Card>
+      <Card className={isEditing ? "ring-2 ring-blue-500 ring-opacity-50" : ""}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {isEditing ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-            {isEditing ? 'Edit Coach' : 'Add New Coach'}
+            {isEditing ? `Edit Coach: ${formData.name}` : 'Add New Coach'}
           </CardTitle>
+          {isEditing && (
+            <p className="text-sm text-blue-600 dark:text-blue-400">
+              Editing coach details. Make your changes and click Update Coach to save.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
