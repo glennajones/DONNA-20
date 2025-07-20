@@ -24,7 +24,8 @@ import {
   MessageCircle,
   GraduationCap,
   Headphones,
-  UserX
+  UserX,
+  ClipboardList
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -198,6 +199,14 @@ export default function Dashboard() {
       icon: Headphones,
       href: "/podcast",
       color: "from-indigo-500 to-indigo-600",
+    },
+    {
+      title: "Reports",
+      description: "Generate and view reports",
+      icon: ClipboardList,
+      href: "/reports",
+      color: "from-orange-500 to-orange-600",
+      roles: ["admin", "manager"],
     },
     {
       title: "Admin",
