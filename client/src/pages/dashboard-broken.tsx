@@ -266,40 +266,40 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {quickActions.map((action) => {
-                    if (action.roles && !hasRole(action.roles)) return null;
-                    
-                    const Icon = action.icon;
-                    const ActionButton = (
-                      <Button
-                        key={action.title}
-                        variant="outline"
-                        className={`w-full justify-between h-auto py-3 ${action.color}`}
-                      >
-                        <div className="flex items-center">
-                          <Icon className="h-4 w-4 mr-3" />
-                          <span className="text-sm font-medium">{action.title}</span>
-                        </div>
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Button>
+            <CardContent>
+              <div className="space-y-3">
+                {quickActions.map((action) => {
+                  if (action.roles && !hasRole(action.roles)) return null;
+                  
+                  const Icon = action.icon;
+                  const ActionButton = (
+                    <Button
+                      key={action.title}
+                      variant="outline"
+                      className={`w-full justify-between h-auto py-3 ${action.color}`}
+                    >
+                      <div className="flex items-center">
+                        <Icon className="h-4 w-4 mr-3" />
+                        <span className="text-sm font-medium">{action.title}</span>
+                      </div>
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Button>
+                  );
+
+                  if (action.href) {
+                    return (
+                      <Link key={action.title} href={action.href}>
+                        {ActionButton}
+                      </Link>
                     );
+                  }
 
-                    if (action.href) {
-                      return (
-                        <Link key={action.title} href={action.href}>
-                          {ActionButton}
-                        </Link>
-                      );
-                    }
-
-                    return ActionButton;
-                  })}
-                </div>
-              </CardContent>
+                  return ActionButton;
+                })}
+              </div>
+            </CardContent>
             </Card>
           </div>
         </div>
