@@ -162,7 +162,7 @@ export default function Dashboard() {
       roles: ["admin", "manager"],
     },
     {
-      title: "Training",
+      title: "Training & Scheduling",
       description: "Schedule and manage training sessions",
       icon: Calendar,
       href: "/training",
