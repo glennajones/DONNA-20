@@ -38,7 +38,7 @@ export function Navbar() {
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Volleyball className="h-8 w-8 text-primary mr-3" />
-              <h1 className="text-xl font-bold text-gray-900">VolleyClub Pro</h1>
+              <h1 className="text-xl font-bold text-gray-900">United Volleyball</h1>
             </div>
             
             <div className="hidden md:ml-10 md:flex md:space-x-8">
