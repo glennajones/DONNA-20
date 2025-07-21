@@ -258,6 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Fetch from BOTH Events and Schedule tables to ensure no events are missing
       try {
+        console.log("Fetching from both Events and Schedule tables for date range:", { from, to });
         // Get Events from budget/events system
         const budgetEvents = await storage.getEvents();
         const eventsFromBudget = budgetEvents
@@ -298,6 +299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get legacy schedule events
         const legacyEvents = await storage.getScheduleEvents();
+        console.log("Budget events found:", eventsFromBudget.length);
+        console.log("Legacy schedule events found:", legacyEvents.length);
         const eventsFromSchedule = legacyEvents
           .filter(event => 
             event.court && 
@@ -337,6 +340,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         const scheduleCompatibleEvents = uniqueEvents;
+        
+        console.log("Final events count after merge and dedup:", scheduleCompatibleEvents.length);
+        console.log("Events for 2025-07-23:", scheduleCompatibleEvents.filter(e => e.date === '2025-07-23').map(e => ({ title: e.title, time: e.time, court: e.court })));
         
         res.json({ events: scheduleCompatibleEvents });
       } catch (error) {
