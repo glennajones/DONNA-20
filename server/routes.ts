@@ -256,10 +256,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { from, to } = req.query;
       
-      // Only fetch from Events system - simplified approach
+      // Fetch from BOTH Events and Schedule tables to ensure no events are missing
       try {
+        // Get Events from budget/events system
         const budgetEvents = await storage.getEvents();
-        const scheduleCompatibleEvents = budgetEvents
+        const eventsFromBudget = budgetEvents
           .filter(event => 
             event.assignedCourts && 
             Array.isArray(event.assignedCourts) && 
@@ -269,35 +270,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
             (!from || event.startDate >= from) &&
             (!to || event.startDate <= to)
           )
-          .flatMap(budgetEvent => {
-            // Always create single event with all courts combined
-            // This prevents duplicates when events are assigned to multiple courts
-            return [{
-              id: `event-${budgetEvent.id}`,
-              title: budgetEvent.name,
-              court: (budgetEvent.assignedCourts as string[]).join(', '),
-              date: budgetEvent.startDate,
-              time: budgetEvent.startTime!,
-              duration: budgetEvent.startTime && budgetEvent.endTime ? 
-                Math.max(
-                  Math.round(
-                    (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
-                     new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
-                  ), 30
-                ) : 120,
-              eventType: budgetEvent.eventType,
-              participants: [],
-              coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
-                ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`
-                : `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`,
-              description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
-              status: "scheduled" as const,
-              createdBy: budgetEvent.createdBy,
-              createdAt: budgetEvent.createdAt,
-              updatedAt: budgetEvent.updatedAt,
-              eventId: budgetEvent.id
-            }];
-          });
+          .map(budgetEvent => ({
+            id: `event-${budgetEvent.id}`,
+            title: budgetEvent.name,
+            court: (budgetEvent.assignedCourts as string[]).join(', '),
+            date: budgetEvent.startDate,
+            time: budgetEvent.startTime!,
+            duration: budgetEvent.startTime && budgetEvent.endTime ? 
+              Math.max(
+                Math.round(
+                  (new Date(`2000-01-01T${budgetEvent.endTime}${budgetEvent.endTime <= budgetEvent.startTime ? 'T+1' : ''}`).getTime() - 
+                   new Date(`2000-01-01T${budgetEvent.startTime}`).getTime()) / (1000 * 60)
+                ), 30
+              ) : 120,
+            eventType: budgetEvent.eventType,
+            participants: [],
+            coach: budgetEvent.coachRates && Array.isArray(budgetEvent.coachRates) && budgetEvent.coachRates.length > 0 
+              ? budgetEvent.coachRates.map((cr: any) => cr.profile).filter((p: string) => p && p.trim()).join(', ') || `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`
+              : `${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} needed`,
+            description: `${budgetEvent.players} players, ${budgetEvent.coaches} coach${budgetEvent.coaches !== 1 ? 'es' : ''} • ${budgetEvent.location}`,
+            status: "scheduled" as const,
+            createdBy: budgetEvent.createdBy,
+            createdAt: budgetEvent.createdAt,
+            updatedAt: budgetEvent.updatedAt,
+            eventId: budgetEvent.id
+          }));
+
+        // Get legacy schedule events
+        const legacyEvents = await storage.getScheduleEvents();
+        const eventsFromSchedule = legacyEvents
+          .filter(event => 
+            event.court && 
+            event.time && 
+            (!from || event.date >= from) &&
+            (!to || event.date <= to)
+          )
+          .map(scheduleEvent => ({
+            id: `schedule-${scheduleEvent.id}`,
+            title: scheduleEvent.title,
+            court: scheduleEvent.court,
+            date: scheduleEvent.date,
+            time: scheduleEvent.time,
+            duration: scheduleEvent.duration || 120,
+            eventType: scheduleEvent.eventType || "Practice",
+            participants: scheduleEvent.participants || [],
+            coach: scheduleEvent.coach || "TBD",
+            description: scheduleEvent.description || "",
+            status: scheduleEvent.status,
+            createdBy: scheduleEvent.createdBy,
+            createdAt: scheduleEvent.createdAt,
+            updatedAt: scheduleEvent.updatedAt,
+            eventId: scheduleEvent.id
+          }));
+
+        // Combine and deduplicate events
+        const allEvents = [...eventsFromBudget, ...eventsFromSchedule];
+        
+        // Remove duplicates by checking for same title, date, time, and court
+        const uniqueEvents = allEvents.filter((event, index, arr) => {
+          return index === arr.findIndex(e => 
+            e.title === event.title && 
+            e.date === event.date && 
+            e.time === event.time && 
+            e.court === event.court
+          );
+        });
+        
+        const scheduleCompatibleEvents = uniqueEvents;
         
         res.json({ events: scheduleCompatibleEvents });
       } catch (error) {
