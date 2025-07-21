@@ -255,20 +255,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { from, to } = req.query;
+      console.log("Schedule API - Query params:", { from, to, viewType: req.query.viewType });
       
       // Only fetch from Events system - simplified approach
       try {
         const budgetEvents = await storage.getEvents();
-        const scheduleCompatibleEvents = budgetEvents
-          .filter(event => 
-            event.assignedCourts && 
+        console.log("Total events in database:", budgetEvents.length);
+        
+        // Debug date filtering
+        const filteredEvents = budgetEvents.filter(event => {
+          const hasRequiredFields = event.assignedCourts && 
             Array.isArray(event.assignedCourts) && 
             event.assignedCourts.length > 0 && 
             event.startTime && 
-            event.endTime &&
-            (!from || event.startDate >= from) &&
-            (!to || event.startDate <= to)
-          )
+            event.endTime;
+          
+          const fromMatch = !from || event.startDate >= from;
+          const toMatch = !to || event.startDate <= to;
+          
+          console.log(`Event "${event.name}" (${event.startDate}):`, {
+            hasRequiredFields,
+            fromMatch: `${event.startDate} >= ${from} = ${fromMatch}`,
+            toMatch: `${event.startDate} <= ${to} = ${toMatch}`,
+            passes: hasRequiredFields && fromMatch && toMatch
+          });
+          
+          return hasRequiredFields && fromMatch && toMatch;
+        });
+        
+        console.log("Filtered events:", filteredEvents.length);
+        
+        const scheduleCompatibleEvents = filteredEvents
           .flatMap(budgetEvent => {
             // Always create single event with all courts combined
             // This prevents duplicates when events are assigned to multiple courts
