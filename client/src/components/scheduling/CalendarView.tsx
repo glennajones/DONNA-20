@@ -628,7 +628,9 @@ function renderWeekView(events: ScheduleEvent[], dateRange: { from: string; to: 
                               <div className="font-medium truncate">
                                 {event.title}
                               </div>
-                              <div className="text-xs opacity-90">{abbreviateCourts(event.court)}</div>
+                              <div className="text-xs opacity-90">
+                                {formatTime(event.time)} • {abbreviateCourts(event.court)}
+                              </div>
                             </div>
                           ))}
                         </div>
