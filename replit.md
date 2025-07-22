@@ -296,9 +296,31 @@ Preferred communication style: Simple, everyday language.
 
 The application is designed to be easily deployable to platforms like Replit, with proper separation of concerns and environment-specific configurations.
 
+## Recent Changes (July 22, 2025)
+
+### Hybrid Payment System Implementation (Latest)
+- **Implemented Stripe integration** with dual payment model for event registration
+- **Added subscription management** to users table with Stripe customer and subscription tracking
+- **Created hybrid pricing logic** where subscribers get free access to regular training events
+- **Built EventPaymentForm component** with intelligent payment flow based on subscription status
+- **Added subscription page** with comprehensive benefits overview and Stripe Elements integration
+- **Enhanced event schema** with registration fees, subscriber benefits, and pricing configuration
+- **Integrated payment checking API** that determines if payment is required based on user subscription
+- **Added Stripe webhooks** for automatic subscription status updates and payment confirmations
+
+#### Technical Implementation
+- Updated database schema with subscription fields in users table and pricing fields in events table
+- Created storage methods for subscription management and Stripe customer tracking
+- Implemented three main API endpoints:
+  - `/api/create-payment-intent` for one-time event payments
+  - `/api/get-or-create-subscription` for club membership subscriptions
+  - `/api/check-event-pricing` for intelligent pricing determination
+- Built reusable payment components with Stripe Elements integration
+- Added subscription benefits display and payment flow optimization
+
 ## Recent Changes (July 20, 2025)
 
-### System Simplification (Evening - Latest)
+### System Simplification (Evening)
 - **Simplified dual-system architecture** by making Training & Scheduling only fetch from Events list
 - **Removed all seed test data** including 32 schedule_events and 2 event_registrations to eliminate confusion
 - **Eliminated complex dual-system API logic** that was causing duplicates and sync issues

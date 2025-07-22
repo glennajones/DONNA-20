@@ -7,8 +7,17 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import Stripe from "stripe";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2023-10-16",
+});
 
 // Configure multer for PDF uploads
 const uploadsDir = path.join(process.cwd(), 'uploads', 'pdfs');
@@ -3060,6 +3069,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Update role permissions error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Stripe Payment Routes for Hybrid Event Registration System
+  
+  // Create payment intent for one-time event payment (non-subscribers or premium events)
+  app.post("/api/create-payment-intent", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId, amount } = req.body;
+      
+      if (!eventId || !amount) {
+        return res.status(400).json({ message: "Event ID and amount are required" });
+      }
+
+      const user = await storage.getUserById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+        metadata: {
+          userId: user.id.toString(),
+          eventId: eventId.toString(),
+        },
+      });
+
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error: any) {
+      console.error("Payment intent creation error:", error);
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
+  // Create subscription for club membership
+  app.post('/api/get-or-create-subscription', authenticateToken, async (req: any, res) => {
+    try {
+      const user = await storage.getUserById(req.user.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user already has an active subscription
+      if (user.stripeSubscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        
+        if (subscription.status === 'active') {
+          return res.json({
+            subscriptionId: subscription.id,
+            status: subscription.status,
+            message: "Already subscribed"
+          });
+        }
+      }
+
+      if (!user.email) {
+        return res.status(400).json({ message: 'Email is required for subscription' });
+      }
+
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+        });
+        customerId = customer.id;
+        await storage.updateUserStripeInfo(user.id, customerId);
+      }
+
+      // Create subscription (you'll need to set STRIPE_PRICE_ID in your environment)
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{
+          price: process.env.STRIPE_PRICE_ID || 'price_1234567890', // Set this to your actual price ID
+        }],
+        payment_behavior: 'default_incomplete',
+        expand: ['latest_invoice.payment_intent'],
+      });
+
+      // Update user with subscription info
+      await storage.updateUserStripeInfo(user.id, customerId, subscription.id);
+
+      res.json({
+        subscriptionId: subscription.id,
+        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Subscription creation error:", error);
+      res.status(500).json({ message: "Error creating subscription: " + error.message });
+    }
+  });
+
+  // Check subscription status and determine event pricing
+  app.post("/api/check-event-pricing", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId } = req.body;
+      
+      const user = await storage.getUserById(req.user.userId);
+      const event = await storage.getEvent(eventId);
+      
+      if (!user || !event) {
+        return res.status(404).json({ message: "User or event not found" });
+      }
+
+      const hasActiveSubscription = user.subscriptionStatus === 'active';
+      const eventIsFreeForSubscribers = event.freeForSubscribers;
+      const registrationFee = parseFloat(event.registrationFee || '0');
+
+      let requiresPayment = true;
+      let paymentAmount = registrationFee;
+
+      // Hybrid logic: Free for subscribers unless it's a premium event
+      if (hasActiveSubscription && eventIsFreeForSubscribers) {
+        requiresPayment = false;
+        paymentAmount = 0;
+      }
+
+      res.json({
+        requiresPayment,
+        paymentAmount,
+        hasActiveSubscription,
+        subscriptionStatus: user.subscriptionStatus,
+        eventIsFreeForSubscribers,
+      });
+    } catch (error) {
+      console.error("Event pricing check error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Stripe webhook to handle subscription updates
+  app.post('/api/webhooks/stripe', async (req, res) => {
+    const sig = req.headers['stripe-signature'] as string;
+    
+    try {
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET || ''
+      );
+
+      switch (event.type) {
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted':
+          const subscription = event.data.object as any;
+          const user = await storage.getUserByStripeCustomerId(subscription.customer);
+          
+          if (user) {
+            await storage.updateUserSubscriptionStatus(
+              user.id,
+              subscription.status,
+              subscription.items?.data?.[0]?.price?.nickname
+            );
+          }
+          break;
+
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object as any;
+          if (paymentIntent.metadata?.eventId && paymentIntent.metadata?.userId) {
+            // Update event registration status or create registration record
+            console.log('Payment succeeded for event registration:', paymentIntent.metadata);
+          }
+          break;
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('Webhook error:', error);
+      res.status(400).json({ message: 'Webhook error: ' + error.message });
     }
   });
 

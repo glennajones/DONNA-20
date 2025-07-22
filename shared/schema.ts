@@ -9,6 +9,13 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
+  email: text("email"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  subscriptionStatus: text("subscription_status", { enum: ["active", "inactive", "past_due", "canceled", "trialing"] }).default("inactive"),
+  subscriptionPlan: text("subscription_plan"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const registrations = pgTable("registrations", {
@@ -277,6 +284,11 @@ export const events = pgTable("events", {
   projectedRevenue: decimal("projected_revenue", { precision: 10, scale: 2 }).notNull().default("0.00"),
   actualRevenue: decimal("actual_revenue", { precision: 10, scale: 2 }).default("0.00"),
   status: text("status", { enum: ["planning", "active", "completed", "cancelled"] }).notNull().default("planning"),
+  // Payment and subscription settings
+  registrationFee: decimal("registration_fee", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  freeForSubscribers: boolean("free_for_subscribers").notNull().default(true),
+  requiredSubscriptionPlan: text("required_subscription_plan"), // null means any active subscription
+  maxRegistrations: integer("max_registrations"), // null means unlimited
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),

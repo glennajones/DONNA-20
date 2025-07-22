@@ -1332,6 +1332,41 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  // Subscription Management Methods
+  async updateUserStripeInfo(userId: number, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User> {
+    const [updated] = await db.update(users)
+      .set({ 
+        stripeCustomerId,
+        stripeSubscriptionId,
+        subscriptionStatus: stripeSubscriptionId ? "active" : "inactive",
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async updateUserSubscriptionStatus(userId: number, status: string, plan?: string): Promise<User> {
+    const [updated] = await db.update(users)
+      .set({ 
+        subscriptionStatus: status as any,
+        subscriptionPlan: plan,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | null> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId));
+    return user || null;
+  }
+
+  async getActiveSubscribers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.subscriptionStatus, "active"));
+  }
+
 }
 
 export const storage = new DatabaseStorage();
