@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat, User } from "lucide-react";
+import { Calendar, MapPin, Users, DollarSign, Edit2, Trash2, Eye, Plus, Save, X, Repeat, User, Search } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth";
 
@@ -35,6 +35,7 @@ export function EventList() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Event>>({});
   const [enableRecurring, setEnableRecurring] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [recurringSettings, setRecurringSettings] = useState({
     frequency: "weekly" as "weekly" | "daily" | "monthly",
     daysOfWeek: [] as string[],
@@ -59,6 +60,22 @@ export function EventList() {
 
   // Ensure events is always an array
   const eventsList = Array.isArray(events) ? events : [];
+
+  // Filter events based on search query
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return eventsList;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return eventsList.filter(event => 
+      event.name?.toLowerCase().includes(query) ||
+      event.eventType?.toLowerCase().includes(query) ||
+      event.status?.toLowerCase().includes(query) ||
+      event.location?.toLowerCase().includes(query) ||
+      event.assignedCourts?.some(court => court?.toLowerCase().includes(query))
+    );
+  }, [eventsList, searchQuery]);
 
   const deleteEvent = useMutation({
     mutationFn: async (id: number) => {
@@ -419,6 +436,26 @@ export function EventList() {
 
   return (
     <div className="space-y-4">
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search events by name, type, status, location, or court..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          {searchQuery && (
+            <div className="mt-2 text-sm text-gray-600">
+              Found {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} matching "{searchQuery}"
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {eventsList.length === 0 ? (
         <Card>
           <CardContent className="flex justify-center py-8">
@@ -429,9 +466,19 @@ export function EventList() {
             </div>
           </CardContent>
         </Card>
+      ) : filteredEvents.length === 0 ? (
+        <Card>
+          <CardContent className="flex justify-center py-8">
+            <div className="text-center">
+              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <div className="text-gray-500">No events match your search.</div>
+              <div className="text-sm text-gray-400 mt-1">Try adjusting your search terms.</div>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4">
-          {eventsList.map((event) => {
+          {filteredEvents.map((event) => {
             const { net, pct } = calcNet(event);
             const isOverBudget = parseFloat(net) < 0;
             
