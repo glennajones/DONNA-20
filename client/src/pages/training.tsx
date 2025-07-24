@@ -29,8 +29,11 @@ export default function TrainingPage() {
     setActiveTab("calendar");
     setTargetDate(event.date);
     
-    // Clear target date after a short delay to allow calendar to navigate
-    setTimeout(() => setTargetDate(null), 1000);
+    // Clear the target date after calendar has had time to navigate
+    // This prevents the calendar from jumping back on mouse movement
+    setTimeout(() => {
+      setTargetDate(null);
+    }, 2000);
   };
 
   return (
@@ -130,13 +133,11 @@ export default function TrainingPage() {
                   <EnhancedCalendar 
                     initialView="timeGridWeek" 
                     targetDate={targetDate}
-                    key={targetDate ? `enhanced-${targetDate}` : 'enhanced'} 
                   />
                 ) : (
                   <CalendarView 
                     viewType={viewType} 
                     targetDate={targetDate}
-                    key={targetDate ? `classic-${targetDate}` : 'classic'} 
                   />
                 )}
               </TabsContent>

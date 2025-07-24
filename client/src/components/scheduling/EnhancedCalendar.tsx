@@ -51,6 +51,14 @@ export default function EnhancedCalendar({ initialView = "timeGridWeek", searchQ
     if (targetDate && calendarRef.current) {
       const calendarApi = calendarRef.current.getApi();
       calendarApi.gotoDate(targetDate);
+      
+      // Try to select/highlight the date
+      try {
+        calendarApi.select(targetDate);
+      } catch (e) {
+        // Selection might not be available in all views, that's ok
+        console.log('Date selection not available in current view');
+      }
     }
   }, [targetDate]);
 

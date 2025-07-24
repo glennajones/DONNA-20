@@ -56,9 +56,11 @@ export default function CalendarView({ viewType, searchQuery = "", targetDate }:
   useEffect(() => {
     if (targetDate) {
       const newDate = new Date(targetDate);
-      setCurrentDate(newDate);
+      if (newDate.getTime() !== currentDate.getTime()) {
+        setCurrentDate(newDate);
+      }
     }
-  }, [targetDate]);
+  }, [targetDate, currentDate]);
 
   const navigatePrevious = () => {
     const newDate = new Date(currentDate);
