@@ -1,0 +1,141 @@
+Goal
+✅ Query all events scheduled for the next day (on any court).
+✅ Query any personal events created by the admin that aren’t tied to a team/event.
+✅ Generate a professional email template.
+✅ Send it out daily via cron + SendGrid.
+
+📦 1. Backend: Query Next-Day Events
+We’ll assume:
+
+events table has start_time, end_time, location, created_by.
+
+“Personal events” = events created by admin where visible_to_roles = [] or a type = 'personal'.
+
+👉 Utility to get next-day events:
+
+ts
+Copy
+Edit
+// server/utils/getNextDayEvents.ts
+import { db } from '../storage';
+import { events, users } from '../../shared/schema';
+import { and, eq, gte, lt } from 'drizzle-orm';
+
+export async function getNextDayEvents(adminId: number) {
+  const now = new Date();
+  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+  const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 0, 0, 0);
+
+  // Court activities (not personal)
+  const courtEvents = await db.select().from(events).where(
+    and(
+      gte(events.start_time, tomorrowStart),
+      lt(events.start_time, tomorrowEnd),
+      eq(events.type, 'training').or(eq(events.type, 'match')).or(eq(events.type, 'tryout'))
+    )
+  );
+
+  // Personal events by admin
+  const personalEvents = await db.select().from(events).where(
+    and(
+      gte(events.start_time, tomorrowStart),
+      lt(events.start_time, tomorrowEnd),
+      eq(events.created_by, adminId),
+      eq(events.type, 'personal')
+    )
+  );
+
+  return { courtEvents, personalEvents };
+}
+📧 2. Backend: Email Template
+ts
+Copy
+Edit
+// server/utils/adminDailyEmailTemplate.ts
+export default function adminDailyEmailTemplate(courtEvents: any[], personalEvents: any[]) {
+  const courtRows = courtEvents.map(ev => `
+    <tr>
+      <td>${ev.title}</td>
+      <td>${new Date(ev.start_time).toLocaleString()}</td>
+      <td>${ev.location}</td>
+    </tr>`).join('') || '<tr><td colspan="3">No court events</td></tr>';
+
+  const personalRows = personalEvents.map(ev => `
+    <tr>
+      <td>${ev.title}</td>
+      <td>${new Date(ev.start_time).toLocaleString()}</td>
+      <td>${ev.location || 'N/A'}</td>
+    </tr>`).join('') || '<tr><td colspan="3">No personal events</td></tr>';
+
+  return `
+    <html>
+      <body style="font-family: Arial, sans-serif;">
+        <h2>📅 Daily Schedule for ${new Date().toLocaleDateString()}</h2>
+        <h3>Court Activities</h3>
+        <table border="1" cellpadding="5" cellspacing="0">
+          <tr><th>Title</th><th>Time</th><th>Location</th></tr>
+          ${courtRows}
+        </table>
+        <h3>Personal Events</h3>
+        <table border="1" cellpadding="5" cellspacing="0">
+          <tr><th>Title</th><th>Time</th><th>Location</th></tr>
+          ${personalRows}
+        </table>
+      </body>
+    </html>
+  `;
+}
+🛠 3. Backend: Cron Job to Send Email
+Install node-cron if not already:
+
+bash
+Copy
+Edit
+npm install node-cron
+Create cron task in server/index.ts or a separate scheduler file:
+
+ts
+Copy
+Edit
+import cron from 'node-cron';
+import sgMail from '@sendgrid/mail';
+import { getNextDayEvents } from './utils/getNextDayEvents';
+import adminDailyEmailTemplate from './utils/adminDailyEmailTemplate';
+import { db } from './storage';
+import { users } from '../shared/schema';
+import { eq } from 'drizzle-orm';
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Example: run every day at 18:00 server time
+cron.schedule('0 18 * * *', async () => {
+  console.log('📧 Running admin daily email cron...');
+  
+  // Fetch admin(s)
+  const admins = await db.select().from(users).where(eq(users.role, 'admin'));
+  for (const admin of admins) {
+    const { courtEvents, personalEvents } = await getNextDayEvents(admin.id);
+    const html = adminDailyEmailTemplate(courtEvents, personalEvents);
+    if (admin.email) {
+      await sgMail.send({
+        to: admin.email,
+        from: 'noreply@yourclub.com',
+        subject: '📅 Tomorrow’s Schedule',
+        html
+      });
+    }
+  }
+});
+✅ 4. What You Now Have
+✔️ Cron job runs daily at a set time.
+✔️ Queries all court events for tomorrow.
+✔️ Queries admin’s personal events.
+✔️ Sends a professional HTML email to each admin.
+
+🔧 Optional Enhancements
+✅ Add a setting in your Admin UI to configure the send time (store in DB).
+
+✅ Add a toggle per admin to opt in/out.
+
+✅ Include quick links to edit events directly.
+

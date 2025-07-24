@@ -303,6 +303,9 @@ export interface IStorage {
   getEventFeedback(eventId: number): Promise<EventFeedback[]>;
   getEventFeedbackByUser(eventId: number, userId: number): Promise<EventFeedback | undefined>;
   deleteEventFeedback(id: number): Promise<boolean>;
+
+  // User role methods
+  getUsersByRole(role: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1598,6 +1601,10 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(eventFeedback)
       .where(eq(eventFeedback.id, id));
     return result.rowCount > 0;
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.role, role));
   }
 
   // Permissions Matrix methods

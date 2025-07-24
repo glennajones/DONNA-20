@@ -2,11 +2,12 @@ import { useAuth } from "@/lib/auth";
 import { Redirect, useLocation } from "wouter";
 import UserManagement from "@/modules/Admin/UserManagement";
 import SystemSettings from "@/modules/Admin/SystemSettings";
+import DailyEmailSettings from "@/modules/Admin/DailyEmailSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Settings, Users, ExternalLink } from "lucide-react";
+import { Shield, Settings, Users, ExternalLink, Mail } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const { user, isLoading } = useAuth();
@@ -64,7 +65,7 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Management
@@ -73,12 +74,19 @@ export default function AdminSettingsPage() {
               <Settings className="h-4 w-4" />
               System Settings
             </TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Daily Emails
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="users">
             <UserManagement />
           </TabsContent>
           <TabsContent value="system">
             <SystemSettings />
+          </TabsContent>
+          <TabsContent value="emails">
+            <DailyEmailSettings />
           </TabsContent>
         </Tabs>
       </div>

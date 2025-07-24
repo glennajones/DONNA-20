@@ -298,6 +298,34 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 24, 2025) - Latest
 
+### Automated Daily Email System for Admins (Latest)
+- **Implemented comprehensive automated daily email system** for admins to receive tomorrow's schedule
+- **Added scheduled cron job** running daily at 6:00 PM to automatically send schedule emails to all admin users
+- **Created professional email template** with comprehensive event information including court activities, training sessions, and personal events
+- **Built utility functions** for querying next-day events from both Events system and Training & Scheduling system
+- **Added admin interface** with test and manual trigger functionality for daily email management
+- **Enhanced admin settings page** with new "Daily Emails" tab for email configuration and testing
+- **Integrated SendGrid email service** with proper error handling and delivery status tracking
+
+#### Technical Implementation
+- **Created getNextDayEvents utility** that queries both events and scheduleEvents tables for tomorrow's activities
+- **Built adminDailyEmailTemplate** generating professional HTML emails with event categorization and styling
+- **Added cron job to server startup** (server/index.ts) with automatic daily scheduling at 6:00 PM
+- **Enhanced storage layer** with getUsersByRole method for admin user retrieval
+- **Added API endpoints** `/api/admin/daily-email/test` and `/api/admin/daily-email/trigger` for email management
+- **Created DailyEmailSettings component** providing admin interface for email testing and manual triggers
+- **Updated admin settings page** with new Daily Emails tab and comprehensive email management tools
+
+#### User Experience
+- **Automated daily delivery** ensures admins receive comprehensive schedule information without manual intervention
+- **Professional email design** with color-coded event types, responsive layout, and comprehensive event details
+- **Admin control interface** allows testing email templates and manually triggering emails when needed
+- **Comprehensive event coverage** includes court activities, training sessions, and personal events in single email
+- **Error handling and status tracking** provides detailed delivery results and failure notifications
+- **Zero-maintenance operation** with automatic daily scheduling and background processing
+
+## Recent Changes (July 24, 2025) - Earlier
+
 ### Enhanced Calendar with Filtering & Drag-and-Drop (Latest)
 - **Implemented FullCalendar integration** with professional calendar UI and advanced functionality
 - **Added comprehensive event type filtering** with color-coded categories (training, match, tournament, practice, tryouts, camp, social)

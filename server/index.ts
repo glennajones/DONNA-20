@@ -1,6 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cron from 'node-cron';
+import { getNextDayEvents } from './utils/getNextDayEvents';
+import adminDailyEmailTemplate from './utils/adminDailyEmailTemplate';
 
 const app = express();
 app.use(express.json());
@@ -68,4 +71,62 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Setup daily email cron job for admins
+  setupDailyEmailCron();
 })();
+
+// Daily email cron job function
+async function setupDailyEmailCron() {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.warn('SENDGRID_API_KEY not found - daily emails disabled');
+    return;
+  }
+
+  const { default: sgMail } = await import('@sendgrid/mail');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+  // Run every day at 6:00 PM (18:00)
+  cron.schedule('0 18 * * *', async () => {
+    console.log('📧 Running admin daily email cron...');
+    
+    try {
+      // Import storage here to avoid circular dependency
+      const { storage } = await import('./storage');
+      
+      // Fetch all admin users
+      const admins = await storage.getUsersByRole('admin');
+      
+      for (const admin of admins) {
+        if (!admin.email) {
+          console.log(`Admin ${admin.name} has no email address, skipping`);
+          continue;
+        }
+
+        // Get tomorrow's events
+        const { courtEvents, personalEvents, scheduleEvents } = await getNextDayEvents(admin.id);
+        
+        // Generate email template
+        const html = adminDailyEmailTemplate(courtEvents, personalEvents, scheduleEvents);
+        
+        // Send email
+        try {
+          await sgMail.send({
+            to: admin.email,
+            from: 'noreply@volleyclubpro.com',
+            subject: '📅 Tomorrow\'s Schedule - VolleyClub Pro',
+            html
+          });
+          
+          console.log(`Daily schedule email sent to ${admin.email}`);
+        } catch (emailError) {
+          console.error(`Failed to send email to ${admin.email}:`, emailError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in daily email cron job:', error);
+    }
+  });
+
+  console.log('📧 Daily email cron job scheduled for 6:00 PM');
+}
