@@ -3707,8 +3707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   // Permissions Matrix API
-  app.get('/api/permissions', async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+  app.get('/api/permissions', authenticateToken, async (req: any, res) => {
+    if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
@@ -3721,8 +3721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/permissions', async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+  app.post('/api/permissions', authenticateToken, async (req: any, res) => {
+    if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
     
@@ -3737,10 +3737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permission checking helper endpoint
-  app.get('/api/permissions/check/:role/:page/:action', async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
+  app.get('/api/permissions/check/:role/:page/:action', authenticateToken, async (req: any, res) => {
     
     try {
       const { role, page, action } = req.params;
