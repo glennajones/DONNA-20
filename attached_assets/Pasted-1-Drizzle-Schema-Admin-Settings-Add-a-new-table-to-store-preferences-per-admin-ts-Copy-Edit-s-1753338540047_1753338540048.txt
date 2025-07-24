@@ -1,0 +1,149 @@
+1. Drizzle Schema: Admin Settings
+Add a new table to store preferences per admin:
+
+ts
+Copy
+Edit
+// shared/schema.ts
+import { pgTable, serial, integer, time, boolean } from 'drizzle-orm/pg-core';
+
+export const admin_settings = pgTable('admin_settings', {
+  id: serial('id').primaryKey(),
+  admin_id: integer('admin_id').notNull(), // link to users.id
+  daily_email_enabled: boolean('daily_email_enabled').default(true),
+  daily_email_time: time('daily_email_time').default('18:00:00'), // send time in HH:mm:ss
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🛠 2. Backend Routes for Settings
+Create a new route file: server/routes/adminSettings.ts
+
+ts
+Copy
+Edit
+import express from 'express';
+import { db } from '../storage';
+import { admin_settings } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const router = express.Router();
+
+// GET settings for current admin
+router.get('/:adminId', async (req, res) => {
+  const { adminId } = req.params;
+  const [settings] = await db.select().from(admin_settings).where(eq(admin_settings.admin_id, Number(adminId)));
+  res.json(settings || { daily_email_enabled: true, daily_email_time: '18:00:00' });
+});
+
+// UPDATE or INSERT settings
+router.post('/', async (req, res) => {
+  const { admin_id, daily_email_enabled, daily_email_time } = req.body;
+
+  // upsert logic
+  const existing = await db.select().from(admin_settings).where(eq(admin_settings.admin_id, admin_id));
+  if (existing.length > 0) {
+    const updated = await db.update(admin_settings)
+      .set({ daily_email_enabled, daily_email_time })
+      .where(eq(admin_settings.admin_id, admin_id))
+      .returning();
+    return res.json(updated[0]);
+  } else {
+    const inserted = await db.insert(admin_settings).values({ admin_id, daily_email_enabled, daily_email_time }).returning();
+    return res.json(inserted[0]);
+  }
+});
+
+export default router;
+Mount in server/index.ts:
+
+ts
+Copy
+Edit
+import adminSettingsRouter from './routes/adminSettings';
+app.use('/api/admin-settings', adminSettingsRouter);
+🔧 3. Update Cron to Use Configured Time
+Modify your cron scheduler to check settings dynamically:
+
+ts
+Copy
+Edit
+// Instead of hardcoding '0 18 * * *', dynamically schedule or run every X minutes and check time
+import cron from 'node-cron';
+
+cron.schedule('*/5 * * * *', async () => { // check every 5 min
+  const now = new Date();
+  const currentTime = now.toTimeString().slice(0,5); // "HH:MM"
+
+  const settings = await db.select().from(admin_settings);
+  for (const s of settings) {
+    if (s.daily_email_enabled && s.daily_email_time.slice(0,5) === currentTime) {
+      // send email logic as before
+    }
+  }
+});
+🎨 4. React Admin UI: Configure Settings
+src/modules/Admin/DailyEmailSettings.jsx
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function DailyEmailSettings({ adminId }) {
+  const [enabled, setEnabled] = useState(true);
+  const [time, setTime] = useState('18:00');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const res = await axios.get(`/api/admin-settings/${adminId}`);
+    if (res.data) {
+      setEnabled(res.data.daily_email_enabled);
+      setTime(res.data.daily_email_time?.slice(0,5) || '18:00');
+    }
+  };
+
+  const saveSettings = async () => {
+    await axios.post('/api/admin-settings', {
+      admin_id: adminId,
+      daily_email_enabled: enabled,
+      daily_email_time: time + ':00'
+    });
+    alert('✅ Settings saved!');
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow max-w-md">
+      <h2 className="text-xl font-bold mb-4">Daily Email Settings</h2>
+      <label className="flex items-center space-x-2 mb-4">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        <span>Enable Daily Email</span>
+      </label>
+      <div className="mb-4">
+        <label className="block font-medium mb-1">Send Time</label>
+        <input
+          type="time"
+          className="border rounded px-3 py-2"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+        />
+      </div>
+      <button onClick={saveSettings} className="bg-blue-600 text-white px-4 py-2 rounded">
+        Save Settings
+      </button>
+    </div>
+  );
+}
+✅ What You Now Have
+✔️ Admins can toggle whether they want the daily email.
+✔️ Admins can set the exact time it should be sent.
+✔️ Settings are stored in admin_settings table.
+✔️ Cron job respects these settings dynamically.
+

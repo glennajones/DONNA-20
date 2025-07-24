@@ -102,6 +102,9 @@ import {
   type EventFeedback,
   type InsertEventFeedback,
   eventRegistrations,
+  adminSettings,
+  type AdminSettings,
+  type InsertAdminSettings,
 
 } from "@shared/schema";
 import { db } from "./db";
@@ -306,6 +309,11 @@ export interface IStorage {
 
   // User role methods
   getUsersByRole(role: string): Promise<User[]>;
+
+  // Admin Settings methods
+  getAdminSettings(adminId: number): Promise<AdminSettings | undefined>;
+  upsertAdminSettings(data: InsertAdminSettings): Promise<AdminSettings>;
+  getAllAdminSettings(): Promise<AdminSettings[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1605,6 +1613,35 @@ export class DatabaseStorage implements IStorage {
 
   async getUsersByRole(role: string): Promise<User[]> {
     return db.select().from(users).where(eq(users.role, role));
+  }
+
+  // Admin Settings methods
+  async getAdminSettings(adminId: number): Promise<AdminSettings | undefined> {
+    const [settings] = await db.select().from(adminSettings).where(eq(adminSettings.adminId, adminId));
+    return settings;
+  }
+
+  async upsertAdminSettings(data: InsertAdminSettings): Promise<AdminSettings> {
+    const existing = await this.getAdminSettings(data.adminId);
+    
+    if (existing) {
+      const [updated] = await db.update(adminSettings)
+        .set({ 
+          dailyEmailEnabled: data.dailyEmailEnabled,
+          dailyEmailTime: data.dailyEmailTime,
+          updatedAt: new Date()
+        })
+        .where(eq(adminSettings.adminId, data.adminId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(adminSettings).values(data).returning();
+      return created;
+    }
+  }
+
+  async getAllAdminSettings(): Promise<AdminSettings[]> {
+    return db.select().from(adminSettings);
   }
 
   // Permissions Matrix methods

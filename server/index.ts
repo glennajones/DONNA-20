@@ -86,22 +86,33 @@ async function setupDailyEmailCron() {
   const { default: sgMail } = await import('@sendgrid/mail');
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-  // Run every day at 6:00 PM (18:00)
-  cron.schedule('0 18 * * *', async () => {
-    console.log('📧 Running admin daily email cron...');
-    
+  // Check every 5 minutes and send emails based on admin settings
+  cron.schedule('*/5 * * * *', async () => {
     try {
+      const now = new Date();
+      const currentTime = now.toTimeString().slice(0, 5); // "HH:MM"
+      
       // Import storage here to avoid circular dependency
       const { storage } = await import('./storage');
       
-      // Fetch all admin users
-      const admins = await storage.getUsersByRole('admin');
+      // Get all admin settings
+      const allSettings = await storage.getAllAdminSettings();
       
-      for (const admin of admins) {
-        if (!admin.email) {
-          console.log(`Admin ${admin.name} has no email address, skipping`);
+      for (const settings of allSettings) {
+        if (!settings.dailyEmailEnabled) continue;
+        
+        // Check if current time matches the configured send time
+        const sendTime = settings.dailyEmailTime.slice(0, 5); // "HH:MM"
+        if (sendTime !== currentTime) continue;
+        
+        // Get the admin user
+        const admin = await storage.getUserById(settings.adminId);
+        if (!admin || !admin.email) {
+          console.log(`Admin ${settings.adminId} not found or has no email, skipping`);
           continue;
         }
+
+        console.log(`📧 Sending daily email to ${admin.email} at configured time ${sendTime}`);
 
         // Get tomorrow's events
         const { courtEvents, personalEvents, scheduleEvents } = await getNextDayEvents(admin.id);

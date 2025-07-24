@@ -3617,6 +3617,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Settings Routes
+  app.get("/api/admin-settings/:adminId", authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const adminId = parseInt(req.params.adminId);
+      const settings = await storage.getAdminSettings(adminId);
+      
+      // Return default settings if none exist
+      res.json(settings || { 
+        adminId,
+        dailyEmailEnabled: true, 
+        dailyEmailTime: '18:00:00' 
+      });
+    } catch (error) {
+      console.error('Error getting admin settings:', error);
+      res.status(500).json({ message: 'Failed to get admin settings' });
+    }
+  });
+
+  app.post("/api/admin-settings", authenticateToken, async (req: any, res) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const { adminId, dailyEmailEnabled, dailyEmailTime } = req.body;
+      
+      if (!adminId) {
+        return res.status(400).json({ message: 'Admin ID is required' });
+      }
+
+      const settings = await storage.upsertAdminSettings({
+        adminId,
+        dailyEmailEnabled: dailyEmailEnabled !== undefined ? dailyEmailEnabled : true,
+        dailyEmailTime: dailyEmailTime || '18:00:00'
+      });
+
+      res.json(settings);
+    } catch (error) {
+      console.error('Error saving admin settings:', error);
+      res.status(500).json({ message: 'Failed to save admin settings' });
+    }
+  });
+
   // Check subscription status and determine event pricing
   app.post("/api/check-event-pricing", authenticateToken, async (req: any, res) => {
     try {

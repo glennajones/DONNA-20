@@ -1067,3 +1067,23 @@ export const insertEventFeedbackSchema = createInsertSchema(eventFeedback).omit(
 
 export type InsertEventFeedback = z.infer<typeof insertEventFeedbackSchema>;
 export type EventFeedback = typeof eventFeedback.$inferSelect;
+
+// Admin Settings Table
+export const adminSettings = pgTable("admin_settings", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull().references(() => users.id),
+  dailyEmailEnabled: boolean("daily_email_enabled").default(true),
+  dailyEmailTime: text("daily_email_time").default("18:00:00"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Admin Settings Schema Types
+export const insertAdminSettingsSchema = createInsertSchema(adminSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
+export type AdminSettings = typeof adminSettings.$inferSelect;
