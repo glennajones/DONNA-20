@@ -56,15 +56,14 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
 
   // Communication settings
   const COMM_METHOD_OPTIONS = [
+    { value: 'none', label: 'No Notifications' },
     { value: 'respect_user_pref', label: 'Respect User Preferences' },
-    { value: 'email_only', label: 'Force Email Only' },
-    { value: 'sms_only', label: 'Force SMS Only' },
-    { value: 'groupme_only', label: 'Force GroupMe Only' },
-    { value: 'all', label: 'Send All Channels' },
+    { value: 'email_only', label: 'Email Only' },
+    { value: 'sms_only', label: 'SMS Only' },
+    { value: 'groupme_only', label: 'GroupMe Only' },
+    { value: 'all', label: 'All Channels' },
   ];
-  const [commMethod, setCommMethod] = useState('respect_user_pref');
-  const [sendEmailNotifications, setSendEmailNotifications] = useState(false);
-  const [sendSMSNotifications, setSendSMSNotifications] = useState(false);
+  const [commMethod, setCommMethod] = useState('none');
 
   // Resource planning
   const [players, setPlayers] = useState(0);
@@ -247,8 +246,8 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
         // Extended payload for communication settings
         const extendedPayload = {
           ...payload,
-          sendEmailNotifications,
-          sendSMSNotifications
+          sendEmailNotifications: commMethod !== 'none' && (commMethod === 'email_only' || commMethod === 'respect_user_pref' || commMethod === 'all'),
+          sendSMSNotifications: commMethod !== 'none' && (commMethod === 'sms_only' || commMethod === 'respect_user_pref' || commMethod === 'all')
         };
 
         await apiRequest("/api/events", {
@@ -276,9 +275,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       setCoachRates([{ profile: "", rate: 0 }]);
       setMiscExpenses([{ item: "", quantity: 1, cost: 0 }]);
       setVisibleToRoles(ALL_ROLES);
-      setCommMethod('respect_user_pref');
-      setSendEmailNotifications(false);
-      setSendSMSNotifications(false);
+      setCommMethod('none');
       setDuplicateEvent(false);
       setRecurringSettings({
         frequency: "weekly",
@@ -775,59 +772,14 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                 <AccordionContent className="space-y-4 pt-4">
                   <div className="space-y-4">
                     <div className="space-y-3">
-                      <Label>Send Notifications When Creating Event</Label>
+                      <Label>Event Notifications</Label>
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                         Automatically notify users about this event based on role visibility settings.
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-3">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="send-email-notifications"
-                            checked={sendEmailNotifications}
-                            onCheckedChange={(checked) => setSendEmailNotifications(!!checked)}
-                          />
-                          <Label 
-                            htmlFor="send-email-notifications"
-                            className="text-sm font-normal cursor-pointer flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2v10a2 2 0 002 2z" />
-                            </svg>
-                            Send Email Notifications
-                          </Label>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="send-sms-notifications"
-                            checked={sendSMSNotifications}
-                            onCheckedChange={(checked) => setSendSMSNotifications(!!checked)}
-                          />
-                          <Label 
-                            htmlFor="send-sms-notifications"
-                            className="text-sm font-normal cursor-pointer flex items-center gap-2"
-                          >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1l-4 4z" />
-                            </svg>
-                            Send SMS Notifications
-                          </Label>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-3">
-                      <Label>Communication Method Override</Label>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Control how notifications are sent regardless of user preferences.
-                      </div>
-                      
                       <Select value={commMethod} onValueChange={setCommMethod}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select communication method" />
+                          <SelectValue placeholder="Select notification method" />
                         </SelectTrigger>
                         <SelectContent>
                           {COMM_METHOD_OPTIONS.map(option => (
@@ -839,13 +791,14 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                       </Select>
 
                       <div className="text-xs text-gray-500 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="font-medium mb-1">Override Options:</p>
+                        <p className="font-medium mb-1">Notification Options:</p>
                         <ul className="space-y-1">
+                          <li><strong>No Notifications:</strong> Create event without sending any notifications</li>
                           <li><strong>Respect User Preferences:</strong> Send via each user's preferred communication method</li>
-                          <li><strong>Force Email Only:</strong> Send only via email regardless of user preferences</li>
-                          <li><strong>Force SMS Only:</strong> Send only via SMS regardless of user preferences</li>
-                          <li><strong>Force GroupMe Only:</strong> Send only via GroupMe regardless of user preferences</li>
-                          <li><strong>Send All Channels:</strong> Send via all available communication methods</li>
+                          <li><strong>Email Only:</strong> Send only via email regardless of user preferences</li>
+                          <li><strong>SMS Only:</strong> Send only via SMS regardless of user preferences</li>
+                          <li><strong>GroupMe Only:</strong> Send only via GroupMe regardless of user preferences</li>
+                          <li><strong>All Channels:</strong> Send via all available communication methods</li>
                         </ul>
                       </div>
                     </div>
