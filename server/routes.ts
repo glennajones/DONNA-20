@@ -515,6 +515,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reschedule API endpoint for drag-and-drop functionality
+  app.put("/api/schedule/:id/reschedule", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can reschedule events
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const { start_time, end_time } = req.body;
+
+      if (!start_time || !end_time) {
+        return res.status(400).json({ message: "Start time and end time are required" });
+      }
+
+      // Parse the new times
+      const startDate = new Date(start_time);
+      const endDate = new Date(end_time);
+      
+      // Extract date and time components
+      const newDate = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const newTime = startDate.toTimeString().slice(0, 5); // HH:MM
+      const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)); // minutes
+
+      // Get existing event to check court
+      const existingEvent = await storage.getScheduleEvent(parseInt(id));
+      if (!existingEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check for conflicts at the new time
+      const hasConflict = await storage.checkScheduleConflict(
+        existingEvent.court,
+        newDate,
+        newTime,
+        duration,
+        parseInt(id) // Exclude current event from conflict check
+      );
+
+      if (hasConflict) {
+        return res.status(409).json({ 
+          error: "conflict",
+          message: "A scheduling conflict was detected for this court and time slot" 
+        });
+      }
+
+      // Update the event
+      const updatedEvent = await storage.updateScheduleEvent(parseInt(id), {
+        date: newDate,
+        time: newTime,
+        duration: duration
+      });
+
+      if (!updatedEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      res.json({ success: true, event: updatedEvent });
+    } catch (error) {
+      console.error("Reschedule error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Player routes
   app.get("/api/players", authenticateToken, async (req: any, res) => {
     try {

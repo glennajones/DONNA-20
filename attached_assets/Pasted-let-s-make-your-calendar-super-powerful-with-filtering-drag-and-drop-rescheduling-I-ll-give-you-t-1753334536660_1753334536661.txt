@@ -1,0 +1,165 @@
+let’s make your calendar super powerful with filtering & drag‑and‑drop rescheduling!
+I’ll give you the full code you need. We’ll assume you’re using React on the frontend and your existing Express + Drizzle backend.
+
+✨ Features to implement
+✅ Filtering by event type (e.g., Training, Match, Tryouts).
+✅ Drag‑and‑drop rescheduling directly in the calendar.
+
+We’ll use FullCalendar (great DnD support and filtering).
+
+📦 1. Install FullCalendar
+In your React project:
+
+bash
+Copy
+Edit
+npm install @fullcalendar/react @fullcalendar/daygrid @fullcalendar/timegrid @fullcalendar/interaction
+📅 2. Backend Update – Event Type
+Make sure your events table has a type column:
+
+ts
+Copy
+Edit
+// shared/schema.ts
+import { pgTable, varchar, serial, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  start_time: timestamp('start_time').notNull(),
+  end_time: timestamp('end_time').notNull(),
+  location: varchar('location', { length: 255 }),
+  type: varchar('type', { length: 50 }).default('general'), // ✅ NEW
+  visible_to_roles: text('visible_to_roles').array().default(['admin','coach','staff','player','parent']),
+  comm_method_override: varchar('comm_method_override', { length: 20 }).default('respect_user_pref'),
+});
+Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+Add an update endpoint for DnD:
+ts
+Copy
+Edit
+// server/routes/events.ts
+app.put('/api/events/:id/reschedule', async (req, res) => {
+  const { id } = req.params;
+  const { start_time, end_time } = req.body;
+  await db.update(events)
+    .set({ start_time: new Date(start_time), end_time: new Date(end_time) })
+    .where(events.id.eq(Number(id)));
+  res.json({ success: true });
+});
+🎨 3. React Calendar Component
+src/modules/Calendar/ClubCalendar.jsx (example):
+
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import axios from 'axios';
+
+const EVENT_TYPES = ['all','training','match','tryout','general'];
+
+export default function ClubCalendar() {
+  const [events, setEvents] = useState([]);
+  const [filterType, setFilterType] = useState('all');
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    const res = await axios.get('/api/events');
+    setEvents(res.data);
+  };
+
+  const handleEventDrop = async (info) => {
+    const event = info.event;
+    await axios.put(`/api/events/${event.id}/reschedule`, {
+      start_time: event.start.toISOString(),
+      end_time: event.end ? event.end.toISOString() : event.start.toISOString()
+    });
+    // reload to sync
+    loadEvents();
+  };
+
+  const filteredEvents = events
+    .filter(e => filterType === 'all' || e.type === filterType)
+    .map(e => ({
+      id: e.id,
+      title: e.title,
+      start: e.start_time,
+      end: e.end_time,
+      backgroundColor: colorForType(e.type),
+    }));
+
+  const colorForType = (type) => {
+    switch(type) {
+      case 'training': return '#34d399';
+      case 'match': return '#60a5fa';
+      case 'tryout': return '#fbbf24';
+      default: return '#9ca3af';
+    }
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Club Calendar</h2>
+
+      {/* Filter dropdown */}
+      <div className="mb-4">
+        <label className="mr-2 font-medium">Filter by Type:</label>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="border px-3 py-2 rounded"
+        >
+          {EVENT_TYPES.map(t => (
+            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          ))}
+        </select>
+      </div>
+
+      <FullCalendar
+        plugins={[ dayGridPlugin, timeGridPlugin, interactionPlugin ]}
+        initialView="timeGridWeek"
+        editable={true}
+        events={filteredEvents}
+        eventDrop={handleEventDrop}
+        height="auto"
+      />
+    </div>
+  );
+}
+✅ Drag events on the calendar → backend updates times.
+✅ Dropdown filters by type.
+
+🛠 4. Event Creation UI
+Make sure your event creation form has a type select:
+
+tsx
+Copy
+Edit
+<select
+  className="border rounded px-3 py-2 w-full"
+  value={type}
+  onChange={(e) => setType(e.target.value)}
+>
+  <option value="training">Training</option>
+  <option value="match">Match</option>
+  <option value="tryout">Tryout</option>
+  <option value="general">General</option>
+</select>
+✅ What you now have
+✔️ Calendar filtering by type 🎨
+✔️ Drag-and-drop rescheduling with automatic backend updates 🖱
+✔️ Type stored in DB for consistent filtering 🔧
+

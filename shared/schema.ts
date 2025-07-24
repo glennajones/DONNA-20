@@ -55,7 +55,7 @@ export const scheduleEvents = pgTable("schedule_events", {
   date: text("date").notNull(), // YYYY-MM-DD format
   time: text("time").notNull(), // HH:MM format
   duration: integer("duration").notNull().default(120), // minutes
-  eventType: text("event_type", { enum: ["training", "match", "tournament", "practice"] }).notNull(),
+  eventType: text("event_type", { enum: ["training", "match", "tournament", "practice", "tryout", "camp", "social"] }).notNull().default("training"),
   participants: text("participants").array().notNull().default([]),
   coach: text("coach"),
   description: text("description"),
@@ -158,7 +158,7 @@ export const insertScheduleEventSchema = createInsertSchema(scheduleEvents).omit
   time: z.string().min(1, "Time is required"),
   title: z.string().min(1, "Title is required"),
   court: z.string().min(1, "Court is required"),
-  eventType: z.enum(["training", "match", "tournament", "practice"]),
+  eventType: z.enum(["training", "match", "tournament", "practice", "tryout", "camp", "social"]),
 });
 
 export const loginSchema = z.object({
