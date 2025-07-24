@@ -136,11 +136,11 @@ export default function Dashboard() {
       href: "/documents",
     },
     {
-      title: "Coach Matching",
+      title: "Coach Management",
       icon: UserSearch,
       color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700",
       roles: ["admin", "manager"],
-      href: "/coach-matching",
+      href: "/coach-management",
     },
     {
       title: "System Settings",
@@ -230,10 +230,10 @@ export default function Dashboard() {
       roles: ["admin", "manager"],
     },
     {
-      title: "Coach Matching",
-      description: "Find and assign coaches to events",
+      title: "Coach Management",
+      description: "Manage coach profiles, experience, and availability",
       icon: UserSearch,
-      href: "/coach-matching",
+      href: "/coach-management",
       color: "from-emerald-500 to-emerald-600",
       roles: ["admin", "manager"],
     },
