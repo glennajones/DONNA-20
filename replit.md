@@ -298,31 +298,32 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 24, 2025) - Latest
 
-### Automated Daily Email System for Admins (Latest)
-- **Implemented comprehensive automated daily email system** for admins to receive tomorrow's schedule
-- **Added scheduled cron job** running daily at 6:00 PM to automatically send schedule emails to all admin users
-- **Created professional email template** with comprehensive event information including court activities, training sessions, and personal events
-- **Built utility functions** for querying next-day events from both Events system and Training & Scheduling system
-- **Added admin interface** with test and manual trigger functionality for daily email management
-- **Enhanced admin settings page** with new "Daily Emails" tab for email configuration and testing
-- **Integrated SendGrid email service** with proper error handling and delivery status tracking
+### Individual Admin Settings with Configurable Daily Emails (Latest)
+- **Implemented comprehensive individual admin settings system** allowing each admin to configure their own email preferences
+- **Added admin_settings database table** with per-admin configuration for email timing and enable/disable controls
+- **Built dynamic cron scheduling system** checking every 5 minutes and respecting individual admin preferences
+- **Created professional admin settings UI** with toggle switches, time pickers, and real-time save functionality
+- **Enhanced automated daily email system** with personalized scheduling instead of global 6:00 PM delivery
+- **Added API endpoints** for getting and saving individual admin email configuration settings
+- **Integrated comprehensive error handling** with user feedback and loading states throughout the settings interface
 
 #### Technical Implementation
-- **Created getNextDayEvents utility** that queries both events and scheduleEvents tables for tomorrow's activities
-- **Built adminDailyEmailTemplate** generating professional HTML emails with event categorization and styling
-- **Added cron job to server startup** (server/index.ts) with automatic daily scheduling at 6:00 PM
-- **Enhanced storage layer** with getUsersByRole method for admin user retrieval
-- **Added API endpoints** `/api/admin/daily-email/test` and `/api/admin/daily-email/trigger` for email management
-- **Created DailyEmailSettings component** providing admin interface for email testing and manual triggers
-- **Updated admin settings page** with new Daily Emails tab and comprehensive email management tools
+- **Created adminSettings table** with adminId, dailyEmailEnabled, dailyEmailTime, and timestamp fields
+- **Built storage methods** for getAdminSettings, upsertAdminSettings, and getAllAdminSettings operations
+- **Added API routes** `/api/admin-settings/:adminId` (GET) and `/api/admin-settings` (POST) with authentication
+- **Updated cron job** to check every 5 minutes and send emails based on individual admin time preferences
+- **Enhanced DailyEmailSettings component** with Switch, Label, Input components and useAuth integration
+- **Implemented real-time settings persistence** with optimistic UI updates and error recovery
+- **Added backwards compatibility** for admins without configured settings (defaults to enabled at 6:00 PM)
 
 #### User Experience
-- **Automated daily delivery** ensures admins receive comprehensive schedule information without manual intervention
-- **Professional email design** with color-coded event types, responsive layout, and comprehensive event details
-- **Admin control interface** allows testing email templates and manually triggering emails when needed
-- **Comprehensive event coverage** includes court activities, training sessions, and personal events in single email
-- **Error handling and status tracking** provides detailed delivery results and failure notifications
-- **Zero-maintenance operation** with automatic daily scheduling and background processing
+- **Individual email control** each admin can enable/disable their daily emails independently
+- **Custom send time configuration** admins can set any preferred time for their daily emails
+- **Professional settings interface** with loading states, save feedback, and comprehensive error handling
+- **Real-time configuration** settings save immediately with toast notifications for success/failure
+- **Seamless integration** settings accessible through Admin Settings > Daily Emails tab
+- **Zero-conflict scheduling** multiple admins can have different send times without interference
+- **Comprehensive email testing** manual trigger and test functionality remains available for all admins
 
 ## Recent Changes (July 24, 2025) - Earlier
 
