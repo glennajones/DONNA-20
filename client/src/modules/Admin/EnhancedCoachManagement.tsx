@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit2, Trash2, Save, X, User, Award, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, User, Award, Clock, MessageSquare } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -228,7 +228,7 @@ export default function EnhancedCoachManagement() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Enhanced Coach Management</h1>
+        <h1 className="text-2xl font-bold">Coach Management</h1>
         <Button 
           onClick={() => setShowForm(true)}
           className="flex items-center space-x-2"
@@ -237,6 +237,14 @@ export default function EnhancedCoachManagement() {
           <span>Add Coach</span>
         </Button>
       </div>
+
+      <Tabs defaultValue="management" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="management">Coach Management</TabsTrigger>
+          <TabsTrigger value="outreach">Outreach Status</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="management">{/* Main content will go here */}
 
       {showForm && (
         <Card>
@@ -587,6 +595,31 @@ export default function EnhancedCoachManagement() {
           )}
         </CardContent>
       </Card>
+      </TabsContent>
+
+      <TabsContent value="outreach">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MessageSquare className="h-5 w-5" />
+              <span>Coach Outreach Status</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <MessageSquare className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Outreach System</h3>
+              <p className="text-gray-600 mb-4">
+                Track coach outreach status and responses for event assignments.
+              </p>
+              <p className="text-sm text-gray-500">
+                This feature integrates with the existing event scheduling system to manage coach assignments and responses.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
