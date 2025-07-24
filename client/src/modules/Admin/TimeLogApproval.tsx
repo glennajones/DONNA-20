@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, Clock, Filter, Search, Trash2 } from 'lucide-react';
+import { CheckCircle, Clock, Filter, Search, Trash2, Download, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CoachTimeLog {
@@ -108,6 +108,10 @@ export default function TimeLogApproval() {
 
   const pendingCount = timeLogs.filter(log => !log.approved).length;
 
+  const handleExport = (type: 'csv' | 'pdf') => {
+    window.location.href = `/api/coach-time-logs/export/${type}`;
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -137,6 +141,25 @@ export default function TimeLogApproval() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Export Buttons */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            onClick={() => handleExport('csv')}
+            variant="outline"
+            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={() => handleExport('pdf')}
+            variant="outline"
+            className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="space-y-2">

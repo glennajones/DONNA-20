@@ -1,0 +1,171 @@
+1. Backend Routes (Export & Notifications)
+✅ CSV Export
+Add this route in server/routes/coachTimeLogs.ts:
+
+ts
+Copy
+Edit
+import { Parser as Json2CsvParser } from 'json2csv';
+
+router.get('/export/csv', async (req, res) => {
+  const logs = await db.select().from(coach_time_logs);
+  const fields = ['id', 'coach_id', 'date', 'hours', 'notes', 'approved'];
+  const parser = new Json2CsvParser({ fields });
+  const csv = parser.parse(logs);
+
+  res.header('Content-Type', 'text/csv');
+  res.attachment('coach_time_logs.csv');
+  res.send(csv);
+});
+✅ PDF Export
+Install pdfkit if not already:
+
+bash
+Copy
+Edit
+npm install pdfkit
+Add another route:
+
+ts
+Copy
+Edit
+import PDFDocument from 'pdfkit';
+
+router.get('/export/pdf', async (req, res) => {
+  const logs = await db.select().from(coach_time_logs);
+
+  const doc = new PDFDocument();
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename=coach_time_logs.pdf');
+  doc.pipe(res);
+
+  doc.fontSize(18).text('Coach Time Logs', { align: 'center' });
+  doc.moveDown();
+
+  logs.forEach(log => {
+    doc.fontSize(12).text(
+      `Coach: ${log.coach_id} | Date: ${new Date(log.date).toLocaleDateString()} | Hours: ${log.hours} | Approved: ${log.approved ? 'Yes' : 'No'}`
+    );
+    doc.moveDown(0.5);
+  });
+
+  doc.end();
+});
+✅ Notifications on Approval
+Modify your approval route:
+
+ts
+Copy
+Edit
+router.put('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  const updated = await db.update(coach_time_logs)
+    .set({ approved: true })
+    .where(coach_time_logs.id.eq(Number(id)))
+    .returning();
+
+  const log = updated[0];
+  if (log) {
+    // Get coach's email from users table
+    const coach = await db.query.coaches.findFirst({ where: (c, { eq }) => eq(c.id, log.coach_id) });
+    if (coach) {
+      const user = await db.query.users.findFirst({ where: (u, { eq }) => eq(u.id, coach.user_id) });
+      if (user?.email) {
+        await sgMail.send({
+          to: user.email,
+          from: 'noreply@yourclub.com',
+          subject: '✅ Your time log was approved',
+          html: `<p>Your time log for ${new Date(log.date).toLocaleDateString()} (${log.hours} hours) has been approved.</p>`
+        });
+      }
+      // (Optional) Add SMS notification via Twilio
+    }
+  }
+
+  res.json(log);
+});
+🎨 2. Frontend Buttons for Export (no filters)
+In your TimeLogApproval.jsx component, remove any filter code and just add export buttons:
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function TimeLogApproval() {
+  const [logs, setLogs] = useState([]);
+
+  const loadLogs = async () => {
+    const res = await axios.get('/api/coach-time-logs');
+    setLogs(res.data);
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  const handleExport = (type) => {
+    window.location.href = `/api/coach-time-logs/export/${type}`;
+  };
+
+  const approveLog = async (id) => {
+    await axios.put(`/api/coach-time-logs/${id}/approve`);
+    loadLogs();
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Coach Time Logs</h2>
+
+      {/* Export Buttons */}
+      <div className="mb-4">
+        <button onClick={() => handleExport('csv')} className="bg-green-500 text-white px-3 py-1 rounded mr-2">
+          Export CSV
+        </button>
+        <button onClick={() => handleExport('pdf')} className="bg-purple-500 text-white px-3 py-1 rounded">
+          Export PDF
+        </button>
+      </div>
+
+      {/* Logs Table */}
+      <table className="min-w-full border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2">Coach ID</th>
+            <th className="border px-3 py-2">Date</th>
+            <th className="border px-3 py-2">Hours</th>
+            <th className="border px-3 py-2">Notes</th>
+            <th className="border px-3 py-2">Status</th>
+            <th className="border px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map(log => (
+            <tr key={log.id}>
+              <td className="border px-3 py-2">{log.coach_id}</td>
+              <td className="border px-3 py-2">{new Date(log.date).toLocaleDateString()}</td>
+              <td className="border px-3 py-2">{log.hours}</td>
+              <td className="border px-3 py-2">{log.notes}</td>
+              <td className="border px-3 py-2">{log.approved ? '✅ Approved' : '⏳ Pending'}</td>
+              <td className="border px-3 py-2">
+                {!log.approved && (
+                  <button
+                    onClick={() => approveLog(log.id)}
+                    className="bg-blue-600 text-white px-3 py-1 rounded"
+                  >
+                    Approve
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+✅ What You Now Have
+✔️ Export buttons to CSV and PDF
+✔️ Notifications emailed (or SMS-able) when a log is approved
+✔️ Clean backend routes, no extra filter code

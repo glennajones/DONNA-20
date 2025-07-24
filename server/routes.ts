@@ -3970,6 +3970,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Time log not found" });
       }
 
+      // Send notification email to coach
+      try {
+        const coaches = await storage.getCoaches();
+        const coach = coaches.find(c => c.id === timeLog.coachId);
+        
+        if (coach) {
+          const users = await storage.getUsers();
+          const user = users.find(u => u.name === coach.name);
+          
+          if (user?.email) {
+            // Using SendGrid for email notification (optional)
+            if (process.env.SENDGRID_API_KEY) {
+              const sgMail = require('@sendgrid/mail');
+              sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+              
+              await sgMail.send({
+                to: user.email,
+                from: process.env.FROM_EMAIL || 'noreply@volleyclub.com',
+                subject: '✅ Your time log was approved',
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #16a34a;">Time Log Approved</h2>
+                    <p>Hello ${coach.name},</p>
+                    <p>Your time log has been approved with the following details:</p>
+                    <ul>
+                      <li><strong>Date:</strong> ${new Date(timeLog.date).toLocaleDateString()}</li>
+                      <li><strong>Hours:</strong> ${timeLog.hours}</li>
+                      <li><strong>Notes:</strong> ${timeLog.notes || 'None'}</li>
+                    </ul>
+                    <p>Thank you for your dedication to the team!</p>
+                    <p style="color: #6b7280; font-size: 12px;">This is an automated message from VolleyClub Pro</p>
+                  </div>
+                `
+              });
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error("Email notification error:", emailError);
+        // Don't fail the approval if email fails
+      }
+
       res.json(timeLog);
     } catch (error) {
       console.error("Approve coach time log error:", error);
@@ -3995,6 +4037,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete coach time log error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Export coach time logs as CSV
+  app.get("/api/coach-time-logs/export/csv", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can export
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getCoachTimeLogs();
+      const coaches = await storage.getCoaches();
+      
+      // Enhanced CSV data with coach names
+      const csvData = logs.map(log => {
+        const coach = coaches.find(c => c.id === log.coachId);
+        return {
+          id: log.id,
+          coach_name: coach?.name || `Coach ID: ${log.coachId}`,
+          coach_specialty: coach?.email || 'No specialty listed',
+          date: log.date,
+          hours: log.hours,
+          notes: log.notes || '',
+          approved: log.approved ? 'Yes' : 'No',
+          submitted_at: log.submittedAt,
+          approved_at: log.approvedAt || ''
+        };
+      });
+
+      const json2csv = require('json2csv');
+      const fields = ['id', 'coach_name', 'coach_specialty', 'date', 'hours', 'notes', 'approved', 'submitted_at', 'approved_at'];
+      const parser = new json2csv.Parser({ fields });
+      const csv = parser.parse(csvData);
+
+      res.header('Content-Type', 'text/csv');
+      res.attachment('coach_time_logs.csv');
+      res.send(csv);
+    } catch (error) {
+      console.error("CSV export error:", error);
+      res.status(500).json({ message: "Export failed" });
+    }
+  });
+
+  // Export coach time logs as PDF
+  app.get("/api/coach-time-logs/export/pdf", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can export
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getCoachTimeLogs();
+      const coaches = await storage.getCoaches();
+      
+      const PDFDocument = require('pdfkit');
+      const doc = new PDFDocument();
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=coach_time_logs.pdf');
+      doc.pipe(res);
+
+      // PDF Header
+      doc.fontSize(18).text('Coach Time Logs Report', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Summary statistics
+      const totalHours = logs.reduce((sum, log) => sum + parseFloat(log.hours), 0);
+      const approvedLogs = logs.filter(log => log.approved).length;
+      const pendingLogs = logs.filter(log => !log.approved).length;
+
+      doc.fontSize(14).text('Summary', { underline: true });
+      doc.fontSize(12);
+      doc.text(`Total Logs: ${logs.length}`);
+      doc.text(`Total Hours: ${totalHours.toFixed(2)}`);
+      doc.text(`Approved: ${approvedLogs}`);
+      doc.text(`Pending: ${pendingLogs}`);
+      doc.moveDown(2);
+
+      // Logs details
+      doc.fontSize(14).text('Time Log Details', { underline: true });
+      doc.moveDown();
+
+      logs.forEach((log, index) => {
+        const coach = coaches.find(c => c.id === log.coachId);
+        const coachName = coach?.name || `Coach ID: ${log.coachId}`;
+        
+        doc.fontSize(10);
+        doc.text(`${index + 1}. ${coachName} | ${new Date(log.date).toLocaleDateString()} | ${log.hours}h | ${log.approved ? '✓ Approved' : '⏳ Pending'}`);
+        if (log.notes) {
+          doc.fontSize(9).text(`   Notes: ${log.notes}`, { color: 'gray' });
+        }
+        doc.moveDown(0.3);
+        
+        // Add page break if needed
+        if (doc.y > 700) {
+          doc.addPage();
+        }
+      });
+
+      doc.end();
+    } catch (error) {
+      console.error("PDF export error:", error);
+      res.status(500).json({ message: "Export failed" });
     }
   });
 
