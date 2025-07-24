@@ -272,9 +272,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const budgetEvents = await storage.getEvents();
         const eventsFromBudget = budgetEvents
           .filter(event => 
-            event.assignedCourts && 
-            Array.isArray(event.assignedCourts) && 
-            event.assignedCourts.length > 0 && 
+            // Include events with courts OR personal events (like "Haircut", "Meeting", etc.)
+            ((event.assignedCourts && 
+              Array.isArray(event.assignedCourts) && 
+              event.assignedCourts.length > 0) ||
+             // Personal events: no courts but have location "Personal" or similar
+             (!event.assignedCourts || 
+              (Array.isArray(event.assignedCourts) && event.assignedCourts.length === 0))) &&
             event.startTime && 
             event.endTime &&
             (!from || event.startDate >= from) &&
@@ -287,7 +291,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .map(budgetEvent => ({
             id: `event-${budgetEvent.id}`,
             title: budgetEvent.name,
-            court: (budgetEvent.assignedCourts as string[]).join(', '),
+            court: (budgetEvent.assignedCourts && Array.isArray(budgetEvent.assignedCourts) && budgetEvent.assignedCourts.length > 0) 
+              ? (budgetEvent.assignedCourts as string[]).join(', ')
+              : budgetEvent.location || 'Personal',
             date: budgetEvent.startDate,
             time: budgetEvent.startTime!,
             duration: budgetEvent.startTime && budgetEvent.endTime ? 
