@@ -8,6 +8,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import Stripe from "stripe";
+import aiAssistRouter from "./routes/aiAssist";
 
 const JWT_SECRET = process.env.JWT_SECRET || "volleyball-club-secret-key";
 
@@ -4394,6 +4395,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // Mount AI Assistant routes
+  app.use("/api/ai-assist", aiAssistRouter);
 
   return httpServer;
 }

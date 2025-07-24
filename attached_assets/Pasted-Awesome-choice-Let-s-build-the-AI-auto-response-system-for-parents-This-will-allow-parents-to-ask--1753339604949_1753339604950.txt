@@ -1,0 +1,168 @@
+Awesome choice! Let’s build the AI auto‑response system for parents!
+This will allow parents to ask free‑text questions (like “I have a 9‑year‑old who’s never played before…”) and get helpful automated suggestions about training options.
+
+✨ Goal
+✅ A small UI where parents can type questions.
+✅ Backend endpoint that:
+
+Extracts key info (age, skill level) from the question.
+
+Queries your events or training_programs table for relevant matches.
+
+Optionally uses OpenAI to improve responses.
+✅ Returns a friendly AI‑style answer with suggested events and registration links.
+
+📦 1. Backend: AI Endpoint
+Install OpenAI Node SDK:
+
+bash
+Copy
+Edit
+npm install openai
+Add OPENAI_API_KEY to your .env.
+
+Route: server/routes/aiAssist.ts
+
+ts
+Copy
+Edit
+import express from 'express';
+import { db } from '../storage';
+import { events } from '../../shared/schema';
+import OpenAI from 'openai';
+import { gte } from 'drizzle-orm';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const router = express.Router();
+
+router.post('/', async (req, res) => {
+  const { question } = req.body;
+
+  // Fetch relevant upcoming training events
+  const now = new Date();
+  const upcomingTrainings = await db.select().from(events).where(gte(events.start_time, now));
+  const relevantTrainings = upcomingTrainings.filter(ev => ev.type === 'training');
+
+  // Build context for AI
+  const trainingList = relevantTrainings.map(ev => 
+    `Title: ${ev.title}, Age Groups: (check description), Starts: ${new Date(ev.start_time).toLocaleString()}, Location: ${ev.location}`
+  ).join('\n');
+
+  const prompt = `
+Parent question: "${question}"
+
+Here is a list of training events:\n${trainingList}
+
+Respond in a friendly helpful tone as if you are a volleyball club assistant. Suggest specific trainings that might fit based on the child's age or skill if mentioned. Include event titles and start times.
+`;
+
+  try {
+    const chat = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant for a volleyball club.' },
+        { role: 'user', content: prompt }
+      ]
+    });
+
+    const answer = chat.choices[0].message.content;
+    res.json({ answer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'AI service failed.' });
+  }
+});
+
+export default router;
+Mount in server/index.ts:
+
+ts
+Copy
+Edit
+import aiAssistRouter from './routes/aiAssist';
+app.use('/api/ai-assist', aiAssistRouter);
+🎨 2. Frontend: Parent Chat UI
+src/modules/Parent/AIAssistant.jsx
+
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import axios from 'axios';
+
+export default function AIAssistant() {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAsk = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setAnswer('');
+    const res = await axios.post('/api/ai-assist', { question });
+    setAnswer(res.data.answer);
+    setLoading(false);
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow max-w-xl">
+      <h2 className="text-xl font-bold mb-4">Ask Our AI Assistant</h2>
+      <form onSubmit={handleAsk} className="mb-4">
+        <textarea
+          className="border rounded px-3 py-2 w-full"
+          rows="3"
+          placeholder="Type your question here..."
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          required
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-blue-600 text-white px-4 py-2 rounded mt-2"
+        >
+          {loading ? 'Thinking…' : 'Ask'}
+        </button>
+      </form>
+      {answer && (
+        <div className="p-4 bg-gray-100 rounded">
+          <h3 className="font-semibold mb-2">🤖 AI Response:</h3>
+          <p className="whitespace-pre-line">{answer}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+✅ 3. How it Works
+Parent opens the AI Assistant page.
+
+Types in a free‑form question.
+
+Frontend sends to /api/ai-assist.
+
+Backend:
+
+Loads upcoming training events from DB.
+
+Feeds them + the question into GPT.
+
+GPT returns a helpful, friendly answer with event suggestions.
+
+UI displays the AI response. ✅
+
+✨ Enhancements You Can Add Later
+✔️ Add context filters (e.g., only show events for specific age groups stored in your events table).
+✔️ Log each question/answer for review.
+✔️ Add a “register now” button in the AI response by formatting events with links.
+✔️ Cache responses to save OpenAI tokens.
+
+🚀 Next Steps
+🔥 If you want, I can help with:
+
+✅ Logging AI chat history in DB,
+
+✅ Adding registration links in responses,
+
+✅ Or even creating a live chat experience with Pusher.
+
+💬 What would you like me to build next? ✔️🔥

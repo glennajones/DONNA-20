@@ -30,6 +30,7 @@ import DocumentsPage from "./pages/documents";
 import TVDisplayPage from "./pages/tv-display";
 import SubscribePage from "./pages/subscribe";
 import EventFeedbackPage from "./pages/event-feedback";
+import AIAssistantPage from "./pages/ai-assistant";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/tv-display" component={TVDisplayPage} />
       <Route path="/subscribe" component={SubscribePage} />
       <Route path="/event-feedback" component={EventFeedbackPage} />
+      <Route path="/ai-assistant" component={AIAssistantPage} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <Dashboard />
