@@ -29,7 +29,8 @@ import {
   UserX,
   ClipboardList,
   Clock,
-  AlertCircle
+  AlertCircle,
+  UserSearch
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -133,6 +134,13 @@ export default function Dashboard() {
       href: "/documents",
     },
     {
+      title: "Coach Matching",
+      icon: UserSearch,
+      color: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700",
+      roles: ["admin", "manager"],
+      href: "/coach-matching",
+    },
+    {
       title: "System Settings",
       icon: Settings,
       color: "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700",
@@ -217,6 +225,14 @@ export default function Dashboard() {
       icon: ClipboardList,
       href: "/forms",
       color: "from-orange-500 to-orange-600",
+      roles: ["admin", "manager"],
+    },
+    {
+      title: "Coach Matching",
+      description: "Find and assign coaches to events",
+      icon: UserSearch,
+      href: "/coach-matching",
+      color: "from-emerald-500 to-emerald-600",
       roles: ["admin", "manager"],
     },
     {
