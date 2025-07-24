@@ -231,15 +231,15 @@ export default function DailyEmailSettings() {
               
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div className="text-center">
-                  <div className="font-medium text-lg">{testResults.eventCounts.courtEvents}</div>
+                  <div className="font-medium text-lg">{testResults.eventCounts?.courtEvents || 0}</div>
                   <div className="text-muted-foreground">Court Events</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-medium text-lg">{testResults.eventCounts.scheduleEvents}</div>
+                  <div className="font-medium text-lg">{testResults.eventCounts?.scheduleEvents || 0}</div>
                   <div className="text-muted-foreground">Training Sessions</div>
                 </div>
                 <div className="text-center">
-                  <div className="font-medium text-lg">{testResults.eventCounts.personalEvents}</div>
+                  <div className="font-medium text-lg">{testResults.eventCounts?.personalEvents || 0}</div>
                   <div className="text-muted-foreground">Personal Events</div>
                 </div>
               </div>
