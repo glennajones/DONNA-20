@@ -1,0 +1,136 @@
+Goal:
+👉 Allow admins to set which user roles can see each event.
+👉 On the frontend calendar, only show events where the logged-in user’s role is allowed.
+
+📦 DB Changes (shared/schema.ts)
+Add a visible_to_roles field to your events table.
+Using Drizzle with PostgreSQL, a simple text[] works great for storing role lists.
+
+ts
+Copy
+Edit
+// shared/schema.ts
+import { pgTable, serial, text, varchar, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
+
+// Existing events table, extended:
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  start_time: timestamp('start_time').notNull(),
+  end_time: timestamp('end_time').notNull(),
+  location: varchar('location', { length: 255 }),
+  // 👇 NEW FIELD: an array of roles allowed to see this event
+  visible_to_roles: text('visible_to_roles').array().default(['admin', 'coach', 'staff', 'player', 'parent'])
+});
+👉 Run:
+
+bash
+Copy
+Edit
+npm run db:push
+✅ This will update your table with the new field.
+
+🛠 Backend Update (Express Route)
+When creating/updating an event, accept visible_to_roles from the request body.
+
+Example snippet for your existing POST /api/events:
+
+ts
+Copy
+Edit
+// server/routes/events.ts (or wherever your event routes are)
+import { events } from '../../shared/schema';
+import { db } from '../storage';
+
+app.post('/api/events', async (req, res) => {
+  const { title, description, start_time, end_time, location, visible_to_roles } = req.body;
+
+  // basic validation...
+  if (!title || !start_time || !end_time) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const newEvent = await db.insert(events).values({
+    title,
+    description,
+    start_time: new Date(start_time),
+    end_time: new Date(end_time),
+    location,
+    visible_to_roles: visible_to_roles && Array.isArray(visible_to_roles) ? visible_to_roles : ['admin','coach','staff','player','parent']
+  }).returning();
+
+  res.json(newEvent[0]);
+});
+👉 Similarly, update your PUT /api/events/:id to allow editing visible_to_roles.
+
+🎨 Admin UI Update (React Form for Event creation/editing)
+Inside your event creation form (src/modules/Events/EventForm.tsx or similar):
+Add checkboxes or a multi-select for roles:
+
+tsx
+Copy
+Edit
+import React, { useState } from 'react';
+
+const ALL_ROLES = ['admin','manager','coach','staff','player','parent'];
+
+export default function EventForm({ onSubmit, initialData }) {
+  const [visibleToRoles, setVisibleToRoles] = useState(initialData?.visible_to_roles || ALL_ROLES);
+
+  const toggleRole = (role: string) => {
+    setVisibleToRoles(prev => prev.includes(role)
+      ? prev.filter(r => r !== role)
+      : [...prev, role]);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // gather other fields...
+    onSubmit({ /* other fields */, visible_to_roles: visibleToRoles });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* existing fields like title, start_time, end_time, etc. */}
+      <div>
+        <label className="block font-medium mb-2">Visible To Roles</label>
+        <div className="grid grid-cols-3 gap-2">
+          {ALL_ROLES.map(role => (
+            <label key={role} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={visibleToRoles.includes(role)}
+                onChange={() => toggleRole(role)}
+              />
+              <span className="capitalize">{role}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Save Event</button>
+    </form>
+  );
+}
+📅 Frontend Calendar Filter
+When fetching events for the calendar:
+
+Get the logged-in user’s role (from JWT or context).
+
+Filter events by visible_to_roles.
+
+Example (React using TanStack Query):
+
+tsx
+Copy
+Edit
+const { data: events } = useQuery(['events'], fetchEvents);
+
+const userRole = currentUser.role; // from auth context
+const visibleEvents = events?.filter(ev => ev.visible_to_roles.includes(userRole)) || [];
+Then pass visibleEvents to your calendar component.
+
+✅ Outcome
+✔️ Admins can now control who sees each event.
+✔️ Calendar shows only events relevant to the current user’s role.
+✔️ Stored in DB with Drizzle, editable via UI, fully type‑safe.

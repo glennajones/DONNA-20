@@ -50,6 +50,10 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
     endTime: "",
   });
 
+  // Role visibility control
+  const ALL_ROLES = ['admin', 'manager', 'coach', 'staff', 'player', 'parent'];
+  const [visibleToRoles, setVisibleToRoles] = useState<string[]>(ALL_ROLES);
+
   // Resource planning
   const [players, setPlayers] = useState(0);
   const [playersPerCourt, setPlayersPerCourt] = useState(6);
@@ -223,7 +227,8 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
           status: "planning",
           feePerPlayer: feePerPlayer.toString(),
           coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
-          miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item))
+          miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item)),
+          visibleToRoles: visibleToRoles
         };
 
         await apiRequest("/api/events", {
@@ -657,6 +662,75 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         </Button>
                       </div>
                     ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Role Visibility Control */}
+              <AccordionItem value="visibility">
+                <AccordionTrigger className="text-left">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <User className="h-4 w-4" />
+                    Event Visibility (Personal Calendar)
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-4">
+                  <div className="space-y-3">
+                    <Label>Who can see this event on their personal calendar?</Label>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Select which user roles can view this event. Useful for creating role-specific personal calendar entries.
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {ALL_ROLES.map(role => (
+                        <div key={role} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`role-${role}`}
+                            checked={visibleToRoles.includes(role)}
+                            onCheckedChange={() => {
+                              setVisibleToRoles(prev => 
+                                prev.includes(role)
+                                  ? prev.filter(r => r !== role)
+                                  : [...prev, role]
+                              );
+                            }}
+                          />
+                          <Label 
+                            htmlFor={`role-${role}`}
+                            className="text-sm font-normal cursor-pointer capitalize"
+                          >
+                            {role}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {visibleToRoles.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {visibleToRoles.map(role => (
+                          <Badge key={role} variant="outline" className="text-xs capitalize">
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisibleToRoles(ALL_ROLES)}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisibleToRoles([])}
+                      >
+                        Select None
+                      </Button>
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>

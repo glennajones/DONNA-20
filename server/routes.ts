@@ -278,7 +278,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             event.startTime && 
             event.endTime &&
             (!from || event.startDate >= from) &&
-            (!to || event.startDate <= to)
+            (!to || event.startDate <= to) &&
+            // Filter by role visibility for personal calendar usage
+            (!event.visibleToRoles || 
+             event.visibleToRoles.length === 0 || 
+             event.visibleToRoles.includes(req.user.role))
           )
           .map(budgetEvent => ({
             id: `event-${budgetEvent.id}`,
@@ -1088,8 +1092,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Events Routes
   app.get("/api/events", authenticateToken, async (req: any, res) => {
     try {
-      const events = await storage.getEvents();
-      res.json(events);
+      const allEvents = await storage.getEvents();
+      // Filter events based on user's role for personal calendar usage
+      const visibleEvents = allEvents.filter(event => 
+        !event.visibleToRoles || 
+        event.visibleToRoles.length === 0 || 
+        event.visibleToRoles.includes(req.user.role)
+      );
+      res.json(visibleEvents);
     } catch (error) {
       console.error("Get events error:", error);
       res.status(500).json({ message: "Internal server error" });

@@ -289,6 +289,8 @@ export const events = pgTable("events", {
   freeForSubscribers: boolean("free_for_subscribers").notNull().default(true),
   requiredSubscriptionPlan: text("required_subscription_plan"), // null means any active subscription
   maxRegistrations: integer("max_registrations"), // null means unlimited
+  // Role-based visibility control for personal calendar usage
+  visibleToRoles: text("visible_to_roles").array().notNull().default(['admin', 'manager', 'coach', 'staff', 'player', 'parent']),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
