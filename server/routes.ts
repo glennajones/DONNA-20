@@ -3531,25 +3531,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Admin access required' });
       }
 
-      // Get tomorrow's events for this admin
-      const { getNextDayEvents } = await import('./utils/getNextDayEvents');
-      const { default: adminDailyEmailTemplate } = await import('./utils/adminDailyEmailTemplate');
+      try {
+        // Get tomorrow's events for this admin
+        const { getNextDayEvents } = await import('./utils/getNextDayEvents');
+        const { default: adminDailyEmailTemplate } = await import('./utils/adminDailyEmailTemplate');
+        
+        const { courtEvents, personalEvents, scheduleEvents } = await getNextDayEvents(req.user.id);
+        
+        // Generate email template
+        const html = adminDailyEmailTemplate(courtEvents, personalEvents, scheduleEvents);
       
-      const { courtEvents, personalEvents, scheduleEvents } = await getNextDayEvents(req.user.id);
-      
-      // Generate email template
-      const html = adminDailyEmailTemplate(courtEvents, personalEvents, scheduleEvents);
-      
-      // For testing, return the HTML template
-      res.json({
-        message: 'Daily email template generated successfully',
-        eventCounts: {
-          courtEvents: courtEvents.length,
-          personalEvents: personalEvents.length,
-          scheduleEvents: scheduleEvents.length
-        },
-        html: html
-      });
+        // For testing, return the HTML template
+        res.json({
+          message: 'Daily email template generated successfully',
+          eventCounts: {
+            courtEvents: courtEvents.length,
+            personalEvents: personalEvents.length,
+            scheduleEvents: scheduleEvents.length
+          },
+          html: html
+        });
+      } catch (emailError) {
+        console.error('Error in email generation:', emailError);
+        throw emailError;
+      }
       
     } catch (error) {
       console.error('Error generating daily email:', error);
