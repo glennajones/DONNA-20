@@ -298,6 +298,37 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 24, 2025) - Latest
 
+### Enhanced Calendar with Filtering & Drag-and-Drop (Latest)
+- **Implemented FullCalendar integration** with professional calendar UI and advanced functionality
+- **Added comprehensive event type filtering** with color-coded categories (training, match, tournament, practice, tryouts, camp, social)
+- **Built drag-and-drop rescheduling system** with real-time conflict detection and automatic database updates
+- **Enhanced event resizing capability** allowing duration changes by dragging event edges
+- **Created Enhanced/Classic mode toggle** on Training & Scheduling page for flexible calendar viewing
+- **Added role-based permissions** restricting drag-and-drop functionality to admin, manager, and coach roles
+- **Extended event type schema** to support additional categories (tryout, camp, social) beyond original four types
+- **Implemented reschedule API endpoint** at `/api/schedule/:id/reschedule` with PUT method for drag-and-drop backend
+- **Enhanced UI with professional features** including business hours highlighting, time constraints, and modern navigation
+- **Fixed API response handling** to properly parse events array from schedule endpoint response
+- **Added visual feedback systems** with toast notifications for successful reschedules and conflict warnings
+
+#### Technical Implementation
+- Installed FullCalendar packages: `@fullcalendar/react`, `@fullcalendar/daygrid`, `@fullcalendar/timegrid`, `@fullcalendar/interaction`
+- Updated `scheduleEvents` table schema with expanded `eventType` enum including new categories
+- Created `EnhancedCalendar.tsx` component with full filtering, drag-and-drop, and conflict detection
+- Added reschedule mutation using TanStack Query with optimistic updates and error handling
+- Enhanced Training page with mode switching between Enhanced (FullCalendar) and Classic views
+- Database migration to support extended event types while maintaining backward compatibility
+
+#### User Experience Improvements
+- **Visual Event Categorization**: Each event type has distinct colors for immediate visual identification
+- **Intuitive Filtering**: Dropdown selector with color indicators and event count badges
+- **Seamless Rescheduling**: Drag events to new time slots with automatic conflict prevention
+- **Professional Calendar Navigation**: Month/week/day views with business hours and time constraints
+- **Real-time Updates**: Changes instantly reflected across all users without page refresh
+- **Permission-based Interaction**: Only authorized roles can modify schedules while others view-only
+
+## Recent Changes (July 24, 2025) - Earlier
+
 ### Hierarchical Folder System for Coach Resources (Latest)
 - **Implemented comprehensive folder management system** allowing admins to create and organize coach resources hierarchically
 - **Added coach_resource_folders database table** with support for parent-child folder relationships and categorization

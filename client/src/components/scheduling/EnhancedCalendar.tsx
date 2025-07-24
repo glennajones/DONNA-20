@@ -45,10 +45,12 @@ export default function EnhancedCalendar({ initialView = "timeGridWeek" }: Enhan
   const queryClient = useQueryClient();
 
   // Fetch schedule events
-  const { data: events = [], isLoading, error } = useQuery<ScheduleEvent[]>({
+  const { data: response, isLoading, error } = useQuery<{events: ScheduleEvent[]}>({
     queryKey: ["/api/schedule"],
     enabled: true,
   });
+
+  const events = response?.events || [];
 
   // Reschedule mutation for drag-and-drop
   const rescheduleEvent = useMutation({
