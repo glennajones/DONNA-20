@@ -1,0 +1,224 @@
+1. Drizzle Schema Update (shared/schema.ts)
+Add comm_method_override so event creators can control channels:
+
+ts
+Copy
+Edit
+import { pgTable, serial, varchar, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  start_time: timestamp('start_time').notNull(),
+  end_time: timestamp('end_time').notNull(),
+  location: varchar('location', { length: 255 }),
+  visible_to_roles: text('visible_to_roles').array().default(['admin','coach','staff','player','parent']),
+  // ✅ NEW: comm method override
+  comm_method_override: varchar('comm_method_override', { length: 20 }).default('respect_user_pref')
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🎨 2. React EventForm UI (src/modules/Events/EventForm.tsx)
+✅ Add toggles for sending notifications.
+✅ Add dropdown to override comm method.
+
+tsx
+Copy
+Edit
+import React, { useState } from 'react';
+
+const COMM_METHOD_OPTIONS = [
+  { value: 'respect_user_pref', label: 'Respect User Preferences' },
+  { value: 'email_only', label: 'Force Email Only' },
+  { value: 'sms_only', label: 'Force SMS Only' },
+  { value: 'groupme_only', label: 'Force GroupMe Only' },
+  { value: 'all', label: 'Send All Channels' },
+];
+
+export default function EventForm({ onSubmit, initialData }) {
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [startTime, setStartTime] = useState(initialData?.start_time || '');
+  const [endTime, setEndTime] = useState(initialData?.end_time || '');
+  const [location, setLocation] = useState(initialData?.location || '');
+  const [commMethod, setCommMethod] = useState(initialData?.comm_method_override || 'respect_user_pref');
+  const [sendEmail, setSendEmail] = useState(false);
+  const [sendSMS, setSendSMS] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      title,
+      description,
+      start_time: startTime,
+      end_time: endTime,
+      location,
+      comm_method_override: commMethod,
+      sendEmail,
+      sendSMS
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded shadow">
+      <div>
+        <label className="block font-medium mb-1">Title</label>
+        <input className="border rounded px-3 py-2 w-full" value={title} onChange={e => setTitle(e.target.value)} required />
+      </div>
+      <div>
+        <label className="block font-medium mb-1">Description</label>
+        <textarea className="border rounded px-3 py-2 w-full" value={description} onChange={e => setDescription(e.target.value)} />
+      </div>
+      <div className="flex space-x-4">
+        <div>
+          <label className="block font-medium mb-1">Start Time</label>
+          <input type="datetime-local" className="border rounded px-3 py-2" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+        </div>
+        <div>
+          <label className="block font-medium mb-1">End Time</label>
+          <input type="datetime-local" className="border rounded px-3 py-2" value={endTime} onChange={e => setEndTime(e.target.value)} required />
+        </div>
+      </div>
+      <div>
+        <label className="block font-medium mb-1">Location</label>
+        <input className="border rounded px-3 py-2 w-full" value={location} onChange={e => setLocation(e.target.value)} />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Communication Method Override</label>
+        <select className="border rounded px-3 py-2 w-full" value={commMethod} onChange={e => setCommMethod(e.target.value)}>
+          {COMM_METHOD_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex space-x-6 items-center">
+        <label className="flex items-center space-x-2">
+          <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+          <span>Send Email Notifications</span>
+        </label>
+        <label className="flex items-center space-x-2">
+          <input type="checkbox" checked={sendSMS} onChange={e => setSendSMS(e.target.checked)} />
+          <span>Send SMS Notifications</span>
+        </label>
+      </div>
+
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Save Event</button>
+    </form>
+  );
+}
+🛠 3. Backend Route (server/routes/events.ts)
+✅ Respect comm_method_override.
+✅ Deduplicate recipients.
+✅ Filter based on visible roles.
+✅ Use user’s preferred comm only if respect_user_pref.
+
+ts
+Copy
+Edit
+import { events, users } from '../../shared/schema';
+import { db } from '../storage';
+import { inArray } from 'drizzle-orm';
+import sgMail from '@sendgrid/mail';
+import twilio from 'twilio';
+import buildEventTemplate from '../utils/eventEmailTemplate';
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const smsClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+
+app.post('/api/events', async (req, res) => {
+  const { title, description, start_time, end_time, location, visible_to_roles, comm_method_override, sendEmail, sendSMS } = req.body;
+
+  const inserted = await db.insert(events).values({
+    title,
+    description,
+    start_time: new Date(start_time),
+    end_time: new Date(end_time),
+    location,
+    visible_to_roles,
+    comm_method_override
+  }).returning();
+  const newEvent = inserted[0];
+
+  // fetch visible users
+  const visibleUsers = await db.select().from(users).where(inArray(users.role, visible_to_roles));
+  const uniqueRecipients = Array.from(new Map(visibleUsers.map(u => [u.id, u])).values());
+
+  for (const user of uniqueRecipients) {
+    // decide channels
+    let emailCh = false, smsCh = false, groupCh = false;
+
+    switch (comm_method_override) {
+      case 'email_only':
+        emailCh = true;
+        break;
+      case 'sms_only':
+        smsCh = true;
+        break;
+      case 'groupme_only':
+        groupCh = true;
+        break;
+      case 'all':
+        emailCh = smsCh = groupCh = true;
+        break;
+      default: // respect user pref
+        if (user.preferred_comm.includes('email')) emailCh = true;
+        if (user.preferred_comm.includes('sms')) smsCh = true;
+        if (user.preferred_comm.includes('groupme')) groupCh = true;
+        break;
+    }
+
+    if (sendEmail && emailCh && user.email) {
+      await sgMail.send({
+        to: user.email,
+        from: 'noreply@yourclub.com',
+        subject: `📅 New Event: ${title}`,
+        html: buildEventTemplate(newEvent)
+      });
+    }
+
+    if (sendSMS && smsCh && user.phone_number) {
+      await smsClient.messages.create({
+        body: `📅 ${title} on ${new Date(start_time).toLocaleString()} at ${location}`,
+        from: process.env.TWILIO_NUMBER,
+        to: user.phone_number
+      });
+    }
+
+    if (groupCh && user.groupme_id) {
+      // integrate your GroupMe API here
+      console.log(`GroupMe message would be sent to ${user.groupme_id}`);
+    }
+  }
+
+  res.json(newEvent);
+});
+✨ 4. Simple Email Template (server/utils/eventEmailTemplate.ts)
+ts
+Copy
+Edit
+export default function buildEventTemplate(event: any): string {
+  return `
+  <html>
+    <body style="font-family:Arial,sans-serif;">
+      <h2 style="color:#2b6cb0;">📅 ${event.title}</h2>
+      <p>${event.description || ''}</p>
+      <p><strong>When:</strong> ${new Date(event.start_time).toLocaleString()}</p>
+      <p><strong>Where:</strong> ${event.location || 'TBD'}</p>
+      <p>See you there! 💪</p>
+    </body>
+  </html>
+  `;
+}
+✅ What You Now Have
+✔️ Event UI with toggles and override dropdown
+✔️ Backend that respects override or user preference
+✔️ Integrated with SendGrid and Twilio
+✔️ Deduplicated recipient logic based on roles
+

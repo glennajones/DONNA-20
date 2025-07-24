@@ -1135,8 +1135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Extract communication settings from request body
+      const { sendEmailNotifications, sendSMSNotifications, ...eventDataRaw } = req.body;
+
       const eventData = insertEventSchema.parse({
-        ...req.body,
+        ...eventDataRaw,
         createdBy: req.user.userId
       });
 
@@ -1188,6 +1191,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (scheduleError) {
           console.warn("Failed to create schedule entries for event:", scheduleError);
           // Don't fail the event creation if schedule creation fails
+        }
+      }
+
+      // Handle automated communications if enabled
+      if (sendEmailNotifications || sendSMSNotifications) {
+        try {
+          // Import communication service
+          const { sendEventNotifications } = await import('../utils/communicationService');
+          
+          // Get users who should receive notifications based on event visibility
+          const eligibleUsers = await storage.getUsersByRoles(event.visibleToRoles || []);
+          
+          // Filter out users without contact info based on notification type
+          const notifiableUsers = eligibleUsers.filter(user => {
+            if (sendEmailNotifications && !user.email) return false;
+            if (sendSMSNotifications && !user.phone) return false;
+            return true;
+          });
+
+          if (notifiableUsers.length > 0) {
+            // Send notifications asynchronously (don't block the response)
+            sendEventNotifications({
+              event,
+              users: notifiableUsers,
+              commMethodOverride: event.commMethodOverride || 'respect_user_pref',
+              sendEmailNotifications: !!sendEmailNotifications,
+              sendSMSNotifications: !!sendSMSNotifications
+            }).then(result => {
+              console.log(`Event notifications sent for "${event.name}": ${result.sent} messages, ${result.errors.length} errors`);
+            }).catch(error => {
+              console.error('Failed to send event notifications:', error);
+            });
+          } else {
+            console.log(`No eligible users found for event notifications: ${event.name}`);
+          }
+        } catch (commError) {
+          console.warn("Failed to send event notifications:", commError);
+          // Don't fail the event creation if communication fails
         }
       }
       

@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
   email: text("email"),
+  phone: text("phone"),
+  communicationPreference: text("communication_preference", { enum: ["Email", "SMS", "GroupMe", "Email + SMS", "Email + GroupMe", "SMS + GroupMe", "All"] }).default("Email"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   subscriptionStatus: text("subscription_status", { enum: ["active", "inactive", "past_due", "canceled", "trialing"] }).default("inactive"),
@@ -291,6 +293,10 @@ export const events = pgTable("events", {
   maxRegistrations: integer("max_registrations"), // null means unlimited
   // Role-based visibility control for personal calendar usage
   visibleToRoles: text("visible_to_roles").array().notNull().default(['admin', 'manager', 'coach', 'staff', 'player', 'parent']),
+  // Communication method override for automated notifications
+  commMethodOverride: text("comm_method_override", { 
+    enum: ["respect_user_pref", "email_only", "sms_only", "groupme_only", "all"] 
+  }).default("respect_user_pref"),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
