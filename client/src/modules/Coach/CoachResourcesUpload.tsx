@@ -28,7 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 const CATEGORIES = [
   'General',
-  'Drills',
+  'Practice Drills',
   'Policies', 
   'Game Plans',
   'Training Videos',
