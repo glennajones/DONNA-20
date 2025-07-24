@@ -30,8 +30,10 @@ import {
   ClipboardList,
   Clock,
   AlertCircle,
-  UserSearch
+  UserSearch,
+  Plus
 } from "lucide-react";
+import { QuickEventForm } from "@/components/personal/QuickEventForm";
 
 export default function Dashboard() {
   const { user, hasRole } = useAuth();
@@ -437,6 +439,24 @@ export default function Dashboard() {
 
           {/* Sidebar Column */}
           <div className="space-y-6">
+            {/* Quick Personal Event Form for Admins */}
+            {hasRole(["admin"]) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-[#56A0D3]" />
+                    Personal Calendar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Quickly add personal events like appointments, meetings, or reminders with role-based visibility controls.
+                  </p>
+                  <QuickEventForm />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Time Clock Widget for Coaches */}
             {hasRole(["coach"]) && (
               <TimeClockWidget />
