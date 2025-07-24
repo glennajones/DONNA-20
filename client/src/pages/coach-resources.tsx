@@ -4,6 +4,7 @@ import TimeClock from "@/modules/Coach/TimeClock";
 import PracticeLibrary from "@/modules/Coach/PracticeLibrary";
 import GameTools from "@/modules/Coach/GameTools";
 import AdminApprovals from "@/modules/Coach/AdminApprovals";
+import CoachResourcesUpload from "@/modules/Coach/CoachResourcesUpload";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, GraduationCap } from "lucide-react";
 import { Link } from "wouter";
@@ -58,6 +59,11 @@ export default function CoachResourcesPage() {
         {/* Practice Library Section */}
         <div className="mb-8">
           <PracticeLibrary />
+        </div>
+
+        {/* Coach Resources Upload Section */}
+        <div className="mb-8">
+          <CoachResourcesUpload />
         </div>
 
         {/* Game Tools Section */}

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pusher } from "./pusher";
@@ -35,6 +35,42 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
+
+// Configure multer for coach resources (PDFs, videos, documents)
+const coachResourcesDir = path.join(process.cwd(), 'uploads', 'coach-resources');
+if (!fs.existsSync(coachResourcesDir)) {
+  fs.mkdirSync(coachResourcesDir, { recursive: true });
+}
+
+const coachResourcesUpload = multer({
+  storage: multer.diskStorage({
+    destination: coachResourcesDir,
+    filename: (req, file, cb) => {
+      const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, unique + path.extname(file.originalname));
+    }
+  }),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit for videos
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Only PDF, video, and document files are allowed.'));
     }
   }
 });
@@ -3387,6 +3423,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  // Coach Resources API endpoints
+  app.get("/api/coach-resources", authenticateToken, async (req: any, res) => {
+    try {
+      // Only coaches, managers, and admins can access resources
+      if (!["admin", "manager", "coach", "staff"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { category } = req.query;
+      let resources;
+      
+      if (category && category !== 'all') {
+        resources = await storage.getCoachResourcesByCategory(category);
+      } else {
+        resources = await storage.getCoachResources();
+      }
+
+      res.json(resources);
+    } catch (error) {
+      console.error("Failed to fetch coach resources:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach-resources", authenticateToken, coachResourcesUpload.single('file'), async (req: any, res) => {
+    try {
+      // Only coaches, managers, and admins can upload resources
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { title, description, category } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      if (!title) {
+        return res.status(400).json({ message: "Title is required" });
+      }
+
+      const fileType = path.extname(file.originalname).replace('.', '').toLowerCase();
+      const resource = await storage.createCoachResource({
+        title,
+        description: description || null,
+        category: category || 'General',
+        fileUrl: `/uploads/coach-resources/${file.filename}`,
+        fileType,
+        fileSize: file.size,
+        originalFileName: file.originalname,
+        uploadedBy: req.user.userId
+      });
+
+      res.status(201).json(resource);
+    } catch (error) {
+      console.error("Failed to upload coach resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/coach-resources/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only coaches, managers, and admins can update resources
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const resourceId = parseInt(req.params.id);
+      const { title, description, category } = req.body;
+
+      const resource = await storage.getCoachResource(resourceId);
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+
+      // Only the uploader or admin can update
+      if (resource.uploadedBy !== req.user.userId && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updated = await storage.updateCoachResource(resourceId, {
+        title,
+        description,
+        category
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update coach resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/coach-resources/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can delete resources
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const resourceId = parseInt(req.params.id);
+      const resource = await storage.getCoachResource(resourceId);
+      
+      if (!resource) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+
+      // Delete file from filesystem
+      try {
+        const filePath = path.join(process.cwd(), resource.fileUrl);
+        fs.unlinkSync(filePath);
+      } catch (fileError) {
+        console.warn("Failed to delete file:", fileError);
+      }
+
+      const deleted = await storage.deleteCoachResource(resourceId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete resource" });
+      }
+
+      res.json({ message: "Resource deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete coach resource:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Enable static file serving for coach resources
+  app.use("/uploads", express.static("uploads"));
 
   // Stripe webhook to handle subscription updates
   app.post('/api/webhooks/stripe', async (req, res) => {

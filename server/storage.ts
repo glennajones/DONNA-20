@@ -30,6 +30,7 @@ import {
   dashboardWidgets,
   messageLogs,
   acknowledgements,
+  coachResources,
 
   type User, 
   type InsertUser, 
@@ -91,6 +92,8 @@ import {
   type InsertMessageLog,
   type Acknowledgement,
   type InsertAcknowledgement,
+  type CoachResource,
+  type InsertCoachResource,
   eventRegistrations,
 
 } from "@shared/schema";
@@ -279,6 +282,14 @@ export interface IStorage {
   createAcknowledgement(ack: InsertAcknowledgement): Promise<Acknowledgement>;
   getAcknowledgementsByEvent(eventId: number): Promise<Acknowledgement[]>;
   getAcknowledgementByToken(token: string): Promise<Acknowledgement | undefined>;
+
+  // Coach Resources methods
+  getCoachResource(id: number): Promise<CoachResource | undefined>;
+  getCoachResources(): Promise<CoachResource[]>;
+  getCoachResourcesByCategory(category: string): Promise<CoachResource[]>;
+  createCoachResource(resource: InsertCoachResource): Promise<CoachResource>;
+  updateCoachResource(id: number, resource: Partial<InsertCoachResource>): Promise<CoachResource | undefined>;
+  deleteCoachResource(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1447,6 +1458,45 @@ export class DatabaseStorage implements IStorage {
     const [acknowledgement] = await db.select().from(acknowledgements)
       .where(eq(acknowledgements.token, token));
     return acknowledgement;
+  }
+
+  // Coach Resources methods
+  async getCoachResource(id: number): Promise<CoachResource | undefined> {
+    const [resource] = await db.select().from(coachResources)
+      .where(eq(coachResources.id, id));
+    return resource;
+  }
+
+  async getCoachResources(): Promise<CoachResource[]> {
+    return await db.select().from(coachResources)
+      .orderBy(desc(coachResources.uploadedAt));
+  }
+
+  async getCoachResourcesByCategory(category: string): Promise<CoachResource[]> {
+    return await db.select().from(coachResources)
+      .where(eq(coachResources.category, category))
+      .orderBy(desc(coachResources.uploadedAt));
+  }
+
+  async createCoachResource(resource: InsertCoachResource): Promise<CoachResource> {
+    const [created] = await db.insert(coachResources)
+      .values(resource)
+      .returning();
+    return created;
+  }
+
+  async updateCoachResource(id: number, resource: Partial<InsertCoachResource>): Promise<CoachResource | undefined> {
+    const [updated] = await db.update(coachResources)
+      .set({ ...resource, updatedAt: new Date() })
+      .where(eq(coachResources.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCoachResource(id: number): Promise<boolean> {
+    const result = await db.delete(coachResources)
+      .where(eq(coachResources.id, id));
+    return result.rowCount > 0;
   }
 
 }

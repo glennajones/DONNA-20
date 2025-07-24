@@ -1,0 +1,203 @@
+let’s dive into Coach Resources Enhancements!
+We’ll make it so coaches (or admins) can upload and manage forms, PDFs, and videos as resources.
+
+✨ Goal
+Enhance the Coach Resources module to support:
+✅ Drag‑and‑drop uploads for PDFs/videos.
+✅ Organize by category (e.g., “Drills”, “Policies”, “Game Plans”).
+✅ Search/filter resources.
+✅ Store metadata in DB, actual files in /uploads or a cloud bucket.
+
+📦 1. Drizzle Schema Update (shared/schema.ts)
+Let’s create or enhance a coach_resources table:
+
+ts
+Copy
+Edit
+import { pgTable, serial, varchar, text, timestamp, integer } from 'drizzle-orm/pg-core';
+
+export const coach_resources = pgTable('coach_resources', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  category: varchar('category', { length: 100 }).default('General'),
+  file_url: text('file_url').notNull(), // stored path or S3 URL
+  file_type: varchar('file_type', { length: 50 }).notNull(), // pdf, video, etc.
+  uploaded_by: integer('uploaded_by').notNull(), // user_id
+  uploaded_at: timestamp('uploaded_at').defaultNow()
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🛠 2. Backend Routes for Resources
+You need file upload handling.
+If you’re hosting locally, we can use multer for uploads:
+
+Install:
+bash
+Copy
+Edit
+npm install multer
+server/routes/coachResources.ts:
+ts
+Copy
+Edit
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { db } from '../storage';
+import { coach_resources } from '../../shared/schema';
+
+const router = express.Router();
+
+// configure multer to store in /uploads
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// GET resources
+router.get('/', async (req, res) => {
+  const rows = await db.select().from(coach_resources);
+  res.json(rows);
+});
+
+// POST upload
+router.post('/', upload.single('file'), async (req, res) => {
+  const { title, category, uploaded_by } = req.body;
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+  const fileType = path.extname(file.originalname).replace('.', '');
+  const inserted = await db.insert(coach_resources).values({
+    title,
+    category,
+    file_url: `/uploads/${file.filename}`,
+    file_type: fileType,
+    uploaded_by: Number(uploaded_by)
+  }).returning();
+
+  res.json(inserted[0]);
+});
+
+export default router;
+Mount in your server:
+
+ts
+Copy
+Edit
+app.use('/api/coach-resources', require('./routes/coachResources').default);
+app.use('/uploads', express.static('uploads'));
+🎨 3. React UI (src/modules/Admin/CoachResources.jsx)
+Drag-and-drop upload with category selection:
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function CoachResources() {
+  const [resources, setResources] = useState([]);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('General');
+  const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    loadResources();
+  }, []);
+
+  const loadResources = async () => {
+    const res = await axios.get('/api/coach-resources');
+    setResources(res.data);
+  };
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!file) return alert('Please select a file');
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('category', category);
+    formData.append('uploaded_by', 1); // replace with current user id
+    formData.append('file', file);
+
+    await axios.post('/api/coach-resources', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    setTitle('');
+    setCategory('General');
+    setFile(null);
+    loadResources();
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Coach Resources</h2>
+      <form onSubmit={handleUpload} className="space-y-3 mb-6">
+        <input
+          className="border px-3 py-2 rounded w-full"
+          placeholder="Resource Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+        <select
+          className="border px-3 py-2 rounded w-full"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option>General</option>
+          <option>Drills</option>
+          <option>Policies</option>
+          <option>Game Plans</option>
+        </select>
+        <input
+          type="file"
+          className="border px-3 py-2 rounded w-full"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+          Upload
+        </button>
+      </form>
+
+      <table className="min-w-full border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2">Title</th>
+            <th className="border px-3 py-2">Category</th>
+            <th className="border px-3 py-2">Type</th>
+            <th className="border px-3 py-2">File</th>
+          </tr>
+        </thead>
+        <tbody>
+          {resources.map(r => (
+            <tr key={r.id}>
+              <td className="border px-3 py-2">{r.title}</td>
+              <td className="border px-3 py-2">{r.category}</td>
+              <td className="border px-3 py-2">{r.file_type}</td>
+              <td className="border px-3 py-2">
+                <a href={r.file_url} className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">
+                  View
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+✅ What You Get
+✔️ Coaches/Admins can upload PDFs/videos/forms.
+✔️ Files saved in /uploads, metadata in DB.
+✔️ Organized by category with a searchable table UI.
+✔️ Extensible to add delete/edit or cloud storage later.
+

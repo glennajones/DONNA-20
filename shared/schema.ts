@@ -871,6 +871,21 @@ export const userDashboardConfig = pgTable("user_dashboard_config", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Coach Resources Table
+export const coachResources = pgTable("coach_resources", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }).notNull().default("General"),
+  fileUrl: text("file_url").notNull(),
+  fileType: varchar("file_type", { length: 50 }).notNull(),
+  fileSize: integer("file_size"),
+  originalFileName: text("original_file_name"),
+  uploadedBy: integer("uploaded_by").references(() => users.id).notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations for Dashboard Configuration
 export const dashboardWidgetsRelations = relations(dashboardWidgets, ({ many }) => ({
   rolePermissions: many(rolePermissions),
@@ -895,6 +910,14 @@ export const userDashboardConfigRelations = relations(userDashboardConfig, ({ on
   }),
 }));
 
+// Coach Resources Relations
+export const coachResourcesRelations = relations(coachResources, ({ one }) => ({
+  uploadedByUser: one(users, {
+    fields: [coachResources.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
 // Types for Dashboard Configuration
 export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({
   id: true,
@@ -913,10 +936,21 @@ export const insertUserDashboardConfigSchema = createInsertSchema(userDashboardC
   updatedAt: true,
 });
 
+// Coach Resources Schema Types
+export const insertCoachResourceSchema = createInsertSchema(coachResources).omit({
+  id: true,
+  uploadedAt: true,
+  updatedAt: true,
+});
+
 export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
 export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
 export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertUserDashboardConfig = z.infer<typeof insertUserDashboardConfigSchema>;
+export type UserDashboardConfig = typeof userDashboardConfig.$inferSelect;
+export type InsertCoachResource = z.infer<typeof insertCoachResourceSchema>;
+export type CoachResource = typeof coachResources.$inferSelect;
 
 // Message Logs Schema - for tracking communication delivery status
 export const messageLogs = pgTable("message_logs", {

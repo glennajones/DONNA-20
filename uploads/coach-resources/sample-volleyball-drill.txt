@@ -1,0 +1,23 @@
+# Volleyball Coach Resources
+
+## Training Drill: Spike Attack Formation
+
+This document outlines the basic spike attack formation for volleyball teams.
+
+### Setup:
+1. Position setter at front right
+2. Outside hitter at front left  
+3. Middle blocker at front center
+4. Back row players in defensive positions
+
+### Execution:
+1. Pass to setter
+2. Setter delivers to attacker
+3. Attacker spikes cross-court or down the line
+
+### Key Points:
+- Communication is essential
+- Timing is critical
+- Practice proper footwork
+
+This is a sample document for testing the coach resources system.
