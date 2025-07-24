@@ -3706,5 +3706,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  // Permissions Matrix API
+  app.get('/api/permissions', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    try {
+      const permissions = await storage.getPermissionsMatrix();
+      res.json(permissions);
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+      res.status(500).json({ message: 'Failed to fetch permissions' });
+    }
+  });
+
+  app.post('/api/permissions', async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    try {
+      const { permissions } = req.body;
+      await storage.savePermissionsMatrix(permissions);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      res.status(500).json({ message: 'Failed to save permissions' });
+    }
+  });
+
+  // Permission checking helper endpoint
+  app.get('/api/permissions/check/:role/:page/:action', async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    try {
+      const { role, page, action } = req.params;
+      const hasPermission = await storage.checkPermission(role, page, action as 'canView' | 'canEdit' | 'canDelete' | 'canCreate');
+      res.json({ hasPermission });
+    } catch (error) {
+      console.error('Error checking permission:', error);
+      res.status(500).json({ message: 'Failed to check permission' });
+    }
+  });
+
   return httpServer;
 }

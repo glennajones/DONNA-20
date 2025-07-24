@@ -1563,6 +1563,38 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
+  // Permissions Matrix methods
+  async getPermissionsMatrix(): Promise<any[]> {
+    return db.select().from(rolePermissions);
+  }
+
+  async savePermissionsMatrix(permissions: any[]): Promise<void> {
+    // Clear existing permissions and insert new ones
+    await db.delete(rolePermissions);
+    if (permissions.length > 0) {
+      await db.insert(rolePermissions).values(permissions);
+    }
+  }
+
+  async checkPermission(role: string, page: string, action: 'canView' | 'canEdit' | 'canDelete' | 'canCreate'): Promise<boolean> {
+    const result = await db.select()
+      .from(rolePermissions)
+      .where(
+        and(
+          eq(rolePermissions.role, role),
+          eq(rolePermissions.page, page)
+        )
+      )
+      .limit(1);
+    
+    if (result.length === 0) {
+      // Default permissions: admin can do everything, others can only view
+      return role === 'admin' || (action === 'canView' && ['manager', 'coach'].includes(role));
+    }
+    
+    return result[0][action] || false;
+  }
+
 }
 
 export const storage = new DatabaseStorage();

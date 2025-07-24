@@ -855,10 +855,13 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 export const rolePermissions = pgTable("role_permissions", {
   id: serial("id").primaryKey(),
   role: text("role", { enum: ["admin", "manager", "coach", "player", "parent", "staff"] }).notNull(),
-  widgetId: integer("widget_id"), // Remove foreign key constraint for now
+  page: varchar("page", { length: 100 }).notNull(),
   canView: boolean("can_view").notNull().default(false),
-  canManage: boolean("can_manage").notNull().default(false),
+  canEdit: boolean("can_edit").notNull().default(false),
+  canDelete: boolean("can_delete").notNull().default(false),
+  canCreate: boolean("can_create").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const userDashboardConfig = pgTable("user_dashboard_config", {
@@ -901,16 +904,10 @@ export const coachResources = pgTable("coach_resources", {
 
 // Relations for Dashboard Configuration
 export const dashboardWidgetsRelations = relations(dashboardWidgets, ({ many }) => ({
-  rolePermissions: many(rolePermissions),
   userConfigs: many(userDashboardConfig),
 }));
 
-export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
-  widget: one(dashboardWidgets, {
-    fields: [rolePermissions.widgetId],
-    references: [dashboardWidgets.id],
-  }),
-}));
+// Role permissions relations removed since we changed to page-based permissions
 
 export const userDashboardConfigRelations = relations(userDashboardConfig, ({ one }) => ({
   user: one(users, {

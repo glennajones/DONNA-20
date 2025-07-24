@@ -1,0 +1,201 @@
+A Permissions & Visibility Matrix is an awesome addition to your Admin Settings.
+It will let you control who can do what (per page, per feature, or per widget) without hardcoding those rules.
+
+✨ Goal
+✅ Build a matrix UI in Admin Settings to manage permissions per role.
+✅ Store those permissions in your role_permissions table.
+✅ Apply those permissions dynamically in your frontend and backend.
+
+📦 1. Drizzle Schema (already exists but we’ll enhance)
+Your architecture already has a role_permissions table.
+Let’s define it with more detail:
+
+ts
+Copy
+Edit
+import { pgTable, serial, varchar, boolean } from 'drizzle-orm/pg-core';
+
+export const role_permissions = pgTable('role_permissions', {
+  id: serial('id').primaryKey(),
+  role: varchar('role', { length: 50 }).notNull(), // e.g., admin, coach, staff, etc.
+  page: varchar('page', { length: 100 }).notNull(), // e.g., 'events', 'coach_resources'
+  can_view: boolean('can_view').default(false),
+  can_edit: boolean('can_edit').default(false),
+  can_delete: boolean('can_delete').default(false),
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🛠 2. Backend Routes for Role Permissions
+GET /api/permissions
+ts
+Copy
+Edit
+app.get('/api/permissions', async (req, res) => {
+  const data = await db.select().from(role_permissions);
+  res.json(data);
+});
+POST /api/permissions (bulk save matrix)
+ts
+Copy
+Edit
+app.post('/api/permissions', async (req, res) => {
+  const { permissions } = req.body; // array of { role, page, can_view, can_edit, can_delete }
+
+  // Clear and replace (or you can do upserts)
+  await db.delete(role_permissions);
+  await db.insert(role_permissions).values(permissions);
+
+  res.json({ success: true });
+});
+🎨 3. React UI: Admin Permissions Matrix (src/modules/Admin/PermissionsMatrix.jsx)
+A grid where you can toggle view/edit/delete for each page and role:
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const ROLES = ['admin','manager','coach','staff','player','parent'];
+const PAGES = ['events','coach_resources','coach_management','fundraising','performance'];
+
+export default function PermissionsMatrix() {
+  const [matrix, setMatrix] = useState({}); // key: `${role}-${page}` -> {can_view,can_edit,can_delete}
+
+  useEffect(() => {
+    loadPermissions();
+  }, []);
+
+  const loadPermissions = async () => {
+    const res = await axios.get('/api/permissions');
+    const map = {};
+    res.data.forEach(p => {
+      map[`${p.role}-${p.page}`] = {
+        can_view: p.can_view,
+        can_edit: p.can_edit,
+        can_delete: p.can_delete,
+      };
+    });
+    setMatrix(map);
+  };
+
+  const toggle = (role, page, field) => {
+    const key = `${role}-${page}`;
+    setMatrix(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: !prev[key]?.[field] }
+    }));
+  };
+
+  const handleSave = async () => {
+    const payload = [];
+    for (const role of ROLES) {
+      for (const page of PAGES) {
+        const perms = matrix[`${role}-${page}`] || { can_view:false,can_edit:false,can_delete:false };
+        payload.push({ role, page, ...perms });
+      }
+    }
+    await axios.post('/api/permissions', { permissions: payload });
+    alert('✅ Permissions saved!');
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow overflow-x-auto">
+      <h2 className="text-xl font-bold mb-4">Permissions Matrix</h2>
+      <table className="border">
+        <thead>
+          <tr>
+            <th className="border px-3 py-2">Page / Role</th>
+            {ROLES.map(r => (
+              <th key={r} className="border px-3 py-2 capitalize">{r}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {PAGES.map(page => (
+            <tr key={page}>
+              <td className="border px-3 py-2 font-medium">{page}</td>
+              {ROLES.map(role => {
+                const key = `${role}-${page}`;
+                const perms = matrix[key] || {};
+                return (
+                  <td key={key} className="border px-3 py-2">
+                    <div className="flex flex-col space-y-1">
+                      <label className="flex items-center space-x-1">
+                        <input type="checkbox" checked={perms.can_view || false} onChange={() => toggle(role, page, 'can_view')} />
+                        <span>View</span>
+                      </label>
+                      <label className="flex items-center space-x-1">
+                        <input type="checkbox" checked={perms.can_edit || false} onChange={() => toggle(role, page, 'can_edit')} />
+                        <span>Edit</span>
+                      </label>
+                      <label className="flex items-center space-x-1">
+                        <input type="checkbox" checked={perms.can_delete || false} onChange={() => toggle(role, page, 'can_delete')} />
+                        <span>Delete</span>
+                      </label>
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <button onClick={handleSave} className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
+        Save Permissions
+      </button>
+    </div>
+  );
+}
+🔧 4. Applying Permissions in Frontend
+Example in your calendar or coach resources pages:
+
+tsx
+Copy
+Edit
+import { useUser } from '../lib/auth'; // get current user role
+import axios from 'axios';
+
+const { data: perms } = useQuery(['permissions'], () => axios.get('/api/permissions').then(r => r.data));
+const userPerms = perms.find(p => p.role === user.role && p.page === 'coach_resources');
+
+if (!userPerms?.can_view) {
+  return <p>🚫 You do not have permission to view this page.</p>;
+}
+For edit/delete buttons:
+
+tsx
+Copy
+Edit
+{userPerms?.can_edit && <button>Edit</button>}
+{userPerms?.can_delete && <button>Delete</button>}
+🔧 5. Applying Permissions in Backend
+Before processing sensitive routes:
+
+ts
+Copy
+Edit
+async function checkPermission(userRole: string, page: string, action: 'can_view'|'can_edit'|'can_delete') {
+  const rows = await db.select().from(role_permissions).where(role_permissions.role.eq(userRole).and(role_permissions.page.eq(page)));
+  if (rows.length === 0) return false;
+  return rows[0][action];
+}
+
+// Example in an endpoint
+app.post('/api/coach-resources', async (req, res) => {
+  const userRole = req.user.role; // from JWT
+  const allowed = await checkPermission(userRole, 'coach_resources', 'can_edit');
+  if (!allowed) return res.status(403).json({ error: 'Forbidden' });
+  // proceed with upload...
+});
+✅ What You Get
+✔️ A fully dynamic Permissions Matrix UI
+✔️ Backed by role_permissions table
+✔️ Editable at runtime — no hardcoding
+✔️ Enforced in both frontend (hide UI) and backend (secure API)
+

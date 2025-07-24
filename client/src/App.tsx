@@ -25,6 +25,7 @@ import ParentDashboardPage from "./pages/parent-dashboard";
 import AdminSettingsPage from "./pages/admin-settings";
 import AdminDashboardConfigPage from "./pages/admin-dashboard-config";
 import EnhancedCoachManagementPage from "./pages/enhanced-coach-management";
+import PermissionsMatrixPage from "./pages/permissions-matrix";
 import DocumentsPage from "./pages/documents";
 import TVDisplayPage from "./pages/tv-display";
 import SubscribePage from "./pages/subscribe";
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/parent-dashboard" component={ParentDashboardPage} />
       <Route path="/admin-settings" component={AdminSettingsPage} />
       <Route path="/admin-dashboard-config" component={AdminDashboardConfigPage} />
+      <Route path="/permissions-matrix" component={PermissionsMatrixPage} />
       <Route path="/coach-management" component={EnhancedCoachManagementPage} />
       <Route path="/documents" component={DocumentsPage} />
       <Route path="/tv-display" component={TVDisplayPage} />
