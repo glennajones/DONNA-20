@@ -25,6 +25,7 @@ import ParentDashboardPage from "./pages/parent-dashboard";
 import AdminSettingsPage from "./pages/admin-settings";
 import AdminDashboardConfigPage from "./pages/admin-dashboard-config";
 import CoachMatchingPage from "./pages/coach-matching";
+import EnhancedCoachManagementPage from "./pages/enhanced-coach-management";
 import DocumentsPage from "./pages/documents";
 import TVDisplayPage from "./pages/tv-display";
 import SubscribePage from "./pages/subscribe";
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/admin-settings" component={AdminSettingsPage} />
       <Route path="/admin-dashboard-config" component={AdminDashboardConfigPage} />
       <Route path="/coach-matching" component={CoachMatchingPage} />
+      <Route path="/enhanced-coach-management" component={EnhancedCoachManagementPage} />
       <Route path="/documents" component={DocumentsPage} />
       <Route path="/tv-display" component={TVDisplayPage} />
       <Route path="/subscribe" component={SubscribePage} />

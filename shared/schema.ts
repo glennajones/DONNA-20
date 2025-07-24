@@ -592,6 +592,13 @@ export const coaches = pgTable('coaches', {
   location: text('location'),
   hourlyRate: decimal('hourly_rate', { precision: 8, scale: 2 }),
   status: text('status', { enum: ['active', 'inactive', 'unavailable'] }).notNull().default('active'),
+  // Enhanced coaching profile fields
+  experienceYears: integer('experience_years').notNull().default(0),
+  ageGroups: text('age_groups').array().notNull().default([]), // e.g. ['U8','U10','U12','U14','U16','U18']
+  skillLevels: text('skill_levels').array().notNull().default([]), // ['beginner','intermediate','advanced']
+  weeklyAvailability: json('weekly_availability').notNull().default({}), // e.g. { Mon: ['08:00-12:00'], Tue: [] }
+  certifications: text('certifications').array().notNull().default([]), // coaching certifications
+  adminNotes: text('admin_notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

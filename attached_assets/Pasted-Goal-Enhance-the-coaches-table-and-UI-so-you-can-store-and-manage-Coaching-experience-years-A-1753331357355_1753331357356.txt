@@ -1,0 +1,275 @@
+Goal
+Enhance the coaches table and UI so you can store and manage:
+✅ Coaching experience (years)
+✅ Age groups they are comfortable coaching (checkboxes)
+✅ Skill levels (beginner/intermediate/advanced)
+✅ General availability (schedule picker)
+✅ Admin notes
+
+📦 1. Drizzle Schema Update (shared/schema.ts)
+Add fields to coaches table:
+
+ts
+Copy
+Edit
+import { pgTable, serial, varchar, text, integer, jsonb } from 'drizzle-orm/pg-core';
+
+export const coaches = pgTable('coaches', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').notNull(), // relation to users table
+  specialties: text('specialties'),
+  // ✅ New fields
+  experience_years: integer('experience_years').default(0),
+  age_groups: text('age_groups').array().default([]), // e.g. ['U10','U12']
+  skill_levels: text('skill_levels').array().default([]), // ['beginner','intermediate','advanced']
+  availability: jsonb('availability').default({}), // e.g. { mon: ['18:00-20:00'], tue: [] }
+  admin_notes: text('admin_notes'),
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🎨 2. React UI: src/modules/Admin/CoachManagement.jsx
+A page to create/edit coaches with new fields:
+
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const AGE_GROUPS = ['U8','U10','U12','U14','U16','U18'];
+const SKILL_LEVELS = ['beginner','intermediate','advanced'];
+const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+export default function CoachManagement() {
+  const [coaches, setCoaches] = useState([]);
+  const [formData, setFormData] = useState({
+    user_id: '',
+    specialties: '',
+    experience_years: 0,
+    age_groups: [],
+    skill_levels: [],
+    availability: {},
+    admin_notes: ''
+  });
+
+  useEffect(() => {
+    loadCoaches();
+  }, []);
+
+  const loadCoaches = async () => {
+    const res = await axios.get('/api/coaches');
+    setCoaches(res.data);
+  };
+
+  const toggleArrayValue = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].includes(value)
+        ? prev[field].filter(v => v !== value)
+        : [...prev[field], value]
+    }));
+  };
+
+  const updateAvailability = (day, slot) => {
+    setFormData(prev => {
+      const daySlots = prev.availability[day] || [];
+      const updated = daySlots.includes(slot)
+        ? daySlots.filter(s => s !== slot)
+        : [...daySlots, slot];
+      return {
+        ...prev,
+        availability: { ...prev.availability, [day]: updated }
+      };
+    });
+  };
+
+  const handleSave = async () => {
+    await axios.post('/api/coaches', formData);
+    setFormData({
+      user_id: '',
+      specialties: '',
+      experience_years: 0,
+      age_groups: [],
+      skill_levels: [],
+      availability: {},
+      admin_notes: ''
+    });
+    loadCoaches();
+  };
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Coach Management</h2>
+
+      {/* Simple form */}
+      <div className="space-y-3">
+        <input
+          placeholder="User ID"
+          className="border px-3 py-2 rounded w-full"
+          value={formData.user_id}
+          onChange={e => setFormData({ ...formData, user_id: e.target.value })}
+        />
+        <input
+          placeholder="Specialties"
+          className="border px-3 py-2 rounded w-full"
+          value={formData.specialties}
+          onChange={e => setFormData({ ...formData, specialties: e.target.value })}
+        />
+        <input
+          type="number"
+          placeholder="Years of Experience"
+          className="border px-3 py-2 rounded w-full"
+          value={formData.experience_years}
+          onChange={e => setFormData({ ...formData, experience_years: parseInt(e.target.value, 10) })}
+        />
+
+        <div>
+          <p className="font-medium">Age Groups:</p>
+          <div className="flex flex-wrap gap-2">
+            {AGE_GROUPS.map(a => (
+              <label key={a} className="flex items-center space-x-1">
+                <input
+                  type="checkbox"
+                  checked={formData.age_groups.includes(a)}
+                  onChange={() => toggleArrayValue('age_groups', a)}
+                />
+                <span>{a}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-medium">Skill Levels:</p>
+          <div className="flex flex-wrap gap-2">
+            {SKILL_LEVELS.map(s => (
+              <label key={s} className="flex items-center space-x-1">
+                <input
+                  type="checkbox"
+                  checked={formData.skill_levels.includes(s)}
+                  onChange={() => toggleArrayValue('skill_levels', s)}
+                />
+                <span>{s}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-medium">Availability:</p>
+          {WEEKDAYS.map(day => (
+            <div key={day}>
+              <p className="font-semibold">{day}</p>
+              <div className="flex gap-2 flex-wrap">
+                {['08:00-12:00','12:00-16:00','16:00-20:00'].map(slot => (
+                  <label key={slot} className="flex items-center space-x-1">
+                    <input
+                      type="checkbox"
+                      checked={(formData.availability[day] || []).includes(slot)}
+                      onChange={() => updateAvailability(day, slot)}
+                    />
+                    <span>{slot}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <textarea
+          placeholder="Admin Notes"
+          className="border px-3 py-2 rounded w-full"
+          value={formData.admin_notes}
+          onChange={e => setFormData({ ...formData, admin_notes: e.target.value })}
+        />
+
+        <button
+          onClick={handleSave}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Save Coach
+        </button>
+      </div>
+
+      {/* Coach List */}
+      <table className="mt-6 w-full border">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border px-3 py-2">User ID</th>
+            <th className="border px-3 py-2">Specialties</th>
+            <th className="border px-3 py-2">Experience</th>
+            <th className="border px-3 py-2">Age Groups</th>
+            <th className="border px-3 py-2">Skill Levels</th>
+            <th className="border px-3 py-2">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {coaches.map(c => (
+            <tr key={c.id}>
+              <td className="border px-3 py-2">{c.user_id}</td>
+              <td className="border px-3 py-2">{c.specialties}</td>
+              <td className="border px-3 py-2">{c.experience_years} yrs</td>
+              <td className="border px-3 py-2">{c.age_groups.join(', ')}</td>
+              <td className="border px-3 py-2">{c.skill_levels.join(', ')}</td>
+              <td className="border px-3 py-2">{c.admin_notes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+🛠 3. Backend Routes
+GET /api/coaches
+ts
+Copy
+Edit
+app.get('/api/coaches', async (req, res) => {
+  const data = await db.select().from(coaches);
+  res.json(data);
+});
+POST /api/coaches
+ts
+Copy
+Edit
+app.post('/api/coaches', async (req, res) => {
+  const {
+    user_id,
+    specialties,
+    experience_years,
+    age_groups,
+    skill_levels,
+    availability,
+    admin_notes
+  } = req.body;
+
+  const inserted = await db.insert(coaches).values({
+    user_id: Number(user_id),
+    specialties,
+    experience_years: Number(experience_years),
+    age_groups,
+    skill_levels,
+    availability,
+    admin_notes
+  }).returning();
+
+  res.json(inserted[0]);
+});
+✅ Outcome
+✔️ Richer Coach Management with:
+
+Years of experience
+
+Checkboxes for age groups & skill levels
+
+Availability slots
+
+Admin notes
+
+✔️ Full UI to create/edit & list coaches
+✔️ Type-safe DB schema with Drizzle
+✔️ Extendable for filtering/searching later
