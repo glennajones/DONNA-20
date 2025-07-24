@@ -32,6 +32,7 @@ import {
   acknowledgements,
   coachResources,
   coachResourceFolders,
+  coachTimeLogs,
 
   type User, 
   type InsertUser, 
@@ -1593,6 +1594,47 @@ export class DatabaseStorage implements IStorage {
     }
     
     return result[0][action] || false;
+  }
+
+  // Coach Time Logs methods
+  async createCoachTimeLog(timeLogData: InsertCoachTimeLog): Promise<CoachTimeLog> {
+    const [timeLog] = await db.insert(coachTimeLogs).values(timeLogData).returning();
+    return timeLog;
+  }
+
+  async getCoachTimeLogs(): Promise<CoachTimeLog[]> {
+    return db.select().from(coachTimeLogs).orderBy(desc(coachTimeLogs.submittedAt));
+  }
+
+  async getCoachTimeLogsByCoachId(coachId: number): Promise<CoachTimeLog[]> {
+    return db.select()
+      .from(coachTimeLogs)
+      .where(eq(coachTimeLogs.coachId, coachId))
+      .orderBy(desc(coachTimeLogs.submittedAt));
+  }
+
+  async getPendingCoachTimeLogs(): Promise<CoachTimeLog[]> {
+    return db.select()
+      .from(coachTimeLogs)
+      .where(eq(coachTimeLogs.approved, false))
+      .orderBy(desc(coachTimeLogs.submittedAt));
+  }
+
+  async approveCoachTimeLog(id: number, approvedBy: number): Promise<CoachTimeLog | undefined> {
+    const [timeLog] = await db.update(coachTimeLogs)
+      .set({ 
+        approved: true, 
+        approvedAt: new Date(),
+        approvedBy: approvedBy
+      })
+      .where(eq(coachTimeLogs.id, id))
+      .returning();
+    return timeLog || undefined;
+  }
+
+  async deleteCoachTimeLog(id: number): Promise<boolean> {
+    const result = await db.delete(coachTimeLogs).where(eq(coachTimeLogs.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
 }

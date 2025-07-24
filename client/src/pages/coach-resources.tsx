@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, GraduationCap, Home } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/auth";
+import TimeLogForm from "@/modules/Coach/TimeLogForm";
+import TimeLogApproval from "@/modules/Admin/TimeLogApproval";
 
 export default function CoachResourcesPage() {
   const { user } = useAuth();
@@ -61,6 +63,20 @@ export default function CoachResourcesPage() {
         {user?.role === "admin" && (
           <div className="mb-8">
             <AdminApprovals />
+          </div>
+        )}
+
+        {/* Time Log Form Section - For coaches and staff */}
+        {["coach", "staff"].includes(user?.role || "") && (
+          <div className="mb-8">
+            <TimeLogForm />
+          </div>
+        )}
+
+        {/* Time Log Approval Section - Only show for admins and managers */}
+        {["admin", "manager"].includes(user?.role || "") && (
+          <div className="mb-8">
+            <TimeLogApproval />
           </div>
         )}
 

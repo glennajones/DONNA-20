@@ -3887,5 +3887,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach Time Logs routes
+  app.get("/api/coach-time-logs", authenticateToken, async (req: any, res) => {
+    try {
+      // Coaches can only see their own logs, admins/managers can see all
+      if (req.user.role === "coach") {
+        // Get coach ID from coaches table based on user
+        const coaches = await storage.getCoaches();
+        const coach = coaches.find(c => c.name === req.user.name);
+        if (!coach) {
+          return res.status(404).json({ message: "Coach profile not found" });
+        }
+        const logs = await storage.getCoachTimeLogsByCoachId(coach.id);
+        res.json(logs);
+      } else if (["admin", "manager"].includes(req.user.role)) {
+        const logs = await storage.getCoachTimeLogs();
+        res.json(logs);
+      } else {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } catch (error) {
+      console.error("Get coach time logs error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/coach-time-logs/pending", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can view pending logs
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getPendingCoachTimeLogs();
+      res.json(logs);
+    } catch (error) {
+      console.error("Get pending coach time logs error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach-time-logs", authenticateToken, async (req: any, res) => {
+    try {
+      // Only coaches and staff can submit time logs
+      if (!["coach", "staff"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { coachId, date, hours, notes } = req.body;
+
+      if (!coachId || !date || !hours) {
+        return res.status(400).json({ message: "Coach ID, date, and hours are required" });
+      }
+
+      const timeLogData = {
+        coachId: parseInt(coachId),
+        date,
+        hours: parseFloat(hours).toString(),
+        notes: notes || null,
+        approved: false
+      };
+
+      const timeLog = await storage.createCoachTimeLog(timeLogData);
+      res.status(201).json(timeLog);
+    } catch (error) {
+      console.error("Create coach time log error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/coach-time-logs/:id/approve", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can approve time logs
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const timeLog = await storage.approveCoachTimeLog(parseInt(id), req.user.id);
+
+      if (!timeLog) {
+        return res.status(404).json({ message: "Time log not found" });
+      }
+
+      res.json(timeLog);
+    } catch (error) {
+      console.error("Approve coach time log error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/coach-time-logs/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and the coach who submitted can delete
+      if (!["admin", "manager", "coach", "staff"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteCoachTimeLog(parseInt(id));
+
+      if (!success) {
+        return res.status(404).json({ message: "Time log not found" });
+      }
+
+      res.json({ message: "Time log deleted successfully" });
+    } catch (error) {
+      console.error("Delete coach time log error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

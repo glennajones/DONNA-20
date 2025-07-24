@@ -1,0 +1,212 @@
+This will let coaches log their working hours (or automatically track from events) and give admins a dashboard to review and approve.
+
+✨ Goal
+✅ Coaches can submit time entries (date, hours, notes).
+✅ Admins can view, filter, and approve them.
+✅ Data stored in DB (coach_time_logs).
+✅ Type‑safe with Drizzle.
+✅ Simple UI for both coach (input) and admin (approval table).
+
+📦 1. Drizzle Schema Update (shared/schema.ts)
+Add a new table:
+
+ts
+Copy
+Edit
+import { pgTable, serial, integer, timestamp, boolean, text } from 'drizzle-orm/pg-core';
+
+export const coach_time_logs = pgTable('coach_time_logs', {
+  id: serial('id').primaryKey(),
+  coach_id: integer('coach_id').notNull(), // link to coaches table
+  date: timestamp('date').notNull(),
+  hours: integer('hours').notNull(),
+  notes: text('notes'),
+  approved: boolean('approved').default(false),
+  submitted_at: timestamp('submitted_at').defaultNow(),
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🛠 2. Backend Routes (server/routes/coachTimeLogs.ts)
+POST: Coaches submit a time log
+GET: Admins fetch all logs (with filters)
+PUT: Admin approves a log
+
+ts
+Copy
+Edit
+import express from 'express';
+import { db } from '../storage';
+import { coach_time_logs } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const router = express.Router();
+
+// ✅ Get all time logs
+router.get('/', async (req, res) => {
+  const logs = await db.select().from(coach_time_logs);
+  res.json(logs);
+});
+
+// ✅ Post a new time log
+router.post('/', async (req, res) => {
+  const { coach_id, date, hours, notes } = req.body;
+  const inserted = await db.insert(coach_time_logs).values({
+    coach_id: Number(coach_id),
+    date: new Date(date),
+    hours: Number(hours),
+    notes,
+  }).returning();
+  res.json(inserted[0]);
+});
+
+// ✅ Approve a time log
+router.put('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  const updated = await db.update(coach_time_logs)
+    .set({ approved: true })
+    .where(eq(coach_time_logs.id, Number(id)))
+    .returning();
+  res.json(updated[0]);
+});
+
+export default router;
+Mount in server/index.ts:
+
+ts
+Copy
+Edit
+import coachTimeLogsRouter from './routes/coachTimeLogs';
+app.use('/api/coach-time-logs', coachTimeLogsRouter);
+🎨 3. Coach UI: Submit Time Log
+src/modules/Coach/TimeLogForm.jsx
+
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import axios from 'axios';
+
+export default function TimeLogForm({ coachId }) {
+  const [date, setDate] = useState('');
+  const [hours, setHours] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const submitLog = async (e) => {
+    e.preventDefault();
+    await axios.post('/api/coach-time-logs', {
+      coach_id: coachId,
+      date,
+      hours,
+      notes
+    });
+    setDate('');
+    setHours('');
+    setNotes('');
+    alert('✅ Time log submitted!');
+  };
+
+  return (
+    <form onSubmit={submitLog} className="space-y-4 p-4 bg-white rounded shadow">
+      <h2 className="text-lg font-bold">Submit Time Log</h2>
+      <input
+        type="date"
+        className="border rounded px-3 py-2 w-full"
+        value={date}
+        onChange={e => setDate(e.target.value)}
+        required
+      />
+      <input
+        type="number"
+        className="border rounded px-3 py-2 w-full"
+        placeholder="Hours"
+        value={hours}
+        onChange={e => setHours(e.target.value)}
+        required
+      />
+      <textarea
+        className="border rounded px-3 py-2 w-full"
+        placeholder="Notes (optional)"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+      />
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+        Submit
+      </button>
+    </form>
+  );
+}
+🎨 4. Admin UI: Approve Time Logs
+src/modules/Admin/TimeLogApproval.jsx
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function TimeLogApproval() {
+  const [logs, setLogs] = useState([]);
+
+  const loadLogs = async () => {
+    const res = await axios.get('/api/coach-time-logs');
+    setLogs(res.data);
+  };
+
+  const approveLog = async (id) => {
+    await axios.put(`/api/coach-time-logs/${id}/approve`);
+    loadLogs();
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, []);
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Coach Time Logs</h2>
+      <table className="min-w-full border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2">Coach ID</th>
+            <th className="border px-3 py-2">Date</th>
+            <th className="border px-3 py-2">Hours</th>
+            <th className="border px-3 py-2">Notes</th>
+            <th className="border px-3 py-2">Status</th>
+            <th className="border px-3 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map(log => (
+            <tr key={log.id}>
+              <td className="border px-3 py-2">{log.coach_id}</td>
+              <td className="border px-3 py-2">{new Date(log.date).toLocaleDateString()}</td>
+              <td className="border px-3 py-2">{log.hours}</td>
+              <td className="border px-3 py-2">{log.notes}</td>
+              <td className="border px-3 py-2">{log.approved ? '✅ Approved' : '⏳ Pending'}</td>
+              <td className="border px-3 py-2">
+                {!log.approved && (
+                  <button
+                    onClick={() => approveLog(log.id)}
+                    className="bg-green-500 text-white px-3 py-1 rounded"
+                  >
+                    Approve
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+✅ What You Now Have
+✔️ Coaches can submit time logs (date, hours, notes).
+✔️ Admins can review all logs and approve them.
+✔️ All data stored in PostgreSQL with Drizzle migrations.
+✔️ UI built with Tailwind and integrated with backend routes.
+

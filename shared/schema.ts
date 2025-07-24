@@ -1024,3 +1024,27 @@ export type InsertAcknowledgement = z.infer<typeof insertAcknowledgementSchema>;
 export type Acknowledgement = typeof acknowledgements.$inferSelect;
 export type InsertCoachResourceFolder = z.infer<typeof insertCoachResourceFolderSchema>;
 export type CoachResourceFolder = typeof coachResourceFolders.$inferSelect;
+
+// Coach Time Logs Schema
+export const coachTimeLogs = pgTable("coach_time_logs", {
+  id: serial("id").primaryKey(),
+  coachId: integer("coach_id").notNull(), // link to coaches table
+  date: text("date").notNull(), // YYYY-MM-DD format
+  hours: decimal("hours", { precision: 4, scale: 2 }).notNull(), // allow decimal hours like 2.5
+  notes: text("notes"),
+  approved: boolean("approved").default(false),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: integer("approved_by").references(() => users.id),
+});
+
+// Types for Coach Time Logs
+export const insertCoachTimeLogSchema = createInsertSchema(coachTimeLogs).omit({
+  id: true,
+  submittedAt: true,
+  approvedAt: true,
+  approvedBy: true,
+});
+
+export type InsertCoachTimeLog = z.infer<typeof insertCoachTimeLogSchema>;
+export type CoachTimeLog = typeof coachTimeLogs.$inferSelect;
