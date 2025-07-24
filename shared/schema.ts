@@ -297,6 +297,10 @@ export const events = pgTable("events", {
   commMethodOverride: text("comm_method_override", { 
     enum: ["none", "respect_user_pref", "email_only", "sms_only", "groupme_only", "all"] 
   }).default("none"),
+  // Reminder scheduling - array of hours before event to send reminders
+  reminderSchedule: json("reminder_schedule").notNull().default([]),
+  // Require acknowledgement from users
+  acknowledgementsRequired: boolean("acknowledgements_required").notNull().default(false),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -906,5 +910,41 @@ export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
 export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
 export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// Message Logs Schema - for tracking communication delivery status
+export const messageLogs = pgTable("message_logs", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  channel: text("channel", { enum: ["email", "sms", "groupme"] }).notNull(),
+  status: text("status", { enum: ["queued", "sent", "delivered", "failed"] }).notNull().default("queued"),
+  messageId: text("message_id"), // provider message ID for tracking
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  errorMessage: text("error_message"), // store error details if failed
+});
+
+export const insertMessageLogSchema = createInsertSchema(messageLogs).omit({
+  id: true,
+  timestamp: true,
+});
+export type InsertMessageLog = z.infer<typeof insertMessageLogSchema>;
+export type MessageLog = typeof messageLogs.$inferSelect;
+
+// Acknowledgements Schema - for tracking user acknowledgements via magic links
+export const acknowledgements = pgTable("acknowledgements", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => events.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  acknowledgedAt: timestamp("acknowledged_at").defaultNow().notNull(),
+  token: text("token").notNull(), // JWT token used for magic link
+  ipAddress: text("ip_address"), // track IP for security
+});
+
+export const insertAcknowledgementSchema = createInsertSchema(acknowledgements).omit({
+  id: true,
+  acknowledgedAt: true,
+});
+export type InsertAcknowledgement = z.infer<typeof insertAcknowledgementSchema>;
+export type Acknowledgement = typeof acknowledgements.$inferSelect;
 export type InsertUserDashboardConfig = z.infer<typeof insertUserDashboardConfigSchema>;
 export type UserDashboardConfig = typeof userDashboardConfig.$inferSelect;

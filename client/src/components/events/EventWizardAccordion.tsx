@@ -63,7 +63,11 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
     { value: 'groupme_only', label: 'GroupMe Only' },
     { value: 'all', label: 'All Channels' },
   ];
-  const [commMethod, setCommMethod] = useState('none');
+  const [commMethod, setCommMethod] = useState<'none' | 'respect_user_pref' | 'email_only' | 'sms_only' | 'groupme_only' | 'all'>('none');
+
+  // Reminder scheduling and acknowledgements
+  const [reminderSchedule, setReminderSchedule] = useState<number[]>([]);
+  const [acknowledgementsRequired, setAcknowledgementsRequired] = useState(false);
 
   // Resource planning
   const [players, setPlayers] = useState(0);
@@ -122,6 +126,22 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
   const netProfit = projectedRevenue - totalCosts;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper functions for reminder scheduling
+  const addReminderOffset = () => {
+    setReminderSchedule([...reminderSchedule, 24]); // Default to 24 hours before
+  };
+
+  const updateReminderOffset = (index: number, value: number) => {
+    const updated = [...reminderSchedule];
+    updated[index] = value;
+    setReminderSchedule(updated);
+  };
+
+  const removeReminderOffset = (index: number) => {
+    const updated = reminderSchedule.filter((_, i) => i !== index);
+    setReminderSchedule(updated);
+  };
 
   // Court selection handlers
   const toggleCourt = (court: string) => {
@@ -240,7 +260,9 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
           coachRates: JSON.stringify(coachRates.filter(rate => rate.profile)),
           miscExpenses: JSON.stringify(miscExpenses.filter(expense => expense.item)),
           visibleToRoles: visibleToRoles,
-          commMethodOverride: commMethod
+          commMethodOverride: commMethod,
+          reminderSchedule: reminderSchedule,
+          acknowledgementsRequired: acknowledgementsRequired
         };
 
         // Extended payload for communication settings
@@ -276,6 +298,8 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       setMiscExpenses([{ item: "", quantity: 1, cost: 0 }]);
       setVisibleToRoles(ALL_ROLES);
       setCommMethod('none');
+      setReminderSchedule([]);
+      setAcknowledgementsRequired(false);
       setDuplicateEvent(false);
       setRecurringSettings({
         frequency: "weekly",
@@ -777,7 +801,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         Automatically notify users about this event based on role visibility settings.
                       </div>
                       
-                      <Select value={commMethod} onValueChange={setCommMethod}>
+                      <Select value={commMethod} onValueChange={(value: string) => setCommMethod(value as typeof commMethod)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select notification method" />
                         </SelectTrigger>
@@ -801,6 +825,90 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                           <li><strong>All Channels:</strong> Send via all available communication methods</li>
                         </ul>
                       </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Reminder Scheduling & Acknowledgements */}
+              <AccordionItem value="reminders">
+                <AccordionTrigger className="text-left">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <div className="flex items-center gap-2">
+                      <Repeat className="h-4 w-4" />
+                      Reminder Scheduling & Acknowledgements
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-4">
+                  <div className="space-y-4">
+                    {/* Reminder Schedule */}
+                    <div className="space-y-3">
+                      <Label>Reminder Schedule (hours before event)</Label>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Set up automatic reminders to be sent at specific intervals before the event starts.
+                      </div>
+                      
+                      {reminderSchedule.map((offset, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={offset}
+                            onChange={(e) => updateReminderOffset(index, parseInt(e.target.value) || 0)}
+                            className="w-24"
+                            min="1"
+                            placeholder="24"
+                          />
+                          <span className="text-sm text-gray-500">hours before</span>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeReminderOffset(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addReminderOffset}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Reminder
+                      </Button>
+                    </div>
+
+                    {/* Acknowledgement Requirement */}
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="acknowledgements"
+                          checked={acknowledgementsRequired}
+                          onCheckedChange={setAcknowledgementsRequired}
+                        />
+                        <Label htmlFor="acknowledgements" className="font-medium">
+                          Require Acknowledgement
+                        </Label>
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 ml-6">
+                        Include magic links in notifications that allow users to acknowledge receipt of the event details.
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <p className="font-medium mb-1">Reminder Features:</p>
+                      <ul className="space-y-1">
+                        <li><strong>Automated Scheduling:</strong> Reminders are sent automatically based on your schedule</li>
+                        <li><strong>Magic Links:</strong> One-click acknowledgement links for easy user responses</li>
+                        <li><strong>Delivery Tracking:</strong> Monitor message delivery status and user responses</li>
+                        <li><strong>Multiple Reminders:</strong> Set up multiple reminder intervals for better attendance</li>
+                      </ul>
                     </div>
                   </div>
                 </AccordionContent>

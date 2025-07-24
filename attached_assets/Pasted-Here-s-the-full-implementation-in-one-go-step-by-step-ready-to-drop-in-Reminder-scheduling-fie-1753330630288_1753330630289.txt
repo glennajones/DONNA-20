@@ -1,0 +1,243 @@
+Here’s the full implementation in one go, step by step, ready to drop in:
+
+✅ Reminder scheduling fields
+✅ Acknowledgement magic links
+✅ Message logging with status updates
+
+📦 1. Drizzle Schema Updates (shared/schema.ts)
+Add new columns to events and a new message_logs table:
+
+ts
+Copy
+Edit
+import { pgTable, serial, varchar, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
+
+// Events table additions
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  start_time: timestamp('start_time').notNull(),
+  end_time: timestamp('end_time').notNull(),
+  location: varchar('location', { length: 255 }),
+  visible_to_roles: text('visible_to_roles').array().default(['admin','coach','staff','player','parent']),
+  comm_method_override: varchar('comm_method_override', { length: 20 }).default('respect_user_pref'),
+  // ✅ NEW: reminder schedule as JSON (list of offsets in hours)
+  reminder_schedule: jsonb('reminder_schedule').default([]),
+  // ✅ NEW: require acknowledgement?
+  acknowledgements_required: boolean('acknowledgements_required').default(false)
+});
+
+// ✅ NEW: message_logs table
+export const message_logs = pgTable('message_logs', {
+  id: serial('id').primaryKey(),
+  event_id: integer('event_id').notNull(),
+  user_id: integer('user_id').notNull(),
+  channel: varchar('channel', { length: 20 }).notNull(), // email, sms, groupme
+  status: varchar('status', { length: 20 }).notNull(), // queued, sent, delivered, failed
+  timestamp: timestamp('timestamp').defaultNow(),
+  message_id: varchar('message_id', { length: 255 }) // provider message ID
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🎨 2. React EventForm UI
+Add UI for reminder schedule (repeatable offsets) and acknowledgement requirement:
+
+tsx
+Copy
+Edit
+import React, { useState } from 'react';
+
+export default function EventForm({ onSubmit, initialData }) {
+  // existing state…
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>(initialData?.reminder_schedule || []);
+  const [ackRequired, setAckRequired] = useState(initialData?.acknowledgements_required || false);
+
+  const addOffset = () => setReminderOffsets([...reminderOffsets, 0]);
+  const updateOffset = (i: number, val: string) => {
+    const updated = [...reminderOffsets];
+    updated[i] = parseInt(val, 10);
+    setReminderOffsets(updated);
+  };
+  const removeOffset = (i: number) => {
+    const updated = reminderOffsets.filter((_, idx) => idx !== i);
+    setReminderOffsets(updated);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      // existing fields…
+      reminder_schedule: reminderOffsets,
+      acknowledgements_required: ackRequired
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded shadow">
+      {/* existing fields here… */}
+      
+      <div>
+        <label className="block font-medium mb-1">Reminder Schedule (hours before event)</label>
+        {reminderOffsets.map((offset, i) => (
+          <div key={i} className="flex space-x-2 items-center mb-2">
+            <input
+              type="number"
+              className="border rounded px-3 py-2"
+              value={offset}
+              onChange={(e) => updateOffset(i, e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => removeOffset(i)}
+              className="bg-red-500 text-white px-2 py-1 rounded"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addOffset}
+          className="bg-green-500 text-white px-3 py-1 rounded"
+        >
+          + Add Reminder
+        </button>
+      </div>
+
+      <label className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          checked={ackRequired}
+          onChange={e => setAckRequired(e.target.checked)}
+        />
+        <span>Require Acknowledgement</span>
+      </label>
+
+      {/* existing comm method + send toggles… */}
+      <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Save Event</button>
+    </form>
+  );
+}
+🛠 3. Backend Enhancements
+Save reminder schedule & acknowledgements in POST /api/events:
+ts
+Copy
+Edit
+const { reminder_schedule, acknowledgements_required } = req.body;
+const inserted = await db.insert(events).values({
+  // existing fields…
+  reminder_schedule,
+  acknowledgements_required
+}).returning();
+Magic Links for Acknowledgement
+✅ Generate a JWT or signed token per user & event:
+
+ts
+Copy
+Edit
+import jwt from 'jsonwebtoken';
+
+function buildMagicLink(userId: number, eventId: number): string {
+  const token = jwt.sign({ userId, eventId }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+  return `${process.env.APP_URL}/acknowledge?token=${token}`;
+}
+Include this link in emails:
+
+ts
+Copy
+Edit
+const link = buildMagicLink(user.id, newEvent.id);
+html: `<p>Click to acknowledge: <a href="${link}">${link}</a></p>`
+Acknowledgement Endpoint
+ts
+Copy
+Edit
+app.get('/api/events/acknowledge', async (req, res) => {
+  const { token } = req.query;
+  try {
+    const payload = jwt.verify(token as string, process.env.JWT_SECRET!) as { userId: number; eventId: number };
+    // store in acks table or update registrations
+    await db.insert(acknowledgements).values({ user_id: payload.userId, event_id: payload.eventId, acknowledged_at: new Date() });
+    res.send('✅ Acknowledged. Thank you!');
+  } catch (err) {
+    res.status(400).send('Invalid or expired link.');
+  }
+});
+(You’d need to define an acknowledgements table similarly to message_logs.)
+
+Scheduled Reminders
+Use a cron job to check events and reminder offsets:
+
+ts
+Copy
+Edit
+import cron from 'node-cron';
+
+cron.schedule('* * * * *', async () => {
+  const now = new Date();
+  const upcomingEvents = await db.select().from(events);
+  for (const ev of upcomingEvents) {
+    for (const offset of ev.reminder_schedule) {
+      const targetTime = new Date(ev.start_time);
+      targetTime.setHours(targetTime.getHours() - offset);
+      if (
+        now.getFullYear() === targetTime.getFullYear() &&
+        now.getMonth() === targetTime.getMonth() &&
+        now.getDate() === targetTime.getDate() &&
+        now.getHours() === targetTime.getHours() &&
+        now.getMinutes() === targetTime.getMinutes()
+      ) {
+        // 🚀 Trigger send logic (reuse your notification function)
+        await sendRemindersForEvent(ev);
+      }
+    }
+  }
+});
+Message Logs & Status
+On each send:
+
+ts
+Copy
+Edit
+const logId = await db.insert(message_logs).values({
+  event_id: newEvent.id,
+  user_id: user.id,
+  channel: 'email',
+  status: 'queued',
+  message_id: providerMessageId
+}).returning();
+SendGrid & Twilio webhooks:
+
+Configure webhook endpoints like /api/webhooks/sendgrid and /api/webhooks/twilio
+
+Update message_logs.status on delivery/failure.
+
+Example webhook handler:
+
+ts
+Copy
+Edit
+app.post('/api/webhooks/sendgrid', async (req, res) => {
+  const events = req.body; // SendGrid posts array of events
+  for (const ev of events) {
+    await db.update(message_logs)
+      .set({ status: ev.event }) // delivered, bounce, etc.
+      .where(eq(message_logs.message_id, ev.sg_message_id));
+  }
+  res.sendStatus(200);
+});
+✅ What You Now Have
+✔️ Admins can set reminder times & require acknowledgements.
+✔️ Magic links included in messages let users acknowledge easily.
+✔️ Cron job sends reminders at scheduled offsets.
+✔️ Every message logged in message_logs, with delivery status updated via webhooks.
+
+🚀 Next Steps
+✅ Integrate these new UI elements in your Event creation page.
+✅ Add the cron job to your backend service.
+✅ Configure SendGrid/Twilio webhooks in your environment.

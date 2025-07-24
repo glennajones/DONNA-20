@@ -16,7 +16,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-06-30.basil",
 });
 
 // Configure multer for PDF uploads
@@ -1198,7 +1198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sendEmailNotifications || sendSMSNotifications) {
         try {
           // Import communication service
-          const { sendEventNotifications } = await import('../utils/communicationService');
+          const { sendEventNotifications, scheduleEventReminders } = await import('./utils/communicationService');
           
           // Get users who should receive notifications based on event visibility
           const eligibleUsers = await storage.getUsersByRoles(event.visibleToRoles || []);
@@ -1218,11 +1218,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               commMethodOverride: event.commMethodOverride || 'respect_user_pref',
               sendEmailNotifications: !!sendEmailNotifications,
               sendSMSNotifications: !!sendSMSNotifications
-            }).then(result => {
+            }).then((result: any) => {
               console.log(`Event notifications sent for "${event.name}": ${result.sent} messages, ${result.errors.length} errors`);
-            }).catch(error => {
+            }).catch((error: any) => {
               console.error('Failed to send event notifications:', error);
             });
+
+            // Schedule reminders if configured
+            if (event.reminderSchedule && event.reminderSchedule !== 'none') {
+              scheduleEventReminders(event, notifiableUsers).then((result: any) => {
+                console.log(`Reminders scheduled for "${event.name}": ${result.scheduled} users`);
+              }).catch((error: any) => {
+                console.error('Failed to schedule reminders:', error);
+              });
+            }
           } else {
             console.log(`No eligible users found for event notifications: ${event.name}`);
           }
@@ -1335,6 +1344,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete event error:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Magic Link Acknowledgement Routes
+  app.get('/acknowledge', async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).send('<h1>Invalid or missing acknowledgement token</h1>');
+      }
+
+      // Import and verify the magic link token
+      const { verifyMagicLinkToken } = await import('./utils/magicLinks');
+      const payload = verifyMagicLinkToken(token);
+      
+      if (!payload) {
+        return res.status(400).send('<h1>Invalid or expired acknowledgement link</h1>');
+      }
+
+      // Check if already acknowledged
+      const existingAck = await storage.getAcknowledgementByToken(token);
+      if (existingAck) {
+        return res.send(`
+          <html>
+            <head><title>Already Acknowledged</title></head>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+              <h1 style="color: #059669;">✅ Already Acknowledged</h1>
+              <p>You have already acknowledged this event notification.</p>
+              <p><strong>Acknowledged on:</strong> ${existingAck.acknowledgedAt.toLocaleString()}</p>
+            </body>
+          </html>
+        `);
+      }
+
+      // Create acknowledgement record
+      await storage.createAcknowledgement({
+        eventId: payload.eventId,
+        userId: payload.userId,
+        token: token
+      });
+
+      // Get event details for confirmation
+      const event = await storage.getEvent(payload.eventId);
+      const eventName = event?.name || 'Event';
+
+      res.send(`
+        <html>
+          <head><title>Acknowledgement Confirmed</title></head>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
+            <h1 style="color: #059669;">✅ Acknowledgement Confirmed</h1>
+            <p>Thank you for acknowledging the event notification for:</p>
+            <h2 style="color: #1f2937;">${eventName}</h2>
+            <p>Your acknowledgement has been recorded successfully.</p>
+            <p><em>You can now close this window.</em></p>
+          </body>
+        </html>
+      `);
+
+    } catch (error) {
+      console.error('Acknowledgement error:', error);
+      res.status(500).send('<h1>Internal server error</h1>');
+    }
+  });
+
+  // Webhook for delivery status updates (SendGrid, Twilio, etc.)
+  app.post('/api/webhook/delivery-status', async (req, res) => {
+    try {
+      const { messageId, status, provider } = req.body;
+      
+      if (!messageId || !status || !provider) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Update message log status
+      await storage.updateMessageLogByMessageId(messageId, status);
+      
+      console.log(`Delivery status updated: ${messageId} -> ${status} (${provider})`);
+      res.json({ success: true });
+
+    } catch (error) {
+      console.error('Webhook delivery status error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // API endpoint to get message logs for an event
+  app.get('/api/events/:eventId/message-logs', authenticateToken, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      
+      // Only admins and managers can view message logs
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const logs = await storage.getMessageLogsByEvent(eventId);
+      res.json(logs);
+
+    } catch (error) {
+      console.error('Get message logs error:', error);
+      res.status(500).json({ error: 'Failed to fetch message logs' });
+    }
+  });
+
+  // API endpoint to get acknowledgements for an event
+  app.get('/api/events/:eventId/acknowledgements', authenticateToken, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      
+      // Only admins and managers can view acknowledgements
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const acknowledgements = await storage.getAcknowledgementsByEvent(eventId);
+      res.json(acknowledgements);
+
+    } catch (error) {
+      console.error('Get acknowledgements error:', error);
+      res.status(500).json({ error: 'Failed to fetch acknowledgements' });
     }
   });
 

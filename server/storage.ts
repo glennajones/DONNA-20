@@ -28,6 +28,8 @@ import {
   documentAuditLogs,
   rolePermissions,
   dashboardWidgets,
+  messageLogs,
+  acknowledgements,
 
   type User, 
   type InsertUser, 
@@ -85,6 +87,10 @@ import {
   type InsertRolePermission,
   type DashboardWidget,
   type InsertDashboardWidget,
+  type MessageLog,
+  type InsertMessageLog,
+  type Acknowledgement,
+  type InsertAcknowledgement,
   eventRegistrations,
 
 } from "@shared/schema";
@@ -262,6 +268,17 @@ export interface IStorage {
   getRolePermissions(role: string): Promise<RolePermission[]>;
   updateRolePermission(role: string, widgetId: number, canView: boolean, canManage: boolean): Promise<RolePermission>;
   createDefaultRolePermission(permission: InsertRolePermission): Promise<RolePermission>;
+
+  // Message Logs methods
+  createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
+  updateMessageLogStatus(id: number, status: MessageLog['status'], errorMessage?: string): Promise<MessageLog | undefined>;
+  getMessageLogsByEvent(eventId: number): Promise<MessageLog[]>;
+  updateMessageLogByMessageId(messageId: string, status: MessageLog['status']): Promise<void>;
+
+  // Acknowledgements methods
+  createAcknowledgement(ack: InsertAcknowledgement): Promise<Acknowledgement>;
+  getAcknowledgementsByEvent(eventId: number): Promise<Acknowledgement[]>;
+  getAcknowledgementByToken(token: string): Promise<Acknowledgement | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -311,6 +328,10 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.getUser(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -1378,6 +1399,54 @@ export class DatabaseStorage implements IStorage {
 
   async getActiveSubscribers(): Promise<User[]> {
     return await db.select().from(users).where(eq(users.subscriptionStatus, "active"));
+  }
+
+  // Message Logs methods
+  async createMessageLog(log: InsertMessageLog): Promise<MessageLog> {
+    const [created] = await db.insert(messageLogs)
+      .values(log)
+      .returning();
+    return created;
+  }
+
+  async updateMessageLogStatus(id: number, status: MessageLog['status'], errorMessage?: string): Promise<MessageLog | undefined> {
+    const [updated] = await db.update(messageLogs)
+      .set({ status, errorMessage })
+      .where(eq(messageLogs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getMessageLogsByEvent(eventId: number): Promise<MessageLog[]> {
+    return await db.select().from(messageLogs)
+      .where(eq(messageLogs.eventId, eventId))
+      .orderBy(desc(messageLogs.timestamp));
+  }
+
+  async updateMessageLogByMessageId(messageId: string, status: MessageLog['status']): Promise<void> {
+    await db.update(messageLogs)
+      .set({ status })
+      .where(eq(messageLogs.messageId, messageId));
+  }
+
+  // Acknowledgements methods
+  async createAcknowledgement(ack: InsertAcknowledgement): Promise<Acknowledgement> {
+    const [created] = await db.insert(acknowledgements)
+      .values(ack)
+      .returning();
+    return created;
+  }
+
+  async getAcknowledgementsByEvent(eventId: number): Promise<Acknowledgement[]> {
+    return await db.select().from(acknowledgements)
+      .where(eq(acknowledgements.eventId, eventId))
+      .orderBy(desc(acknowledgements.acknowledgedAt));
+  }
+
+  async getAcknowledgementByToken(token: string): Promise<Acknowledgement | undefined> {
+    const [acknowledgement] = await db.select().from(acknowledgements)
+      .where(eq(acknowledgements.token, token));
+    return acknowledgement;
   }
 
 }
