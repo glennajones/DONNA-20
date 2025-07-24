@@ -539,13 +539,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newTime = startDate.toTimeString().slice(0, 5); // HH:MM
       const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)); // minutes
 
-      // Get existing event to check court
-      const existingEvent = await storage.getScheduleEvent(parseInt(id));
+      let existingEvent;
+      let isEventFromEventsTable = false;
+
+      // First try to find in scheduleEvents table
+      try {
+        existingEvent = await storage.getScheduleEvent(parseInt(id));
+      } catch (error) {
+        // Event not found in scheduleEvents, try events table
+      }
+
+      // If not found in scheduleEvents, try events table
+      if (!existingEvent) {
+        try {
+          existingEvent = await storage.getEvent(parseInt(id));
+          isEventFromEventsTable = true;
+        } catch (error) {
+          // Event not found in either table
+        }
+      }
+
       if (!existingEvent) {
         return res.status(404).json({ message: "Event not found" });
       }
 
-      // Check for conflicts at the new time
+      // For events without courts (personal events), allow rescheduling without conflict check
+      if (!existingEvent.court || existingEvent.court === 'Personal') {
+        const updateData = {
+          date: newDate,
+          time: newTime,
+          duration: duration
+        };
+
+        let updatedEvent;
+        if (isEventFromEventsTable) {
+          updatedEvent = await storage.updateEvent(parseInt(id), updateData);
+        } else {
+          updatedEvent = await storage.updateScheduleEvent(parseInt(id), updateData);
+        }
+
+        if (!updatedEvent) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        return res.json({ success: true, event: updatedEvent });
+      }
+
+      // For court-based events, check for conflicts
       const hasConflict = await storage.checkScheduleConflict(
         existingEvent.court,
         newDate,
@@ -562,11 +602,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update the event
-      const updatedEvent = await storage.updateScheduleEvent(parseInt(id), {
+      const updateData = {
         date: newDate,
         time: newTime,
         duration: duration
-      });
+      };
+
+      let updatedEvent;
+      if (isEventFromEventsTable) {
+        updatedEvent = await storage.updateEvent(parseInt(id), updateData);
+      } else {
+        updatedEvent = await storage.updateScheduleEvent(parseInt(id), updateData);
+      }
 
       if (!updatedEvent) {
         return res.status(404).json({ message: "Event not found" });
