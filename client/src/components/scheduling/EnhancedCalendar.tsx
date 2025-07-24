@@ -102,8 +102,8 @@ export default function EnhancedCalendar({ initialView = "timeGridWeek" }: Enhan
     }
   });
 
-  // Filter events by type
-  const filteredEvents = events
+  // Filter events by type - ensure events is always an array
+  const filteredEvents = (events || [])
     .filter((event: ScheduleEvent) => 
       filterType === "all" || event.eventType === filterType
     )
