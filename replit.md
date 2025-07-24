@@ -296,9 +296,35 @@ Preferred communication style: Simple, everyday language.
 
 The application is designed to be easily deployable to platforms like Replit, with proper separation of concerns and environment-specific configurations.
 
+## Recent Changes (July 24, 2025)
+
+### Role-Based Event Visibility for Personal Calendar (Latest)
+- **Implemented comprehensive role-based event visibility system** allowing admins to control which user roles see each event
+- **Added visibleToRoles field** to events database schema with proper array type support
+- **Enhanced EventWizardAccordion** with role selector UI supporting all user roles (admin, manager, coach, staff, player, parent)
+- **Created QuickEventForm component** for rapid personal event creation (haircuts, meetings, appointments) with visibility controls
+- **Updated schedule API filtering** to include personal events without assigned courts while maintaining role-based access
+- **Fixed calendar display logic** to show personal events with location instead of court name
+- **Integrated QuickEventForm into admin dashboard** for easy access to personal calendar functionality
+
+#### Technical Implementation
+- Updated events table schema with `visible_to_roles` text array field
+- Modified `/api/schedule` endpoint to filter events by user role using `visibleToRoles.includes(req.user.role)`
+- Enhanced event filtering logic to include personal events (no courts) alongside court-based volleyball events
+- Created reusable role selector component with checkboxes and quick action buttons
+- Added personal event mapping logic showing location field when no courts assigned
+- Implemented proper TypeScript types and database integration for role-based filtering
+
+#### User Experience
+- Admin dashboard now includes "Personal Calendar" widget with QuickEventForm
+- Personal events like "Haircut" appear on Training & Scheduling calendar with proper visibility controls
+- Role-based filtering ensures users only see events intended for their role
+- Quick creation workflow: name + date required, time/location optional, role visibility customizable
+- Events display appropriately on calendar regardless of whether they use courts or not
+
 ## Recent Changes (July 22, 2025)
 
-### Hybrid Payment System Implementation (Latest)
+### Hybrid Payment System Implementation
 - **Implemented Stripe integration** with dual payment model for event registration
 - **Added subscription management** to users table with Stripe customer and subscription tracking
 - **Created hybrid pricing logic** where subscribers get free access to regular training events
