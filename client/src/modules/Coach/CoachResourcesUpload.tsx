@@ -64,7 +64,13 @@ interface CoachResource {
   updatedAt: string;
 }
 
-export default function CoachResourcesUpload() {
+interface CoachResourcesUploadProps {
+  onUploadSuccess?: () => void;
+  currentFolderId?: number;
+  currentFolderName?: string;
+}
+
+export default function CoachResourcesUpload({ onUploadSuccess, currentFolderId, currentFolderName }: CoachResourcesUploadProps = {}) {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,16 +81,21 @@ export default function CoachResourcesUpload() {
     title: "",
     description: "",
     category: "General",
-    file: null as File | null
+    file: null as File | null,
+    folderId: currentFolderId || null
   });
   const [editingResource, setEditingResource] = useState<CoachResource | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Fetch coach resources
   const { data: resources = [], isLoading, error } = useQuery({
-    queryKey: ['/api/coach-resources', selectedCategory],
+    queryKey: ['/api/coach-resources', selectedCategory, currentFolderId],
     queryFn: async () => {
-      const response = await fetch(`/api/coach-resources?category=${selectedCategory}`, {
+      const params = new URLSearchParams();
+      if (selectedCategory !== 'all') params.append('category', selectedCategory);
+      if (currentFolderId) params.append('folderId', currentFolderId.toString());
+      
+      const response = await fetch(`/api/coach-resources?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -296,7 +296,35 @@ Preferred communication style: Simple, everyday language.
 
 The application is designed to be easily deployable to platforms like Replit, with proper separation of concerns and environment-specific configurations.
 
-## Recent Changes (July 24, 2025)
+## Recent Changes (July 24, 2025) - Latest
+
+### Hierarchical Folder System for Coach Resources (Latest)
+- **Implemented comprehensive folder management system** allowing admins to create and organize coach resources hierarchically
+- **Added coach_resource_folders database table** with support for parent-child folder relationships and categorization
+- **Created FolderManager component** with full CRUD operations for folder creation, editing, and deletion
+- **Enhanced CoachResourcesUpload component** with folder assignment capabilities during file upload
+- **Integrated breadcrumb navigation** showing current folder path with easy navigation back to root
+- **Updated API endpoints** with complete folder support:
+  - GET/POST/PUT/DELETE `/api/coach-resource-folders` for folder management
+  - Enhanced `/api/coach-resources` with `folderId` parameter for folder-based file organization
+- **Role-based folder permissions** where admin/manager can create folders, all roles can navigate and view
+- **Practice Library integration** continues to work seamlessly, showing practice drills regardless of folder organization
+
+#### Technical Implementation
+- Database schema includes `coach_resource_folders` table with recursive parent-child relationships
+- Storage layer includes methods for folder hierarchy management and cascading deletion
+- CoachResourcesUpload now accepts `folderId` parameter for folder-specific file uploads
+- Folder navigation with state management for current folder context
+- API routes support both category and folder-based resource filtering
+
+#### User Experience Improvements
+- **Folder Organization**: Admins can create folders like "Beginner Drills", "Advanced Techniques", "Tournament Prep"
+- **Visual Navigation**: Clear folder icons and breadcrumb navigation for easy folder traversal
+- **Contextual Uploads**: Files uploaded within a folder automatically belong to that folder
+- **Practice Library Continuity**: Practice drills appear in Practice Library regardless of folder structure
+- **Intuitive Interface**: Click folders to navigate, breadcrumbs to go back, clear folder vs file distinction
+
+## Recent Changes (July 24, 2025) - Earlier
 
 ### Automated Communications Enhancement for Event UI (Latest)
 - **Implemented comprehensive automated communications system** for event notifications with method override controls

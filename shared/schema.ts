@@ -871,12 +871,25 @@ export const userDashboardConfig = pgTable("user_dashboard_config", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Coach Resources Table
+// Coach Resource Folders Table  
+export const coachResourceFolders = pgTable("coach_resource_folders", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  parentId: integer("parent_id"),
+  category: varchar("category", { length: 100 }).notNull().default("General"),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Coach Resources Table (Enhanced with folder support)
 export const coachResources = pgTable("coach_resources", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   category: varchar("category", { length: 100 }).notNull().default("General"),
+  folderId: integer("folder_id").references(() => coachResourceFolders.id),
   fileUrl: text("file_url").notNull(),
   fileType: varchar("file_type", { length: 50 }).notNull(),
   fileSize: integer("file_size"),
@@ -910,11 +923,29 @@ export const userDashboardConfigRelations = relations(userDashboardConfig, ({ on
   }),
 }));
 
+// Coach Resource Folders Relations
+export const coachResourceFoldersRelations = relations(coachResourceFolders, ({ one, many }) => ({
+  parent: one(coachResourceFolders, {
+    fields: [coachResourceFolders.parentId],
+    references: [coachResourceFolders.id],
+  }),
+  children: many(coachResourceFolders),
+  resources: many(coachResources),
+  createdByUser: one(users, {
+    fields: [coachResourceFolders.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Coach Resources Relations
 export const coachResourcesRelations = relations(coachResources, ({ one }) => ({
   uploadedByUser: one(users, {
     fields: [coachResources.uploadedBy],
     references: [users.id],
+  }),
+  folder: one(coachResourceFolders, {
+    fields: [coachResources.folderId],
+    references: [coachResourceFolders.id],
   }),
 }));
 
@@ -931,6 +962,13 @@ export const insertRolePermissionSchema = createInsertSchema(rolePermissions).om
 });
 
 export const insertUserDashboardConfigSchema = createInsertSchema(userDashboardConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Coach Resource Folders Schema Types
+export const insertCoachResourceFolderSchema = createInsertSchema(coachResourceFolders).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -987,5 +1025,5 @@ export const insertAcknowledgementSchema = createInsertSchema(acknowledgements).
 });
 export type InsertAcknowledgement = z.infer<typeof insertAcknowledgementSchema>;
 export type Acknowledgement = typeof acknowledgements.$inferSelect;
-export type InsertUserDashboardConfig = z.infer<typeof insertUserDashboardConfigSchema>;
-export type UserDashboardConfig = typeof userDashboardConfig.$inferSelect;
+export type InsertCoachResourceFolder = z.infer<typeof insertCoachResourceFolderSchema>;
+export type CoachResourceFolder = typeof coachResourceFolders.$inferSelect;

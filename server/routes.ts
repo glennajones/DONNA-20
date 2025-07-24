@@ -3424,7 +3424,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Coach Resources API endpoints
+  // Coach Resource Folders API endpoints
+  app.get("/api/coach-resource-folders", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager", "coach", "staff"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { parentId, category } = req.query;
+      let folders;
+      
+      if (category && category !== 'all') {
+        folders = await storage.getCoachResourceFoldersByCategory(category);
+      } else if (parentId) {
+        folders = await storage.getCoachResourceFolders(parseInt(parentId));
+      } else {
+        folders = await storage.getCoachResourceFolders();
+      }
+
+      res.json(folders);
+    } catch (error) {
+      console.error("Failed to fetch coach resource folders:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/coach-resource-folders", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { name, description, parentId, category } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: "Folder name is required" });
+      }
+
+      const folder = await storage.createCoachResourceFolder({
+        name,
+        description: description || null,
+        parentId: parentId || null,
+        category: category || 'General',
+        createdBy: req.user.userId
+      });
+
+      res.status(201).json(folder);
+    } catch (error) {
+      console.error("Failed to create coach resource folder:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/coach-resource-folders/:id", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const folderId = parseInt(req.params.id);
+      const { name, description, category } = req.body;
+
+      const folder = await storage.getCoachResourceFolder(folderId);
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+
+      const updated = await storage.updateCoachResourceFolder(folderId, {
+        name,
+        description,
+        category
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update coach resource folder:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/coach-resource-folders/:id", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const folderId = parseInt(req.params.id);
+      const folder = await storage.getCoachResourceFolder(folderId);
+      
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+
+      const deleted = await storage.deleteCoachResourceFolder(folderId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete folder" });
+      }
+
+      res.json({ message: "Folder and all contents deleted successfully" });
+    } catch (error) {
+      console.error("Failed to delete coach resource folder:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Coach Resources API endpoints (Enhanced with folder support)
   app.get("/api/coach-resources", authenticateToken, async (req: any, res) => {
     try {
       // Only coaches, managers, and admins can access resources
@@ -3432,10 +3536,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { category } = req.query;
+      const { category, folderId } = req.query;
       let resources;
       
-      if (category && category !== 'all') {
+      if (folderId && folderId !== 'null') {
+        resources = await storage.getCoachResourcesByFolder(parseInt(folderId));
+      } else if (category && category !== 'all') {
         resources = await storage.getCoachResourcesByCategory(category);
       } else {
         resources = await storage.getCoachResources();
@@ -3455,7 +3561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { title, description, category } = req.body;
+      const { title, description, category, folderId } = req.body;
       const file = req.file;
 
       if (!file) {
@@ -3471,6 +3577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title,
         description: description || null,
         category: category || 'General',
+        folderId: folderId ? parseInt(folderId) : null,
         fileUrl: `/uploads/coach-resources/${file.filename}`,
         fileType,
         fileSize: file.size,
@@ -3493,7 +3600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const resourceId = parseInt(req.params.id);
-      const { title, description, category } = req.body;
+      const { title, description, category, folderId } = req.body;
 
       const resource = await storage.getCoachResource(resourceId);
       if (!resource) {
@@ -3508,7 +3615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updated = await storage.updateCoachResource(resourceId, {
         title,
         description,
-        category
+        category,
+        folderId: folderId ? parseInt(folderId) : null
       });
 
       res.json(updated);

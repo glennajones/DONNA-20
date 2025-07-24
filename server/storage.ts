@@ -31,6 +31,7 @@ import {
   messageLogs,
   acknowledgements,
   coachResources,
+  coachResourceFolders,
 
   type User, 
   type InsertUser, 
@@ -94,6 +95,8 @@ import {
   type InsertAcknowledgement,
   type CoachResource,
   type InsertCoachResource,
+  type CoachResourceFolder,
+  type InsertCoachResourceFolder,
   eventRegistrations,
 
 } from "@shared/schema";
@@ -1460,21 +1463,82 @@ export class DatabaseStorage implements IStorage {
     return acknowledgement;
   }
 
-  // Coach Resources methods
+  // Coach Resource Folders methods
+  async getCoachResourceFolder(id: number): Promise<CoachResourceFolder | undefined> {
+    const [folder] = await db.select().from(coachResourceFolders)
+      .where(eq(coachResourceFolders.id, id));
+    return folder;
+  }
+
+  async getCoachResourceFolders(parentId?: number): Promise<CoachResourceFolder[]> {
+    if (parentId === undefined) {
+      return await db.select().from(coachResourceFolders)
+        .where(sql`${coachResourceFolders.parentId} IS NULL`)
+        .orderBy(coachResourceFolders.name);
+    }
+    return await db.select().from(coachResourceFolders)
+      .where(eq(coachResourceFolders.parentId, parentId))
+      .orderBy(coachResourceFolders.name);
+  }
+
+  async getCoachResourceFoldersByCategory(category: string): Promise<CoachResourceFolder[]> {
+    return await db.select().from(coachResourceFolders)
+      .where(eq(coachResourceFolders.category, category))
+      .orderBy(coachResourceFolders.name);
+  }
+
+  async createCoachResourceFolder(folder: InsertCoachResourceFolder): Promise<CoachResourceFolder> {
+    const [created] = await db.insert(coachResourceFolders)
+      .values(folder)
+      .returning();
+    return created;
+  }
+
+  async updateCoachResourceFolder(id: number, folder: Partial<InsertCoachResourceFolder>): Promise<CoachResourceFolder | undefined> {
+    const [updated] = await db.update(coachResourceFolders)
+      .set({ ...folder, updatedAt: new Date() })
+      .where(eq(coachResourceFolders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCoachResourceFolder(id: number): Promise<boolean> {
+    // First delete all resources in this folder
+    await db.delete(coachResources)
+      .where(eq(coachResources.folderId, id));
+    
+    // Then delete the folder
+    const result = await db.delete(coachResourceFolders)
+      .where(eq(coachResourceFolders.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Coach Resources methods (Enhanced with folder support)
   async getCoachResource(id: number): Promise<CoachResource | undefined> {
     const [resource] = await db.select().from(coachResources)
       .where(eq(coachResources.id, id));
     return resource;
   }
 
-  async getCoachResources(): Promise<CoachResource[]> {
+  async getCoachResources(folderId?: number): Promise<CoachResource[]> {
+    if (folderId === undefined) {
+      return await db.select().from(coachResources)
+        .orderBy(desc(coachResources.uploadedAt));
+    }
     return await db.select().from(coachResources)
+      .where(eq(coachResources.folderId, folderId))
       .orderBy(desc(coachResources.uploadedAt));
   }
 
   async getCoachResourcesByCategory(category: string): Promise<CoachResource[]> {
     return await db.select().from(coachResources)
       .where(eq(coachResources.category, category))
+      .orderBy(desc(coachResources.uploadedAt));
+  }
+
+  async getCoachResourcesByFolder(folderId: number): Promise<CoachResource[]> {
+    return await db.select().from(coachResources)
+      .where(eq(coachResources.folderId, folderId))
       .orderBy(desc(coachResources.uploadedAt));
   }
 
