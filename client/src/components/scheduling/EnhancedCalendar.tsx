@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -35,15 +35,24 @@ const getEventTypeColor = (eventType: string) => {
 interface EnhancedCalendarProps {
   initialView?: "dayGridMonth" | "timeGridWeek" | "timeGridDay";
   searchQuery?: string;
+  targetDate?: string | null;
 }
 
-export default function EnhancedCalendar({ initialView = "timeGridWeek", searchQuery = "" }: EnhancedCalendarProps) {
+export default function EnhancedCalendar({ initialView = "timeGridWeek", searchQuery = "", targetDate }: EnhancedCalendarProps) {
   const [filterType, setFilterType] = useState("all");
   const [isDragging, setIsDragging] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Navigate to target date when provided
+  useEffect(() => {
+    if (targetDate && calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.gotoDate(targetDate);
+    }
+  }, [targetDate]);
 
   // Fetch schedule events
   const { data: response, isLoading, error } = useQuery<{events: ScheduleEvent[]}>({

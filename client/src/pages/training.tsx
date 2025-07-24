@@ -12,14 +12,26 @@ import EnhancedCalendar from "@/components/scheduling/EnhancedCalendar";
 import CourtManager from "@/components/scheduling/CourtManager";
 import SearchEventsTab from "@/components/scheduling/SearchEventsTab";
 import { useAuth } from "@/lib/auth";
+import { ScheduleEvent } from "@shared/schema";
 import { Monitor, ExternalLink, Calendar, Filter, Search } from "lucide-react";
 
 export default function TrainingPage() {
   const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
   const [calendarMode, setCalendarMode] = useState<"classic" | "enhanced">("enhanced");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("calendar");
+  const [targetDate, setTargetDate] = useState<string | null>(null);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  const handleEventClick = (event: ScheduleEvent) => {
+    // Switch to calendar tab and set the target date
+    setActiveTab("calendar");
+    setTargetDate(event.date);
+    
+    // Clear target date after a short delay to allow calendar to navigate
+    setTimeout(() => setTargetDate(null), 1000);
+  };
 
   return (
     <ProtectedRoute requiredRoles={["admin", "manager", "coach", "player", "parent"]}>
@@ -37,7 +49,7 @@ export default function TrainingPage() {
           </div>
 
           <div className="px-4 sm:px-0">
-            <Tabs defaultValue="calendar" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-3" : "grid-cols-2"}`}>
                 <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
                 <TabsTrigger value="search">🔍 Search Events</TabsTrigger>
@@ -115,14 +127,22 @@ export default function TrainingPage() {
 
                 {/* Calendar Component */}
                 {calendarMode === "enhanced" ? (
-                  <EnhancedCalendar initialView="timeGridWeek" />
+                  <EnhancedCalendar 
+                    initialView="timeGridWeek" 
+                    targetDate={targetDate}
+                    key={targetDate ? `enhanced-${targetDate}` : 'enhanced'} 
+                  />
                 ) : (
-                  <CalendarView viewType={viewType} />
+                  <CalendarView 
+                    viewType={viewType} 
+                    targetDate={targetDate}
+                    key={targetDate ? `classic-${targetDate}` : 'classic'} 
+                  />
                 )}
               </TabsContent>
 
               <TabsContent value="search" className="space-y-4">
-                <SearchEventsTab />
+                <SearchEventsTab onEventClick={handleEventClick} />
               </TabsContent>
               
               {user?.role && ["admin", "manager", "coach"].includes(user.role) && (

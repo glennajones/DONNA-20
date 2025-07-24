@@ -29,7 +29,11 @@ const getEventColor = (eventType: string) => {
   return colorMap[eventType] || "#56A0D3";
 };
 
-export default function SearchEventsTab() {
+interface SearchEventsTabProps {
+  onEventClick?: (event: ScheduleEvent) => void;
+}
+
+export default function SearchEventsTab({ onEventClick }: SearchEventsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const { user } = useAuth();
@@ -213,7 +217,13 @@ export default function SearchEventsTab() {
                               className="w-3 h-3 rounded-full" 
                               style={{ backgroundColor: getEventColor(event.eventType || 'Practice') }}
                             />
-                            <h3 className="font-semibold text-lg">{event.title}</h3>
+                            <h3 
+                              className="font-semibold text-lg text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer transition-colors"
+                              onClick={() => onEventClick?.(event)}
+                              title="Click to view in calendar"
+                            >
+                              {event.title}
+                            </h3>
                             {event.eventType && (
                               <Badge 
                                 variant="outline" 

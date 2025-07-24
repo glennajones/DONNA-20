@@ -37,9 +37,10 @@ const getEventColorHover = (eventType: string) => {
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
   searchQuery?: string;
+  targetDate?: string | null;
 }
 
-export default function CalendarView({ viewType, searchQuery = "" }: CalendarViewProps) {
+export default function CalendarView({ viewType, searchQuery = "", targetDate }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
@@ -50,6 +51,14 @@ export default function CalendarView({ viewType, searchQuery = "" }: CalendarVie
   useEffect(() => {
     setDateRange(getDateRange(viewType, currentDate));
   }, [viewType, currentDate]);
+
+  // Navigate to target date when provided
+  useEffect(() => {
+    if (targetDate) {
+      const newDate = new Date(targetDate);
+      setCurrentDate(newDate);
+    }
+  }, [targetDate]);
 
   const navigatePrevious = () => {
     const newDate = new Date(currentDate);
