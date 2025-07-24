@@ -1,6 +1,5 @@
-import { db } from '../db';
-import { events, scheduleEvents } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { storage } from '../storage';
+import { eq, sql } from 'drizzle-orm';
 
 export interface NextDayEventsResult {
   courtEvents: any[];
@@ -18,25 +17,23 @@ export async function getNextDayEvents(adminId: number): Promise<NextDayEventsRe
 
   try {
     // Get Events (from Events & Budgeting system) for tomorrow
-    const eventResults = await db.select().from(events).where(
-      eq(events.date, tomorrowDateStr)
-    );
+    const allEvents = await storage.getEvents();
+    const eventResults = allEvents.filter(event => event.start_date === tomorrowDateStr);
 
     // Separate court events and personal events
     const courtEvents = eventResults.filter(event => 
-      ['Practice', 'Tournament', 'Camp', 'Team Camp'].includes(event.eventType) &&
+      ['Practice', 'Tournament', 'Camp', 'Team Camp'].includes(event.eventType || '') &&
       event.location && event.location.trim() !== ''
     );
 
     const personalEvents = eventResults.filter(event => 
-      ['Social'].includes(event.eventType) ||
+      ['Social'].includes(event.eventType || '') ||
       (event.createdBy === adminId && (!event.location || event.location.trim() === ''))
     );
 
     // Get Schedule Events (from Training & Scheduling system) for tomorrow
-    const scheduleResults = await db.select().from(scheduleEvents).where(
-      eq(scheduleEvents.date, tomorrowDateStr)
-    );
+    const allScheduleEvents = await storage.getScheduleEvents();
+    const scheduleResults = allScheduleEvents.filter(event => event.date === tomorrowDateStr);
 
     return {
       courtEvents,
