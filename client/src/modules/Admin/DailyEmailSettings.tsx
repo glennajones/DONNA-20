@@ -35,7 +35,8 @@ export default function DailyEmailSettings() {
   const loadSettings = async () => {
     setIsLoadingSettings(true);
     try {
-      const settings = await apiRequest(`/api/admin-settings/${user?.id}`);
+      const response = await apiRequest(`/api/admin-settings/${user?.id}`);
+      const settings = await response.json();
       setDailyEmailEnabled(settings.dailyEmailEnabled);
       setDailyEmailTime(settings.dailyEmailTime?.slice(0, 5) || '18:00');
     } catch (error: any) {
@@ -52,7 +53,7 @@ export default function DailyEmailSettings() {
   const saveSettings = async () => {
     setIsSavingSettings(true);
     try {
-      await apiRequest('/api/admin-settings', {
+      const response = await apiRequest('/api/admin-settings', {
         method: 'POST',
         body: JSON.stringify({
           adminId: user?.id,
@@ -61,10 +62,12 @@ export default function DailyEmailSettings() {
         })
       });
       
-      toast({
-        title: "Settings Saved",
-        description: "Your daily email preferences have been updated successfully",
-      });
+      if (response.ok) {
+        toast({
+          title: "Settings Saved",
+          description: "Your daily email preferences have been updated successfully",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Save Failed",
@@ -80,11 +83,20 @@ export default function DailyEmailSettings() {
     setIsTestingEmail(true);
     try {
       const response = await apiRequest('/api/admin/daily-email/test');
-      setTestResults(response);
-      toast({
-        title: "Email Template Generated",
-        description: `Found ${response.eventCounts.courtEvents + response.eventCounts.personalEvents + response.eventCounts.scheduleEvents} events for tomorrow`,
-      });
+      const data = await response.json();
+      setTestResults(data);
+      
+      if (data.eventCounts) {
+        toast({
+          title: "Email Template Generated",
+          description: `Found ${data.eventCounts.courtEvents + data.eventCounts.personalEvents + data.eventCounts.scheduleEvents} events for tomorrow`,
+        });
+      } else {
+        toast({
+          title: "Email Template Generated",
+          description: "Preview generated successfully",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Test Failed",
@@ -102,13 +114,21 @@ export default function DailyEmailSettings() {
       const response = await apiRequest('/api/admin/daily-email/trigger', {
         method: 'POST',
       });
-      setTriggerResults(response);
+      const data = await response.json();
+      setTriggerResults(data);
       
-      const successCount = response.results.filter((r: any) => r.status === 'sent').length;
-      toast({
-        title: "Emails Sent",
-        description: `Successfully sent daily emails to ${successCount} admin(s)`,
-      });
+      if (data.results) {
+        const successCount = data.results.filter((r: any) => r.status === 'sent').length;
+        toast({
+          title: "Emails Sent",
+          description: `Successfully sent daily emails to ${successCount} admin(s)`,
+        });
+      } else {
+        toast({
+          title: "Emails Triggered",
+          description: "Email trigger process completed",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Send Failed",
