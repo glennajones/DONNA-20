@@ -34,9 +34,10 @@ const getEventTypeColor = (eventType: string) => {
 
 interface EnhancedCalendarProps {
   initialView?: "dayGridMonth" | "timeGridWeek" | "timeGridDay";
+  searchQuery?: string;
 }
 
-export default function EnhancedCalendar({ initialView = "timeGridWeek" }: EnhancedCalendarProps) {
+export default function EnhancedCalendar({ initialView = "timeGridWeek", searchQuery = "" }: EnhancedCalendarProps) {
   const [filterType, setFilterType] = useState("all");
   const [isDragging, setIsDragging] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
@@ -102,11 +103,26 @@ export default function EnhancedCalendar({ initialView = "timeGridWeek" }: Enhan
     }
   });
 
-  // Filter events by type - ensure events is always an array
+  // Filter events by type and search query - ensure events is always an array
   const filteredEvents = (events || [])
-    .filter((event: ScheduleEvent) => 
-      filterType === "all" || event.eventType === filterType
-    )
+    .filter((event: ScheduleEvent) => {
+      // Type filter
+      const typeMatch = filterType === "all" || event.eventType === filterType;
+      
+      // Search filter
+      let searchMatch = true;
+      if (searchQuery?.trim()) {
+        const query = searchQuery.toLowerCase();
+        searchMatch = 
+          event.title?.toLowerCase().includes(query) ||
+          event.coach?.toLowerCase().includes(query) ||
+          event.court?.toLowerCase().includes(query) ||
+          event.eventType?.toLowerCase().includes(query) ||
+          event.description?.toLowerCase().includes(query);
+      }
+      
+      return typeMatch && searchMatch;
+    })
     .map((event: ScheduleEvent) => {
       // Create proper start and end datetime strings
       const startDateTime = `${event.date}T${event.time}:00`;

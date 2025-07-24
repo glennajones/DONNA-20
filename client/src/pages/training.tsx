@@ -4,16 +4,19 @@ import Navbar from "@/components/layout/Navbar";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
 import CalendarView from "@/components/scheduling/CalendarView";
 import EnhancedCalendar from "@/components/scheduling/EnhancedCalendar";
 import CourtManager from "@/components/scheduling/CourtManager";
 import { useAuth } from "@/lib/auth";
-import { Monitor, ExternalLink, Calendar, Filter } from "lucide-react";
+import { Monitor, ExternalLink, Calendar, Filter, Search } from "lucide-react";
 
 export default function TrainingPage() {
   const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
   const [calendarMode, setCalendarMode] = useState<"classic" | "enhanced">("enhanced");
+  const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -42,6 +45,26 @@ export default function TrainingPage() {
               </TabsList>
               
               <TabsContent value="calendar" className="space-y-4">
+                {/* Search Bar */}
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Search events by title, coach, court, or event type..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    {searchQuery && (
+                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        Searching for "{searchQuery}" in calendar events
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-6">
                     {/* Calendar Mode Toggle */}
@@ -110,9 +133,9 @@ export default function TrainingPage() {
 
                 {/* Calendar Component */}
                 {calendarMode === "enhanced" ? (
-                  <EnhancedCalendar initialView="timeGridWeek" />
+                  <EnhancedCalendar initialView="timeGridWeek" searchQuery={searchQuery} />
                 ) : (
-                  <CalendarView viewType={viewType} />
+                  <CalendarView viewType={viewType} searchQuery={searchQuery} />
                 )}
               </TabsContent>
               

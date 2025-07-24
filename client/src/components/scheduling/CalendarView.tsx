@@ -36,9 +36,10 @@ const getEventColorHover = (eventType: string) => {
 
 interface CalendarViewProps {
   viewType: "day" | "week" | "month";
+  searchQuery?: string;
 }
 
-export default function CalendarView({ viewType }: CalendarViewProps) {
+export default function CalendarView({ viewType, searchQuery = "" }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
@@ -96,7 +97,21 @@ export default function CalendarView({ viewType }: CalendarViewProps) {
     },
   });
 
-  const events = scheduleData?.events || [];
+  const allEvents = scheduleData?.events || [];
+  
+  // Filter events based on search query
+  const events = searchQuery?.trim() 
+    ? allEvents.filter((event: ScheduleEvent) => {
+        const query = searchQuery.toLowerCase();
+        return (
+          event.title?.toLowerCase().includes(query) ||
+          event.coach?.toLowerCase().includes(query) ||
+          event.court?.toLowerCase().includes(query) ||
+          event.eventType?.toLowerCase().includes(query) ||
+          event.description?.toLowerCase().includes(query)
+        );
+      })
+    : allEvents;
 
   // Available courts: 7 indoor + 2 beach
   const courts = [
