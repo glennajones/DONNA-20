@@ -236,6 +236,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
       
       const eventDates = generateRecurringDates();
       const createdEvents = [];
+      let parentEventId = null;
 
       for (let i = 0; i < eventDates.length; i++) {
         const { startDate, endDate } = eventDates[i];
@@ -262,7 +263,10 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
           visibleToRoles: visibleToRoles,
           commMethodOverride: commMethod,
           reminderSchedule: reminderSchedule,
-          acknowledgementsRequired: acknowledgementsRequired
+          acknowledgementsRequired: acknowledgementsRequired,
+          isRecurring: duplicateEvent && eventDates.length > 1,
+          parentEventId: i === 0 ? null : parentEventId,
+          recurringData: duplicateEvent && eventDates.length > 1 ? JSON.stringify(recurringSettings) : null
         };
 
         // Extended payload for communication settings
@@ -272,10 +276,15 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
           sendSMSNotifications: commMethod !== 'none' && (commMethod === 'sms_only' || commMethod === 'respect_user_pref' || commMethod === 'all')
         };
 
-        await apiRequest("/api/events", {
+        const response = await apiRequest("/api/events", {
           method: "POST",
           body: JSON.stringify(extendedPayload),
-        });
+        }) as any;
+        
+        // For recurring events, set the first event as the parent for subsequent events
+        if (i === 0 && duplicateEvent && eventDates.length > 1) {
+          parentEventId = response.id;
+        }
         
         createdEvents.push(eventName);
       }
@@ -890,7 +899,7 @@ export function EventWizardAccordion({ onComplete }: { onComplete?: () => void }
                         <Checkbox
                           id="acknowledgements"
                           checked={acknowledgementsRequired}
-                          onCheckedChange={setAcknowledgementsRequired}
+                          onCheckedChange={(checked) => setAcknowledgementsRequired(checked === true)}
                         />
                         <Label htmlFor="acknowledgements" className="font-medium">
                           Require Acknowledgement

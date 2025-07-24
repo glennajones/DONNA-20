@@ -732,6 +732,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(events).orderBy(desc(events.createdAt));
   }
 
+  async getEventsByParentId(parentId: number): Promise<Event[]> {
+    return await db.select().from(events)
+      .where(or(eq(events.id, parentId), eq(events.parentEventId, parentId)))
+      .orderBy(desc(events.createdAt));
+  }
+
   async createEvent(insertEvent: InsertEvent): Promise<Event> {
     const [event] = await db
       .insert(events)

@@ -1,0 +1,116 @@
+Now you’ve asked for the ability to edit all events in a recurring series OR just a single instance.
+Let’s tackle that with a fresh, integrated solution that works seamlessly with your existing event system.
+
+✨ High‑Level Plan
+✅ Extend your backend to handle:
+
+PUT /api/events/:id with a mode flag:
+"single" (only update this event)
+"series" (update all events with the same parent_event_id or the parent itself)
+
+✅ Add UI controls in the existing Edit Event modal/panel:
+
+When an event with is_recurring is being edited, show a toggle:
+
+Apply changes to: (● This event only / ○ Entire series)
+
+✅ Integrate with existing Pusher channels so updates to multiple events propagate in real time.
+
+🗄 Backend: Edit Single vs. Series
+In your Express route:
+
+ts
+Copy
+Edit
+// PUT /api/events/:id
+router.put('/:id', async (req, res) => {
+  const { mode, ...updates } = req.body; // mode = 'single' | 'series'
+  const eventId = Number(req.params.id);
+
+  if (mode === 'series') {
+    // find parent id
+    const [ev] = await db.select().from(events).where(eq(events.id, eventId));
+    const parentId = ev.parent_event_id || ev.id;
+    // update all in series
+    await db.update(events)
+      .set(updates)
+      .where(or(eq(events.id, parentId), eq(events.parent_event_id, parentId)));
+    // (optional) broadcast a generic series-updated event
+    await pusher.trigger('events', 'event.seriesUpdated', { parentId, updates });
+    res.json({ updatedSeries: true });
+  } else {
+    // single instance only
+    await db.update(events).set(updates).where(eq(events.id, eventId));
+    await pusher.trigger('events', 'event.updated', { id: eventId, ...updates });
+    res.json({ updatedSingle: true });
+  }
+});
+🎨 Frontend: Editing Mode
+Wherever you open an edit modal or inline editor for an event (for example, in the CourtGridDnD.jsx inline editing section or your dedicated Edit modal):
+
+jsx
+Copy
+Edit
+{ev.is_recurring && (
+  <div className="mb-2">
+    <label className="font-semibold text-sm block mb-1">Apply changes to:</label>
+    <div className="flex gap-4">
+      <label className="flex items-center gap-1">
+        <input type="radio" name="editMode" value="single" checked={editMode==='single'} onChange={()=>setEditMode('single')} />
+        This event only
+      </label>
+      <label className="flex items-center gap-1">
+        <input type="radio" name="editMode" value="series" checked={editMode==='series'} onChange={()=>setEditMode('series')} />
+        Entire series
+      </label>
+    </div>
+  </div>
+)}
+👉 Add const [editMode, setEditMode] = useState('single');
+
+When saving:
+
+jsx
+Copy
+Edit
+await axios.put(`/api/events/${editId}`, {
+  mode: editMode, // 'single' or 'series'
+  title: editTitle,
+  type: editType,
+  start_time: newStart.toISOString(),
+  end_time: newEnd.toISOString()
+});
+🏗 Inline Editing or Modal Editing
+✔️ This logic works for:
+
+✅ Your inline DnD grid editing (just add the radio buttons above Save/Cancel)
+
+✅ Your full “Edit Event” modal (likely in your event details page)
+
+✅ Real‑time updates
+Your Pusher handlers already listen to:
+
+event.updated for single events
+👉 Add one more for event.seriesUpdated:
+
+jsx
+Copy
+Edit
+channel.bind('event.seriesUpdated', data => {
+  setEvents(prev => prev.map(e =>
+    (e.id === data.parentId || e.parent_event_id === data.parentId)
+      ? { ...e, ...data.updates }
+      : e
+  ));
+});
+🔥 What this gives you
+✔️ Edit a single instance in a recurring series (adjust just that day).
+✔️ Edit the entire series (apply changes to all instances, including parent).
+✔️ Works with your Create Event UI’s recurrence system.
+✔️ All updates are live with Pusher.
+
+✨ Next Steps
+✅ Add the radio‑button control into whichever UI you use to edit events.
+✅ Implement the backend logic above (or let me know and I’ll code the Express route file for you).
+✅ Done! 🎉
+

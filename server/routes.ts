@@ -1423,6 +1423,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PUT route for updating events (single or series)
+  app.put("/api/events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins, managers, and coaches can edit events
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { mode, ...updates } = req.body; // mode = 'single' | 'series'
+      const eventId = parseInt(req.params.id);
+
+      if (mode === 'series') {
+        // Find parent event and update all events in the series
+        const event = await storage.getEvent(eventId);
+        if (!event) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        const parentId = event.parentEventId || event.id;
+        
+        // Update all events in the series (parent and children)
+        const seriesEvents = await storage.getEventsByParentId(parentId);
+        const updatedEvents = [];
+
+        for (const seriesEvent of seriesEvents) {
+          const updatedEvent = await storage.updateEvent(seriesEvent.id, updates);
+          if (updatedEvent) {
+            updatedEvents.push(updatedEvent);
+          }
+        }
+
+        // Trigger Pusher notification for series update
+        try {
+          const pusher = await import('pusher');
+          const pusherClient = new pusher.default({
+            appId: process.env.PUSHER_APP_ID || "",
+            key: process.env.PUSHER_KEY || "",
+            secret: process.env.PUSHER_SECRET || "",
+            cluster: process.env.PUSHER_CLUSTER || "us2",
+            useTLS: true
+          });
+          
+          await pusherClient.trigger('events', 'event.seriesUpdated', { 
+            parentId, 
+            updates, 
+            updatedCount: updatedEvents.length 
+          });
+        } catch (pusherError) {
+          console.warn("Failed to send Pusher notification:", pusherError);
+        }
+
+        res.json({ 
+          message: `Updated ${updatedEvents.length} events in series`,
+          updatedSeries: true,
+          events: updatedEvents
+        });
+      } else {
+        // Update single event only
+        const updatedEvent = await storage.updateEvent(eventId, updates);
+        
+        if (!updatedEvent) {
+          return res.status(404).json({ message: "Event not found" });
+        }
+
+        // Trigger Pusher notification for single event update
+        try {
+          const pusher = await import('pusher');
+          const pusherClient = new pusher.default({
+            appId: process.env.PUSHER_APP_ID || "",
+            key: process.env.PUSHER_KEY || "",
+            secret: process.env.PUSHER_SECRET || "",
+            cluster: process.env.PUSHER_CLUSTER || "us2",
+            useTLS: true
+          });
+          
+          await pusherClient.trigger('events', 'event.updated', { 
+            id: eventId, 
+            ...updatedEvent 
+          });
+        } catch (pusherError) {
+          console.warn("Failed to send Pusher notification:", pusherError);
+        }
+
+        res.json({ 
+          message: "Event updated successfully",
+          updatedSingle: true,
+          event: updatedEvent
+        });
+      }
+    } catch (error) {
+      console.error("Update event error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.put("/api/events/:id", authenticateToken, async (req: any, res) => {
     try {
       // Only admins and managers can update events

@@ -33,6 +33,7 @@ export function EventList() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [actualRevenue, setActualRevenue] = useState<number>(0);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showEditModeDialog, setShowEditModeDialog] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Event>>({});
   const [enableRecurring, setEnableRecurring] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,10 +106,11 @@ export function EventList() {
   });
 
   const updateEvent = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Event> }) => {
+    mutationFn: async ({ id, data, mode }: { id: number; data: Partial<Event>; mode?: 'single' | 'series' }) => {
+      const payload = mode ? { ...data, mode } : data;
       const response = await apiRequest(`/api/events/${id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       return response as Event;
     },
@@ -196,7 +198,14 @@ export function EventList() {
       miscExpenses: miscExpenses,
     });
     setEditingEvent(event);
-    setShowEditDialog(true);
+    
+    // Check if this is a recurring event (has parentEventId or isRecurring)
+    if (event.isRecurring || event.parentEventId) {
+      setShowEditModeDialog(true);
+    } else {
+      setShowEditDialog(true);
+    }
+    
     setEnableRecurring(false);
     setRecurringSettings({
       frequency: "weekly",
@@ -204,6 +213,14 @@ export function EventList() {
       endDate: "",
       occurrences: 1,
     });
+  };
+
+  // Handle edit mode selection (single vs series)
+  const handleEditModeSelection = (mode: 'single' | 'series') => {
+    setShowEditModeDialog(false);
+    setShowEditDialog(true);
+    // Store the edit mode for use in save handler
+    setEditFormData(prev => ({ ...prev, editMode: mode }));
   };
 
   // Helper function to generate recurring event dates
@@ -327,10 +344,12 @@ export function EventList() {
             description: `Created ${eventDates.length} recurring events`,
           });
         } else {
-          // Regular single event update
+          // Regular single event update or recurring series update based on edit mode
+          const editMode = (editFormData as any).editMode;
           updateEvent.mutate({
             id: editingEvent.id,
-            data: editFormData
+            data: editFormData,
+            mode: editMode
           });
         }
       } catch (error) {
@@ -487,7 +506,12 @@ export function EventList() {
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="space-y-1">
-                      <h3 className="text-xl font-semibold">{event.name}</h3>
+                      <h3 className="text-xl font-semibold flex items-center gap-2">
+                        {event.name}
+                        {(event.isRecurring || event.parentEventId) && (
+                          <Repeat className="h-4 w-4 text-blue-600" title="Recurring Event" />
+                        )}
+                      </h3>
                       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
@@ -1215,6 +1239,60 @@ export function EventList() {
                   ? `Update & Create ${recurringSettings.occurrences} Event${recurringSettings.occurrences !== 1 ? 's' : ''}` 
                   : "Save Changes"
               }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Mode Selection Dialog for Recurring Events */}
+      <Dialog open={showEditModeDialog} onOpenChange={setShowEditModeDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Repeat className="h-5 w-5" />
+              Edit Recurring Event
+            </DialogTitle>
+            <DialogDescription>
+              This event is part of a recurring series. Choose how you'd like to edit it.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4"
+                onClick={() => handleEditModeSelection('single')}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Edit this event only</div>
+                  <div className="text-sm text-gray-500">
+                    Changes will only apply to "{editingEvent?.name}" on {editingEvent?.startDate}
+                  </div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4"
+                onClick={() => handleEditModeSelection('series')}
+              >
+                <div className="text-left">
+                  <div className="font-semibold">Edit entire series</div>
+                  <div className="text-sm text-gray-500">
+                    Changes will apply to all events in this recurring series
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditModeDialog(false)}
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

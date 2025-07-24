@@ -301,6 +301,10 @@ export const events = pgTable("events", {
   reminderSchedule: json("reminder_schedule").notNull().default([]),
   // Require acknowledgement from users
   acknowledgementsRequired: boolean("acknowledgements_required").notNull().default(false),
+  // Recurring event support
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  parentEventId: integer("parent_event_id"), // references parent event for recurring series
+  recurringData: json("recurring_data").default(null), // stores frequency, daysOfWeek, etc.
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
