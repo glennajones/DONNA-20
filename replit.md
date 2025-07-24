@@ -298,7 +298,33 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 24, 2025)
 
-### Role-Based Event Visibility for Personal Calendar (Latest)
+### Automated Communications Enhancement for Event UI (Latest)
+- **Implemented comprehensive automated communications system** for event notifications with method override controls
+- **Added communication method override field** to events database schema with enum options (none, respect_user_pref, email_only, sms_only, groupme_only, all)
+- **Enhanced EventWizardAccordion** with simplified communication settings accordion section
+- **Created professional email template utility** (eventEmailTemplate.ts) for automated event notifications
+- **Built communication service** with SendGrid and Twilio integration for email/SMS automation
+- **Enhanced POST /api/events route** to handle automated notifications with role-based targeting and asynchronous sending
+- **Added getUsersByRoles method** to storage for targeted messaging based on event visibility settings
+- **Added phone and communication preference fields** to users table for multi-channel support
+
+#### Technical Implementation
+- Updated events table schema with `comm_method_override` enum field defaulting to "none"
+- Added phone and communicationPreference fields to users table with enum options
+- Created `getUsersByRoles()` storage method for role-based user filtering
+- Enhanced `/api/events` POST endpoint with automated notification logic
+- Built reusable communication service supporting multiple channels (email, SMS, GroupMe mock)
+- Implemented professional email templates with event details and branding
+
+#### User Experience
+- Single unified "Event Notifications" dropdown replacing duplicate communication controls
+- Options: No Notifications (default), Respect User Preferences, Email Only, SMS Only, GroupMe Only, All Channels
+- Eliminates confusion between notification toggles and method override settings
+- Automatic role-based targeting ensures only intended users receive notifications
+- Asynchronous notification sending prevents blocking during event creation
+- Professional email templates provide comprehensive event information
+
+### Role-Based Event Visibility for Personal Calendar
 - **Implemented comprehensive role-based event visibility system** allowing admins to control which user roles see each event
 - **Added visibleToRoles field** to events database schema with proper array type support
 - **Enhanced EventWizardAccordion** with role selector UI supporting all user roles (admin, manager, coach, staff, player, parent)

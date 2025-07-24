@@ -295,8 +295,8 @@ export const events = pgTable("events", {
   visibleToRoles: text("visible_to_roles").array().notNull().default(['admin', 'manager', 'coach', 'staff', 'player', 'parent']),
   // Communication method override for automated notifications
   commMethodOverride: text("comm_method_override", { 
-    enum: ["respect_user_pref", "email_only", "sms_only", "groupme_only", "all"] 
-  }).default("respect_user_pref"),
+    enum: ["none", "respect_user_pref", "email_only", "sms_only", "groupme_only", "all"] 
+  }).default("none"),
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
