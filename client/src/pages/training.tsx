@@ -10,6 +10,7 @@ import { DashboardNav } from "@/components/ui/dashboard-nav";
 import CalendarView from "@/components/scheduling/CalendarView";
 import EnhancedCalendar from "@/components/scheduling/EnhancedCalendar";
 import CourtManager from "@/components/scheduling/CourtManager";
+import SearchEventsTab from "@/components/scheduling/SearchEventsTab";
 import { useAuth } from "@/lib/auth";
 import { Monitor, ExternalLink, Calendar, Filter, Search } from "lucide-react";
 
@@ -37,34 +38,15 @@ export default function TrainingPage() {
 
           <div className="px-4 sm:px-0">
             <Tabs defaultValue="calendar" className="w-full">
-              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-2" : "grid-cols-1"}`}>
+              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-3" : "grid-cols-2"}`}>
                 <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
+                <TabsTrigger value="search">🔍 Search Events</TabsTrigger>
                 {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
                   <TabsTrigger value="courts">🏟️ Court Manager</TabsTrigger>
                 )}
               </TabsList>
               
               <TabsContent value="calendar" className="space-y-4">
-                {/* Search Bar */}
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        placeholder="Search events by title, coach, court, or event type..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    {searchQuery && (
-                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Searching for "{searchQuery}" in calendar events
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-6">
                     {/* Calendar Mode Toggle */}
@@ -133,10 +115,14 @@ export default function TrainingPage() {
 
                 {/* Calendar Component */}
                 {calendarMode === "enhanced" ? (
-                  <EnhancedCalendar initialView="timeGridWeek" searchQuery={searchQuery} />
+                  <EnhancedCalendar initialView="timeGridWeek" />
                 ) : (
-                  <CalendarView viewType={viewType} searchQuery={searchQuery} />
+                  <CalendarView viewType={viewType} />
                 )}
+              </TabsContent>
+
+              <TabsContent value="search" className="space-y-4">
+                <SearchEventsTab />
               </TabsContent>
               
               {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
