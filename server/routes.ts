@@ -563,18 +563,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Event not found" });
       }
 
-      // For events without courts (personal events), allow rescheduling without conflict check
-      if (!existingEvent.court || existingEvent.court === 'Personal') {
-        const updateData = {
-          date: newDate,
-          time: newTime,
-          duration: duration
-        };
+      // Handle different field names for Events vs Schedule Events
+      let court, eventLocation;
+      
+      if (isEventFromEventsTable) {
+        // Events table uses 'location' field
+        eventLocation = existingEvent.location;
+        court = null; // Events don't have courts
+      } else {
+        // Schedule Events table uses 'court' field
+        court = existingEvent.court;
+        eventLocation = null;
+      }
 
-        let updatedEvent;
+      // For events without courts (personal events), allow rescheduling without conflict check
+      if (!court || court === 'Personal' || eventLocation === 'Personal') {
+        let updateData, updatedEvent;
+        
         if (isEventFromEventsTable) {
+          // Events table schema
+          updateData = {
+            startDate: newDate,
+            startTime: newTime,
+            endTime: endDate.toTimeString().slice(0, 5)
+          };
           updatedEvent = await storage.updateEvent(parseInt(id), updateData);
         } else {
+          // Schedule Events table schema
+          updateData = {
+            date: newDate,
+            time: newTime,
+            duration: duration
+          };
           updatedEvent = await storage.updateScheduleEvent(parseInt(id), updateData);
         }
 
@@ -587,7 +607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For court-based events, check for conflicts
       const hasConflict = await storage.checkScheduleConflict(
-        existingEvent.court,
+        court,
         newDate,
         newTime,
         duration,
@@ -601,17 +621,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update the event
-      const updateData = {
-        date: newDate,
-        time: newTime,
-        duration: duration
-      };
-
-      let updatedEvent;
+      // Update the event with proper schema
+      let updateData, updatedEvent;
+      
       if (isEventFromEventsTable) {
+        // Events table schema
+        updateData = {
+          startDate: newDate,
+          startTime: newTime,
+          endTime: endDate.toTimeString().slice(0, 5)
+        };
         updatedEvent = await storage.updateEvent(parseInt(id), updateData);
       } else {
+        // Schedule Events table schema
+        updateData = {
+          date: newDate,
+          time: newTime,
+          duration: duration
+        };
         updatedEvent = await storage.updateScheduleEvent(parseInt(id), updateData);
       }
 
