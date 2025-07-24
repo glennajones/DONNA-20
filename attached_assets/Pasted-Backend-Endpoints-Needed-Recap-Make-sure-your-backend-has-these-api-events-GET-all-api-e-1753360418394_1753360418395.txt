@@ -1,0 +1,322 @@
+Backend Endpoints Needed (Recap)
+Make sure your backend has these:
+
+✅ /api/events (GET all)
+✅ /api/events/:id (PUT update title/type/time)
+✅ /api/events/:id/reschedule (PUT move single)
+✅ /api/events/:id/duplicate (POST duplicate one event)
+✅ /api/events/batch-update (POST bulk updates)
+✅ /api/events/batch-move (POST move multiple to a court)
+✅ /api/events (POST create; support recurrence fields)
+
+Recurring support fields (in events table):
+
+ts
+Copy
+Edit
+is_recurring: boolean('is_recurring').default(false),
+recurrence_rule: text('recurrence_rule'), // JSON like {freq:'WEEKLY',count:6}
+parent_event_id: integer('parent_event_id'),
+🎨 Merged Frontend Component
+src/modules/Scheduling/CourtGridDnD.jsx
+
+👉 Replace your current DnD component with this full version:
+
+jsx
+Copy
+Edit
+import React,{useState,useEffect} from 'react';
+import axios from 'axios';
+import Pusher from 'pusher-js';
+import {DragDropContext,Droppable,Draggable} from 'react-beautiful-dnd';
+import {COURTS,TIME_SLOTS,getSlotForEvent,durationInSlots} from './utils';
+
+export default function CourtGridDnD({ currentUserRole }) {
+  const [events,setEvents] = useState([]);
+  const [perms,setPerms] = useState({can_edit:false,can_delete:false});
+  const [conflictMsg,setConflictMsg] = useState('');
+  const [editId,setEditId] = useState(null);
+  const [editTitle,setEditTitle] = useState('');
+  const [editType,setEditType] = useState('');
+  const [editStart,setEditStart] = useState('');
+  const [editEnd,setEditEnd] = useState('');
+  const [deleteId,setDeleteId] = useState(null);
+
+  // batch controls
+  const [selectedIds,setSelectedIds] = useState([]);
+  const [batchType,setBatchType] = useState('training');
+  const [batchTimeStart,setBatchTimeStart] = useState('');
+  const [batchTimeEnd,setBatchTimeEnd] = useState('');
+  const [batchCourt,setBatchCourt] = useState('');
+
+  useEffect(()=>{
+    loadEvents();
+    fetchPerms();
+    const pusher=new Pusher('YOUR_PUSHER_KEY',{cluster:'YOUR_CLUSTER'});
+    const channel=pusher.subscribe('events');
+    channel.bind('event.updated',d=>{
+      setEvents(prev=>prev.map(e=>e.id===d.id?{...e,...d}:e));
+    });
+    channel.bind('event.deleted',d=>{
+      setEvents(prev=>prev.filter(e=>e.id!==d.id));
+    });
+    channel.bind('event.created',d=>{
+      setEvents(prev=>[...prev,d]);
+    });
+    return ()=>{channel.unbind_all();channel.unsubscribe();}
+  },[]);
+
+  async function fetchPerms(){
+    const res=await axios.get('/api/permissions');
+    const p=res.data.find(p=>p.page==='schedule_events' && p.role===currentUserRole);
+    setPerms(p||{can_edit:false,can_delete:false});
+  }
+
+  async function loadEvents(){
+    const res=await axios.get('/api/events');
+    setEvents(res.data);
+  }
+
+  const hasConflict=(ignoreId,court,start,end)=>{
+    return events.some(e=>{
+      if(e.id===ignoreId||e.court!==court)return false;
+      const s1=new Date(e.start_time),e1=new Date(e.end_time);
+      const s2=new Date(start),e2=new Date(end);
+      return s1<e2 && s2<e1;
+    });
+  };
+
+  const onDragEnd=async(result)=>{
+    if(!result.destination||!perms.can_edit)return;
+    const eventId=Number(result.draggableId);
+    const ev=events.find(e=>e.id===eventId);
+    if(!ev)return;
+    const [newCourt,newTime]=result.destination.droppableId.split('::');
+    const [h,m]=newTime.split(':');
+    const newStart=new Date(ev.start_time);newStart.setHours(h,m,0,0);
+    const dur=new Date(ev.end_time)-new Date(ev.start_time);
+    const newEnd=new Date(newStart.getTime()+dur);
+    if(hasConflict(eventId,newCourt,newStart,newEnd)){
+      setConflictMsg('⚠️ Conflict detected with another event on this court/time.');
+      return;
+    }
+    setConflictMsg('');
+    await axios.put(`/api/events/${eventId}/reschedule`,{start_time:newStart.toISOString(),end_time:newEnd.toISOString(),court:newCourt});
+    setEvents(prev=>prev.map(e=>e.id===eventId?{...e,court:newCourt,start_time:newStart.toISOString(),end_time:newEnd.toISOString()}:e));
+  };
+
+  const startInlineEdit=(ev)=>{
+    setEditId(ev.id);
+    setEditTitle(ev.title);
+    setEditType(ev.type);
+    setEditStart(ev.start_time.slice(11,16));
+    setEditEnd(ev.end_time.slice(11,16));
+  };
+
+  const saveInlineEdit=async()=>{
+    const ev=events.find(e=>e.id===editId);
+    const baseStart=new Date(ev.start_time);
+    const baseEnd=new Date(ev.end_time);
+    const [sh,sm]=editStart.split(':');const [eh,em]=editEnd.split(':');
+    const newStart=new Date(baseStart);newStart.setHours(sh,sm,0,0);
+    const newEnd=new Date(baseEnd);newEnd.setHours(eh,em,0,0);
+    if(hasConflict(editId,ev.court,newStart,newEnd)){
+      alert('⚠️ Conflict with another event.');
+      return;
+    }
+    await axios.put(`/api/events/${editId}`,{title:editTitle,type:editType,start_time:newStart.toISOString(),end_time:newEnd.toISOString()});
+    setEvents(prev=>prev.map(e=>e.id===editId?{...e,title:editTitle,type:editType,start_time:newStart.toISOString(),end_time:newEnd.toISOString()}:e));
+    setEditId(null);
+  };
+
+  const handleDelete=async(id)=>{
+    if(!perms.can_delete)return;
+    await axios.delete(`/api/events/${id}`);
+    setEvents(prev=>prev.filter(e=>e.id!==id));
+  };
+
+  const duplicateEvent=async(id)=>{
+    const res=await axios.post(`/api/events/${id}/duplicate`);
+    setEvents(prev=>[...prev,res.data]);
+  };
+
+  const applyBatchUpdate=async()=>{
+    const updates={type:batchType};
+    if(batchTimeStart && batchTimeEnd){
+      const ref=events.find(e=>selectedIds.includes(e.id));
+      if(ref){
+        const [sh,sm]=batchTimeStart.split(':');
+        const [eh,em]=batchTimeEnd.split(':');
+        const ns=new Date(ref.start_time);ns.setHours(sh,sm,0,0);
+        const ne=new Date(ref.end_time);ne.setHours(eh,em,0,0);
+        updates.start_time=ns.toISOString();
+        updates.end_time=ne.toISOString();
+      }
+    }
+    await axios.post('/api/events/batch-update',{ids:selectedIds,updates});
+    setEvents(prev=>prev.map(e=>selectedIds.includes(e.id)?{...e,...updates}:e));
+    setSelectedIds([]);
+  };
+
+  const applyBatchMove=async()=>{
+    if(!batchCourt)return;
+    await axios.post('/api/events/batch-move',{ids:selectedIds,newCourt:batchCourt});
+    setEvents(prev=>prev.map(e=>selectedIds.includes(e.id)?{...e,court:batchCourt}:e));
+    setSelectedIds([]);setBatchCourt('');
+  };
+
+  return(
+    <div className="p-4 overflow-auto">
+      <h2 className="text-xl font-bold mb-4">Court Schedule</h2>
+      {conflictMsg && <div className="mb-3 p-2 bg-red-200 text-red-800 rounded">{conflictMsg}</div>}
+
+      {/* ✅ Batch Panel */}
+      {perms.can_edit && selectedIds.length>0 && (
+        <div className="p-3 mb-4 bg-yellow-100 rounded">
+          <h3 className="font-bold mb-2">Batch Edit {selectedIds.length} Event(s)</h3>
+          <div className="flex gap-2 mb-2">
+            <select className="border p-1 rounded" value={batchType} onChange={e=>setBatchType(e.target.value)}>
+              <option value="training">Training</option>
+              <option value="match">Match</option>
+              <option value="tryout">Tryout</option>
+              <option value="general">General</option>
+            </select>
+            <input type="time" className="border p-1 rounded" value={batchTimeStart} onChange={e=>setBatchTimeStart(e.target.value)} />
+            <input type="time" className="border p-1 rounded" value={batchTimeEnd} onChange={e=>setBatchTimeEnd(e.target.value)} />
+            <button onClick={applyBatchUpdate} className="bg-green-600 text-white px-2 rounded">Apply</button>
+          </div>
+          <div className="flex gap-2">
+            <select className="border p-1 rounded" value={batchCourt} onChange={e=>setBatchCourt(e.target.value)}>
+              <option value="">--Move to Court--</option>
+              {COURTS.map(c=><option key={c}>{c}</option>)}
+            </select>
+            <button onClick={applyBatchMove} className="bg-purple-600 text-white px-2 rounded">Move</button>
+          </div>
+        </div>
+      )}
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="inline-block">
+          <table className="border-collapse">
+            <thead>
+              <tr>
+                <th className="border p-2 bg-gray-100">Time</th>
+                {COURTS.map(c=><th key={c} className="border p-2 bg-gray-100">{c}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {TIME_SLOTS.map(time=>(
+                <tr key={time}>
+                  <td className="border p-2 text-sm">{time}</td>
+                  {COURTS.map(court=>{
+                    const droppableId=`${court}::${time}`;
+                    const cellEvents=events.filter(ev=>ev.court===court && getSlotForEvent(ev)===time);
+                    return(
+                      <td key={droppableId} className="border align-top p-1 min-w-[140px] h-[60px]">
+                        <Droppable droppableId={droppableId} direction="vertical">
+                          {(provided,snapshot)=>(
+                            <div ref={provided.innerRef} {...provided.droppableProps} className={`h-full ${snapshot.isDraggingOver?'bg-blue-50':''}`}>
+                              {cellEvents.map((ev,index)=>{
+                                const span=durationInSlots(ev.start_time,ev.end_time);
+                                const editing=editId===ev.id;
+                                return(
+                                  <Draggable key={ev.id} draggableId={ev.id.toString()} index={index} isDragDisabled={!perms.can_edit}>
+                                    {(prov,snap)=>(
+                                      <div
+                                        ref={prov.innerRef}
+                                        {...prov.draggableProps}
+                                        {...prov.dragHandleProps}
+                                        className={`relative text-white text-xs rounded p-1 mb-1 ${
+                                          ev.type==='training'?'bg-green-500':ev.type==='match'?'bg-blue-500':'bg-gray-500'
+                                        } ${snap.isDragging?'opacity-70':''}`}
+                                        style={{height:`${span*30}px`}}
+                                        title={`Title: ${ev.title}\nType: ${ev.type}\nStart: ${new Date(ev.start_time).toLocaleString()}\nEnd: ${new Date(ev.end_time).toLocaleString()}\nCourt: ${ev.court}${ev.is_recurring?' 🔁 recurring':''}`}
+                                      >
+                                        {editing?(
+                                          <div className="space-y-1 bg-white p-1 rounded text-black">
+                                            <input className="w-full border text-xs p-1 rounded" value={editTitle} onChange={e=>setEditTitle(e.target.value)}/>
+                                            <select className="w-full border text-xs p-1 rounded" value={editType} onChange={e=>setEditType(e.target.value)}>
+                                              <option value="training">Training</option>
+                                              <option value="match">Match</option>
+                                              <option value="tryout">Tryout</option>
+                                              <option value="general">General</option>
+                                            </select>
+                                            <div className="flex gap-1">
+                                              <input type="time" className="border text-xs p-1 rounded" value={editStart} onChange={e=>setEditStart(e.target.value)}/>
+                                              <input type="time" className="border text-xs p-1 rounded" value={editEnd} onChange={e=>setEditEnd(e.target.value)}/>
+                                            </div>
+                                            <div className="flex gap-1">
+                                              <button onClick={saveInlineEdit} className="bg-green-600 text-white px-1 rounded text-xs">✅</button>
+                                              <button onClick={()=>setEditId(null)} className="bg-gray-500 text-white px-1 rounded text-xs">❌</button>
+                                            </div>
+                                          </div>
+                                        ):(
+                                          <>
+                                            {perms.can_edit && (
+                                              <input
+                                                type="checkbox"
+                                                className="absolute top-1 left-1"
+                                                checked={selectedIds.includes(ev.id)}
+                                                onChange={e=>{
+                                                  if(e.target.checked)setSelectedIds(prev=>[...prev,ev.id]);
+                                                  else setSelectedIds(prev=>prev.filter(i=>i!==ev.id));
+                                                }}
+                                              />
+                                            )}
+                                            <div className="font-bold truncate">{ev.title}</div>
+                                            <div>{new Date(ev.start_time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+                                            {perms.can_edit && (
+                                              <button onClick={()=>startInlineEdit(ev)} className="absolute bottom-1 right-6 text-[10px] bg-yellow-400 text-black px-1 rounded">✎</button>
+                                            )}
+                                            {perms.can_edit && (
+                                              <button onClick={()=>duplicateEvent(ev.id)} className="absolute top-1 right-8 text-[10px] bg-blue-400 text-white px-1 rounded" title="Duplicate">📄</button>
+                                            )}
+                                            {perms.can_delete && (
+                                              <button onClick={()=>setDeleteId(ev.id)} className="absolute bottom-1 right-1 text-[10px] bg-red-600 text-white px-1 rounded">✕</button>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DragDropContext>
+
+      {/* ✅ Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-4 rounded shadow max-w-sm w-full">
+            <h3 className="text-lg font-bold mb-2">Confirm Delete</h3>
+            <p className="mb-4">Are you sure you want to delete this event?</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={()=>setDeleteId(null)} className="px-3 py-1 bg-gray-300 rounded">Cancel</button>
+              <button onClick={async()=>{await handleDelete(deleteId);setDeleteId(null);}} className="px-3 py-1 bg-red-600 text-white rounded">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+✅ Features in this merged build
+✔️ Conflict prevention 🛡
+✔️ Inline editing (title, type, times) ✏️
+✔️ Hover tooltips ℹ️
+✔️ Delete with confirmation 🗑
+✔️ Real‑time sync via Pusher 🔄
+✔️ Batch editing & batch move ✨
+✔️ Duplicate events 📄
+✔️ Recurring events support (shown with 🔁 badge, can create via backend form) ♻️

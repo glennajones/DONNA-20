@@ -1569,6 +1569,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Duplicate event
+  app.post("/api/events/:id/duplicate", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const originalEvent = await storage.getEvent(parseInt(id));
+      
+      if (!originalEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Create duplicate with slight modifications
+      const duplicateData: any = {
+        ...originalEvent,
+        name: `${originalEvent.name} (Copy)`,
+        createdBy: req.user.userId
+      };
+      
+      // Remove fields that should not be copied
+      delete duplicateData.id;
+      delete duplicateData.createdAt;
+      delete duplicateData.updatedAt;
+
+      const duplicatedEvent = await storage.createEvent(duplicateData);
+      res.status(201).json(duplicatedEvent);
+    } catch (error) {
+      console.error("Duplicate event error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Batch update events
+  app.post("/api/events/batch-update", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { ids, updates } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: "Event IDs array is required" });
+      }
+
+      const results = [];
+      for (const id of ids) {
+        try {
+          const updatedEvent = await storage.updateEvent(parseInt(id), updates);
+          if (updatedEvent) {
+            results.push(updatedEvent);
+          }
+        } catch (error) {
+          console.error(`Failed to update event ${id}:`, error);
+        }
+      }
+
+      res.json({
+        message: `Updated ${results.length} events`,
+        events: results
+      });
+    } catch (error) {
+      console.error("Batch update error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Batch move events to new court
+  app.post("/api/events/batch-move", authenticateToken, async (req: any, res) => {
+    try {
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { ids, newCourt } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0 || !newCourt) {
+        return res.status(400).json({ message: "Event IDs array and new court are required" });
+      }
+
+      const results = [];
+      for (const id of ids) {
+        try {
+          const updatedEvent = await storage.updateEvent(parseInt(id), {
+            assignedCourts: [newCourt]
+          });
+          if (updatedEvent) {
+            results.push(updatedEvent);
+          }
+        } catch (error) {
+          console.error(`Failed to move event ${id}:`, error);
+        }
+      }
+
+      res.json({
+        message: `Moved ${results.length} events to ${newCourt}`,
+        events: results
+      });
+    } catch (error) {
+      console.error("Batch move error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Magic Link Acknowledgement Routes
   app.get('/acknowledge', async (req, res) => {
     try {

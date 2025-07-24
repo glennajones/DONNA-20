@@ -298,7 +298,37 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ## Recent Changes (July 24, 2025) - Latest
 
-### Individual Admin Settings with Configurable Daily Emails (Latest)
+### Enhanced Court Grid with Advanced Scheduling Features (Latest)
+- **Implemented comprehensive Court Grid system** with drag-and-drop, conflict prevention, and inline editing capabilities
+- **Added conflict detection algorithm** preventing double-booking of courts at the same time with visual warning messages
+- **Built inline editing functionality** allowing users to edit event titles, types, and times directly in the grid cells
+- **Created batch operations system** supporting multi-select events for bulk updates (type, time) and bulk moves between courts
+- **Added event duplication feature** with one-click copying of events including all details except ID and timestamps
+- **Enhanced visual feedback** with hover tooltips showing complete event information and edit/delete/duplicate buttons
+- **Implemented delete confirmation modal** preventing accidental deletions with proper confirmation workflow
+- **Added professional UI components** using shadcn/ui Select, Input, and Button components for consistent styling
+- **Role-based permission system** where admin/manager/coach can drag and edit, admin/manager can delete events
+- **Backend API expansion** with new endpoints: `/api/events/:id/duplicate`, `/api/events/batch-update`, `/api/events/batch-move`
+
+#### Technical Implementation
+- **Enhanced CourtGridDnD component** with conflict prevention using time overlap detection algorithm
+- **Comprehensive state management** for editing, batch operations, conflict messaging, and modal controls
+- **Advanced mutation system** using TanStack Query for optimistic updates and error handling
+- **Professional inline editing** with save/cancel controls and real-time conflict checking during edits
+- **Batch selection system** with checkboxes, visual selection indicators, and bulk operation controls
+- **Visual enhancement** with event color coding, duration-based height calculations, and responsive design
+- **Complete CRUD operations** supporting create (duplicate), read (view), update (inline edit), delete (with confirmation)
+
+#### User Experience Improvements
+- **Intuitive drag-and-drop** with instant conflict feedback preventing scheduling conflicts
+- **Quick inline editing** by clicking edit icon directly on event cards without navigation
+- **Efficient batch operations** for updating multiple events simultaneously (change types, move courts)
+- **Visual conflict prevention** with red warning messages that auto-dismiss after 3 seconds
+- **Comprehensive tooltips** showing event details on hover including recurring event indicators
+- **Professional confirmation dialogs** for destructive actions with accessible design
+- **Real-time updates** with optimistic UI changes and proper error recovery
+
+### Individual Admin Settings with Configurable Daily Emails
 - **Implemented comprehensive individual admin settings system** allowing each admin to configure their own email preferences
 - **Added admin_settings database table** with per-admin configuration for email timing and enable/disable controls
 - **Built dynamic cron scheduling system** checking every 5 minutes and respecting individual admin preferences
