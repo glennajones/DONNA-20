@@ -10,6 +10,7 @@ import { DashboardNav } from "@/components/ui/dashboard-nav";
 import CalendarView from "@/components/scheduling/CalendarView";
 import CourtManager from "@/components/scheduling/CourtManager";
 import SearchEventsTab from "@/components/scheduling/SearchEventsTab";
+import CourtGridDnD from "@/modules/Scheduling/CourtGridDnD";
 import { useAuth } from "@/lib/auth";
 import { ScheduleEvent } from "@shared/schema";
 import { Monitor, ExternalLink, Search } from "lucide-react";
@@ -52,8 +53,9 @@ export default function TrainingPage() {
 
           <div className="px-4 sm:px-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-3" : "grid-cols-2"}`}>
+              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-4" : "grid-cols-3"}`}>
                 <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
+                <TabsTrigger value="grid">🎯 Court Grid</TabsTrigger>
                 <TabsTrigger value="search">🔍 Search Events</TabsTrigger>
                 {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
                   <TabsTrigger value="courts">🏟️ Court Manager</TabsTrigger>
@@ -101,6 +103,10 @@ export default function TrainingPage() {
                   viewType={viewType} 
                   targetDate={targetDate}
                 />
+              </TabsContent>
+
+              <TabsContent value="grid" className="space-y-4">
+                <CourtGridDnD />
               </TabsContent>
 
               <TabsContent value="search" className="space-y-4">

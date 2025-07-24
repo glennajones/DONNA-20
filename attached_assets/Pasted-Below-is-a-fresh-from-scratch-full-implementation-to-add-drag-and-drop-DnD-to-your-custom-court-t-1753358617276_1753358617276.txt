@@ -1,0 +1,235 @@
+Below is a fresh, from‑scratch full implementation to add drag‑and‑drop (DnD) to your custom court/time grid, with:
+
+✅ Court columns & time‑slot rows
+✅ Multi‑slot event display
+✅ Drag‑and‑drop between courts and time slots
+✅ Role‑based visibility/permissions (who can drag or delete)
+✅ Real‑time sync with Pusher
+
+📦 1. Install dependencies
+Run these in your React project:
+
+bash
+Copy
+Edit
+npm install react-beautiful-dnd pusher-js axios
+🧩 2. Backend prerequisites
+You already have:
+
+PUT /api/events/:id/reschedule endpoint that updates start_time, end_time, court
+
+Permissions API /api/permissions
+
+Pusher configured
+
+Add triggers to broadcast changes:
+
+ts
+Copy
+Edit
+// after reschedule
+await pusher.trigger('events', 'event.updated', {
+  id: eventId,
+  start_time: newStart.toISOString(),
+  end_time: newEnd.toISOString(),
+  court: newCourt
+});
+
+// after delete
+await pusher.trigger('events', 'event.deleted', { id: eventId });
+🎨 3. Frontend Utility Functions
+Create a file src/modules/Scheduling/utils.ts:
+
+ts
+Copy
+Edit
+export const COURTS = [
+  'Court 1','Court 2','Court 3','Court 4',
+  'Court 5','Court 6','Court 7','Beach 1','Beach 2'
+];
+
+export function generateTimeSlots(startHour=7, endHour=21, interval=30) {
+  const slots:string[] = [];
+  const base = new Date();
+  base.setSeconds(0); base.setMilliseconds(0);
+  for (let h=startHour; h<=endHour; h++) {
+    for (let m=0; m<60; m+=interval) {
+      const t = new Date(base);
+      t.setHours(h,m,0,0);
+      slots.push(t.toTimeString().slice(0,5)); // "HH:MM"
+    }
+  }
+  return slots;
+}
+
+export const TIME_SLOTS = generateTimeSlots();
+
+export function getSlotForEvent(ev:any) {
+  return new Date(ev.start_time).toTimeString().slice(0,5);
+}
+
+export function durationInSlots(start:string|Date, end:string|Date) {
+  const mins = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
+  return Math.max(1, Math.round(mins / 30)); // 30-min slots
+}
+🎨 4. Main Component with DnD & Permissions
+Create src/modules/Scheduling/CourtGridDnD.jsx:
+
+jsx
+Copy
+Edit
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import Pusher from 'pusher-js';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { COURTS, TIME_SLOTS, getSlotForEvent, durationInSlots } from './utils';
+
+async function fetchPermissions(page, role) {
+  const res = await axios.get('/api/permissions');
+  return res.data.find(p => p.page === page && p.role === role) || { can_view:false, can_edit:false, can_delete:false };
+}
+
+export default function CourtGridDnD({ currentUserRole }) {
+  const [events, setEvents] = useState([]);
+  const [perms, setPerms] = useState({ can_view:false, can_edit:false, can_delete:false });
+
+  useEffect(() => {
+    loadEvents();
+    (async () => {
+      const perm = await fetchPermissions('schedule_events', currentUserRole);
+      setPerms(perm);
+    })();
+    // Setup Pusher
+    const pusher = new Pusher('YOUR_PUSHER_KEY', { cluster: 'YOUR_CLUSTER' });
+    const channel = pusher.subscribe('events');
+    channel.bind('event.updated', data => {
+      setEvents(prev => prev.map(e => e.id === data.id ? { ...e, ...data } : e));
+    });
+    channel.bind('event.deleted', data => {
+      setEvents(prev => prev.filter(e => e.id !== data.id));
+    });
+    return () => { channel.unbind_all(); channel.unsubscribe(); };
+  }, []);
+
+  const loadEvents = async () => {
+    const res = await axios.get('/api/events');
+    setEvents(res.data);
+  };
+
+  const onDragEnd = async (result) => {
+    if (!result.destination) return;
+    if (!perms.can_edit) return;
+
+    const eventId = Number(result.draggableId);
+    const ev = events.find(e => e.id === eventId);
+    if (!ev) return;
+
+    const [newCourt, newTime] = result.destination.droppableId.split('::');
+    const [h,m] = newTime.split(':');
+    const newStart = new Date(ev.start_time);
+    newStart.setHours(h,m,0,0);
+    const duration = new Date(ev.end_time) - new Date(ev.start_time);
+    const newEnd = new Date(newStart.getTime() + duration);
+
+    await axios.put(`/api/events/${eventId}/reschedule`, {
+      start_time: newStart.toISOString(),
+      end_time: newEnd.toISOString(),
+      court: newCourt
+    });
+    // Optimistic update
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, court:newCourt, start_time:newStart.toISOString(), end_time:newEnd.toISOString() } : e));
+  };
+
+  const handleDelete = async (id) => {
+    if (!perms.can_delete) return;
+    await axios.delete(`/api/events/${id}`);
+    setEvents(prev => prev.filter(e => e.id !== id));
+  };
+
+  return (
+    <div className="p-4 overflow-auto">
+      <h2 className="text-xl font-bold mb-4">Court Schedule</h2>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="inline-block">
+          <table className="border-collapse">
+            <thead>
+              <tr>
+                <th className="border p-2 bg-gray-100">Time</th>
+                {COURTS.map(c => <th key={c} className="border p-2 bg-gray-100">{c}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {TIME_SLOTS.map(time => (
+                <tr key={time}>
+                  <td className="border p-2 text-sm">{time}</td>
+                  {COURTS.map(court => {
+                    const droppableId = `${court}::${time}`;
+                    const cellEvents = events.filter(ev => ev.court === court && getSlotForEvent(ev) === time);
+
+                    return (
+                      <td key={droppableId} className="border align-top p-1 min-w-[120px] h-[60px]">
+                        <Droppable droppableId={droppableId} direction="vertical">
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`h-full ${snapshot.isDraggingOver ? 'bg-blue-50' : ''}`}
+                            >
+                              {cellEvents.map((ev, index) => {
+                                const span = durationInSlots(ev.start_time, ev.end_time);
+                                return (
+                                  <Draggable
+                                    key={ev.id}
+                                    draggableId={ev.id.toString()}
+                                    index={index}
+                                    isDragDisabled={!perms.can_edit}
+                                  >
+                                    {(prov, snap) => (
+                                      <div
+                                        ref={prov.innerRef}
+                                        {...prov.draggableProps}
+                                        {...prov.dragHandleProps}
+                                        className={`relative text-white text-xs rounded p-1 mb-1 ${
+                                          ev.type === 'training'
+                                            ? 'bg-green-500'
+                                            : ev.type === 'match'
+                                            ? 'bg-blue-500'
+                                            : 'bg-gray-500'
+                                        } ${snap.isDragging ? 'opacity-70' : ''}`}
+                                        style={{ height: `${span * 30}px` }}
+                                      >
+                                        <div className="font-bold truncate">{ev.title}</div>
+                                        <div>{new Date(ev.start_time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+                                        {perms.can_delete && (
+                                          <button
+                                            onClick={() => handleDelete(ev.id)}
+                                            className="absolute top-1 right-1 text-xs bg-red-600 rounded px-1"
+                                          >✕</button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </DragDropContext>
+    </div>
+  );
+}
+✅ What this gives you
+✔️ Court/time grid exactly like your custom view
+✔️ Drag & drop events across courts and time slots
+✔️ Multi‑slot rendering with correct heights
+✔️ Real‑time updates via Pusher
+✔️ Role‑based edit/delete control from your permissions matrix

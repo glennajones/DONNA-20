@@ -1522,6 +1522,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reschedule event
+  app.put("/api/events/:id/reschedule", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins, managers, and coaches can reschedule events
+      if (!["admin", "manager", "coach"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { id } = req.params;
+      const { start_time, end_time, court } = req.body;
+
+      if (!start_time || !end_time || !court) {
+        return res.status(400).json({ message: "Start time, end time, and court are required" });
+      }
+
+      // Get the existing event
+      const existingEvent = await storage.getEvent(parseInt(id));
+      if (!existingEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Parse new times
+      const newStartTime = new Date(start_time);
+      const newEndTime = new Date(end_time);
+
+      // Update event with new schedule
+      const updatedEvent = await storage.updateEvent(parseInt(id), {
+        startDate: newStartTime.toISOString().split('T')[0],
+        startTime: newStartTime.toTimeString().slice(0, 5),
+        endTime: newEndTime.toTimeString().slice(0, 5),
+        assignedCourts: [court]
+      });
+
+      if (!updatedEvent) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      res.json({
+        message: "Event rescheduled successfully",
+        event: updatedEvent
+      });
+    } catch (error) {
+      console.error("Reschedule event error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Magic Link Acknowledgement Routes
   app.get('/acknowledge', async (req, res) => {
     try {
