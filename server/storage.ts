@@ -33,6 +33,7 @@ import {
   coachResources,
   coachResourceFolders,
   coachTimeLogs,
+  eventFeedback,
 
   type User, 
   type InsertUser, 
@@ -98,6 +99,8 @@ import {
   type InsertCoachResource,
   type CoachResourceFolder,
   type InsertCoachResourceFolder,
+  type EventFeedback,
+  type InsertEventFeedback,
   eventRegistrations,
 
 } from "@shared/schema";
@@ -294,6 +297,12 @@ export interface IStorage {
   createCoachResource(resource: InsertCoachResource): Promise<CoachResource>;
   updateCoachResource(id: number, resource: Partial<InsertCoachResource>): Promise<CoachResource | undefined>;
   deleteCoachResource(id: number): Promise<boolean>;
+
+  // Event Feedback methods
+  createEventFeedback(feedback: InsertEventFeedback): Promise<EventFeedback>;
+  getEventFeedback(eventId: number): Promise<EventFeedback[]>;
+  getEventFeedbackByUser(eventId: number, userId: number): Promise<EventFeedback | undefined>;
+  deleteEventFeedback(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1561,6 +1570,33 @@ export class DatabaseStorage implements IStorage {
   async deleteCoachResource(id: number): Promise<boolean> {
     const result = await db.delete(coachResources)
       .where(eq(coachResources.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Event Feedback Methods
+  async createEventFeedback(feedback: InsertEventFeedback): Promise<EventFeedback> {
+    const [created] = await db.insert(eventFeedback).values(feedback).returning();
+    return created;
+  }
+
+  async getEventFeedback(eventId: number): Promise<EventFeedback[]> {
+    return db.select().from(eventFeedback)
+      .where(eq(eventFeedback.eventId, eventId))
+      .orderBy(desc(eventFeedback.submittedAt));
+  }
+
+  async getEventFeedbackByUser(eventId: number, userId: number): Promise<EventFeedback | undefined> {
+    const [feedback] = await db.select().from(eventFeedback)
+      .where(and(
+        eq(eventFeedback.eventId, eventId),
+        eq(eventFeedback.userId, userId)
+      ));
+    return feedback;
+  }
+
+  async deleteEventFeedback(id: number): Promise<boolean> {
+    const result = await db.delete(eventFeedback)
+      .where(eq(eventFeedback.id, id));
     return result.rowCount > 0;
   }
 

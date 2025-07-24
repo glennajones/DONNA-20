@@ -1,0 +1,197 @@
+We’ll let players/parents submit feedback after attending an event, and give admins a dashboard to review it.
+
+✨ Goal
+✅ Allow users to submit a rating (1–5) and comments for an event they attended.
+✅ Only allow feedback after the event end time.
+✅ Store feedback in the database.
+✅ Admin dashboard to view/filter feedback.
+
+📦 1. Drizzle Schema (shared/schema.ts)
+Add a new table for feedback:
+
+ts
+Copy
+Edit
+import { pgTable, serial, integer, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const event_feedback = pgTable('event_feedback', {
+  id: serial('id').primaryKey(),
+  event_id: integer('event_id').notNull(),
+  user_id: integer('user_id').notNull(),
+  rating: integer('rating').notNull(), // 1-5
+  comment: text('comment'),
+  submitted_at: timestamp('submitted_at').defaultNow()
+});
+👉 Run migration:
+
+bash
+Copy
+Edit
+npm run db:push
+🛠 2. Backend Routes (server/routes/eventFeedback.ts)
+Create routes for submitting and fetching feedback.
+
+ts
+Copy
+Edit
+import express from 'express';
+import { db } from '../storage';
+import { event_feedback, events } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const router = express.Router();
+
+// ✅ Submit feedback
+router.post('/', async (req, res) => {
+  const { event_id, user_id, rating, comment } = req.body;
+
+  // Ensure event has ended
+  const [event] = await db.select().from(events).where(eq(events.id, event_id));
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  if (new Date(event.end_time) > new Date()) {
+    return res.status(400).json({ error: 'Feedback can only be submitted after the event ends' });
+  }
+
+  // Insert feedback
+  const inserted = await db.insert(event_feedback).values({
+    event_id,
+    user_id,
+    rating,
+    comment
+  }).returning();
+  res.json(inserted[0]);
+});
+
+// ✅ Get feedback for admin
+router.get('/:eventId', async (req, res) => {
+  const { eventId } = req.params;
+  const rows = await db.select().from(event_feedback).where(eq(event_feedback.event_id, Number(eventId)));
+  res.json(rows);
+});
+
+export default router;
+Mount in server/index.ts:
+
+ts
+Copy
+Edit
+import eventFeedbackRouter from './routes/eventFeedback';
+app.use('/api/event-feedback', eventFeedbackRouter);
+🎨 3. User UI: Submit Feedback
+src/modules/Events/EventFeedbackForm.jsx
+
+jsx
+Copy
+Edit
+import React, { useState } from 'react';
+import axios from 'axios';
+
+export default function EventFeedbackForm({ eventId, userId, eventEndTime }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (new Date(eventEndTime) > new Date()) {
+      alert('You can only submit feedback after the event ends.');
+      return;
+    }
+    await axios.post('/api/event-feedback', {
+      event_id: eventId,
+      user_id: userId,
+      rating,
+      comment
+    });
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return <p className="p-4 bg-green-100 rounded">✅ Thank you for your feedback!</p>;
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="p-4 bg-white rounded shadow space-y-4">
+      <h3 className="text-lg font-bold">Event Feedback</h3>
+      <div>
+        <label className="block font-medium mb-1">Rating (1–5)</label>
+        <input
+          type="number"
+          min="1"
+          max="5"
+          value={rating}
+          onChange={(e) => setRating(e.target.value)}
+          className="border rounded px-3 py-2 w-full"
+          required
+        />
+      </div>
+      <div>
+        <label className="block font-medium mb-1">Comment</label>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          className="border rounded px-3 py-2 w-full"
+        />
+      </div>
+      <button className="bg-blue-600 text-white px-4 py-2 rounded">Submit Feedback</button>
+    </form>
+  );
+}
+👉 Where to show this?
+
+On the event details page for participants.
+
+Pass eventId, userId, and eventEndTime props.
+
+🎨 4. Admin UI: View Feedback
+src/modules/Admin/EventFeedbackAdmin.jsx
+
+jsx
+Copy
+Edit
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+
+export default function EventFeedbackAdmin({ eventId }) {
+  const [feedback, setFeedback] = useState([]);
+
+  const loadFeedback = async () => {
+    const res = await axios.get(`/api/event-feedback/${eventId}`);
+    setFeedback(res.data);
+  };
+
+  useEffect(() => {
+    loadFeedback();
+  }, [eventId]);
+
+  return (
+    <div className="p-6 bg-white rounded shadow">
+      <h2 className="text-xl font-bold mb-4">Feedback for Event #{eventId}</h2>
+      <table className="min-w-full border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2">User ID</th>
+            <th className="border px-3 py-2">Rating</th>
+            <th className="border px-3 py-2">Comment</th>
+            <th className="border px-3 py-2">Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          {feedback.map(f => (
+            <tr key={f.id}>
+              <td className="border px-3 py-2">{f.user_id}</td>
+              <td className="border px-3 py-2">{f.rating}</td>
+              <td className="border px-3 py-2">{f.comment}</td>
+              <td className="border px-3 py-2">{new Date(f.submitted_at).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+✅ What You Now Have
+✔️ Players/parents can submit feedback after events.
+✔️ Admins can view all feedback in a simple dashboard.
+✔️ Data stored in PostgreSQL with Drizzle, type‑safe end‑to‑end.
+

@@ -4146,5 +4146,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Event Feedback Routes
+  // Submit feedback for an event
+  app.post("/api/event-feedback", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId, rating, comment } = req.body;
+      const userId = req.user.id;
+
+      // Validate rating
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+
+      // Check if event exists and has ended
+      const events = await storage.getEvents();
+      const event = events.find(e => e.id === eventId);
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // For now, allow feedback immediately for testing
+      // In production, you might want to check if event has ended:
+      // const eventEndTime = new Date(`${event.date}T${event.time}`);
+      // if (eventEndTime > new Date()) {
+      //   return res.status(400).json({ message: "Feedback can only be submitted after the event ends" });
+      // }
+
+      // Check if user already submitted feedback
+      const existingFeedback = await storage.getEventFeedbackByUser(eventId, userId);
+      if (existingFeedback) {
+        return res.status(400).json({ message: "You have already submitted feedback for this event" });
+      }
+
+      const feedback = await storage.createEventFeedback({
+        eventId,
+        userId,
+        rating,
+        comment: comment || null
+      });
+
+      res.status(201).json(feedback);
+    } catch (error) {
+      console.error("Submit feedback error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Get feedback for an event (admin only)
+  app.get("/api/event-feedback/:eventId", authenticateToken, async (req: any, res) => {
+    try {
+      // Only admins and managers can view feedback
+      if (!["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { eventId } = req.params;
+      const feedback = await storage.getEventFeedback(parseInt(eventId));
+      
+      // Get user information for feedback display
+      const users = await storage.getUsers();
+      const feedbackWithUsers = feedback.map(fb => {
+        const user = users.find(u => u.id === fb.userId);
+        return {
+          ...fb,
+          userName: user?.name || 'Unknown User',
+          userRole: user?.role || 'unknown'
+        };
+      });
+
+      res.json(feedbackWithUsers);
+    } catch (error) {
+      console.error("Get feedback error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Check if user can submit feedback for an event
+  app.get("/api/event-feedback/can-submit/:eventId", authenticateToken, async (req: any, res) => {
+    try {
+      const { eventId } = req.params;
+      const userId = req.user.id;
+
+      // Check if event exists
+      const events = await storage.getEvents();
+      const event = events.find(e => e.id === parseInt(eventId));
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Check if user already submitted feedback
+      const existingFeedback = await storage.getEventFeedbackByUser(parseInt(eventId), userId);
+      
+      res.json({ 
+        canSubmit: !existingFeedback,
+        alreadySubmitted: !!existingFeedback,
+        eventName: event.name
+      });
+    } catch (error) {
+      console.error("Check feedback eligibility error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }

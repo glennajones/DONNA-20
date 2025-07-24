@@ -1048,3 +1048,22 @@ export const insertCoachTimeLogSchema = createInsertSchema(coachTimeLogs).omit({
 
 export type InsertCoachTimeLog = z.infer<typeof insertCoachTimeLogSchema>;
 export type CoachTimeLog = typeof coachTimeLogs.$inferSelect;
+
+// Event Feedback Table
+export const eventFeedback = pgTable("event_feedback", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull(),
+  userId: integer("user_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  submittedAt: timestamp("submitted_at").defaultNow()
+});
+
+// Event Feedback Schema Types
+export const insertEventFeedbackSchema = createInsertSchema(eventFeedback).omit({
+  id: true,
+  submittedAt: true,
+});
+
+export type InsertEventFeedback = z.infer<typeof insertEventFeedbackSchema>;
+export type EventFeedback = typeof eventFeedback.$inferSelect;
