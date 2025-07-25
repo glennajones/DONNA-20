@@ -77,7 +77,7 @@ interface UnifiedSchedulingViewProps {
 }
 
 export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: UnifiedSchedulingViewProps) {
-  const [viewType, setViewType] = useState<"day" | "week" | "month" | "grid">("week");
+  const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
@@ -103,9 +103,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
   const canDelete = user?.role && ["admin", "manager"].includes(user.role);
 
   useEffect(() => {
-    if (viewType !== "grid") {
-      setDateRange(getDateRange(viewType, currentDate));
-    }
+    setDateRange(getDateRange(viewType, currentDate));
   }, [viewType, currentDate]);
 
   // Navigate to target date when provided
@@ -301,7 +299,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
   // Render different view types
   const renderCalendarView = () => {
     if (viewType === "day") {
-      return renderDayView();
+      return renderGridView(); // Use grid view for day view
     } else if (viewType === "week") {
       return renderWeekView();
     } else if (viewType === "month") {
@@ -310,55 +308,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
     return null;
   };
 
-  const renderDayView = () => {
-    const dayEvents = filteredEvents.filter((event: any) => {
-      const eventDate = new Date(event.start_time || event.startTime || event.date);
-      return eventDate.toDateString() === currentDate.toDateString();
-    });
 
-    return (
-      <div className="space-y-4">
-        <div className="grid gap-2">
-          {dayEvents.map((event: any) => (
-            <Card key={event.id} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">{event.title}</h3>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))} 
-                      {event.court && ` - ${event.court}`}
-                      {event.location && ` - ${event.location}`}
-                      {event.isSimpleEvent && (
-                        <span className="ml-2 px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded text-xs">
-                          Personal
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-4 h-4 rounded"
-                      style={{ backgroundColor: event.isSimpleEvent ? '#4B0082' : getEventColor(event.eventType) }}
-                    />
-                    {canManageEvents && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedEvent(event)}
-                      >
-                        <UserPlus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  };
 
   const renderWeekView = () => {
     const weekDays: Date[] = [];
@@ -557,9 +507,23 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                     {timeSlot}
                   </td>
                   {COURTS.map((court, courtIndex) => {
+                    // Filter court events and personal events for this time slot
                     const cellEvents = filteredEvents.filter((event: any) => {
-                      const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
-                      return event.court === court && eventTime === timeSlot;
+                      const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}));
+                      const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot;
+                      const eventDate = new Date(event.start_time || event.startTime || event.date);
+                      
+                      // For court events, match by court and time
+                      if (event.court === court && eventTime === slotTime && eventDate.toDateString() === currentDate.toDateString()) {
+                        return true;
+                      }
+                      
+                      // For personal events (isSimpleEvent), show in first court column only at correct time
+                      if (event.isSimpleEvent && courtIndex === 0 && eventTime === slotTime && eventDate.toDateString() === currentDate.toDateString()) {
+                        return true;
+                      }
+                      
+                      return false;
                     });
 
                     return (
@@ -588,12 +552,18 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                                       snapshot.isDragging ? 'shadow-lg' : 'hover:opacity-80'
                                     }`}
                                     style={{
-                                      backgroundColor: getEventColor(event.eventType),
+                                      backgroundColor: event.isSimpleEvent ? '#4B0082' : getEventColor(event.eventType),
                                       ...provided.draggableProps.style
                                     }}
                                   >
                                     <div className="font-medium truncate">{event.title}</div>
-                                    <div className="text-xs opacity-90 truncate">{event.eventType}</div>
+                                    <div className="text-xs opacity-90 truncate">
+                                      {event.isSimpleEvent ? (
+                                        <span className="bg-white bg-opacity-20 px-1 rounded">Personal</span>
+                                      ) : (
+                                        event.eventType
+                                      )}
+                                    </div>
                                     
                                     {canManageEvents && (
                                       <div className="flex gap-1 mt-1">
@@ -662,8 +632,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
             {[
               { key: "day", label: "Day", icon: Calendar },
               { key: "week", label: "Week", icon: Calendar },
-              { key: "month", label: "Month", icon: Calendar },
-              { key: "grid", label: "Grid", icon: Grid3X3 }
+              { key: "month", label: "Month", icon: Calendar }
             ].map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -681,8 +650,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
           </div>
 
           {/* Navigation */}
-          {viewType !== "grid" && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={navigatePrevious}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -693,23 +661,20 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-          )}
         </div>
 
-        {/* Quick Add Button - Only show for Day, Week, Month views */}
-        {viewType !== "grid" && (
-          <Button
-            onClick={() => {
-              setQuickAddDate(currentDate);
-              setQuickAddTime(undefined);
-              setQuickAddModalOpen(true);
-            }}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Quick Add Event
-          </Button>
-        )}
+        {/* Quick Add Button - Show for all views */}
+        <Button
+          onClick={() => {
+            setQuickAddDate(currentDate);
+            setQuickAddTime(undefined);
+            setQuickAddModalOpen(true);
+          }}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Quick Add Event
+        </Button>
       </div>
 
       {/* Main Content */}
@@ -717,8 +682,6 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
         <CardContent className="p-6">
           {isLoading ? (
             <div className="text-center py-8">Loading events...</div>
-          ) : viewType === "grid" ? (
-            renderGridView()
           ) : (
             renderCalendarView()
           )}

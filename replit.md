@@ -300,14 +300,16 @@ The application is designed to be easily deployable to platforms like Replit, wi
 
 ### Unified Calendar Integration with Personal Events (Latest)
 - **Completed comprehensive personal events integration** allowing personal/administrative events alongside court scheduling
-- **Added QuickAddEventForm integration** with modal dialogs accessible via Quick Add buttons on Day/Week/Month calendar views  
+- **Simplified to 3-view calendar system** consolidating Grid view as Day view (Day shows court grid, Week shows time slots, Month shows calendar grid)
+- **Fixed personal events display across all views** with proper time formatting and purple color (#4B0082) with "Personal" badges
+- **Added QuickAddEventForm integration** with modal dialogs accessible via Quick Add buttons on all three calendar views  
 - **Implemented click-to-add functionality** making all time slots and calendar days clickable to instantly create personal events
-- **Enhanced event display system** showing personal events with purple color (#4B0082) and "Personal" badges
+- **Enhanced event display system** showing personal events overlaid in first court column (Day view) and time slots (Week view)
 - **Created dual-query system** fetching both court events and simple events, merging them into unified calendar display
 - **Added hover interactions** with Plus icons appearing on time slots and calendar days for intuitive event creation
 - **Extended search functionality** to include personal event locations alongside court events and titles
 - **Fixed authentication integration** ensuring simple events API properly validates user tokens for secure personal event management
-- **Database integration confirmed** with test personal events ("Phone call with Michelle", "Haircut appointment") successfully displaying in calendar
+- **Database integration confirmed** with personal events ("Private Lesson", "Phone call with Michelle", "Haircut appointment") displaying in all views
 
 #### Technical Implementation
 - Separate `simple_events` table for personal/admin events distinct from court-based volleyball events
