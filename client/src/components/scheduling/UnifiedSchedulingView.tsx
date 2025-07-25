@@ -142,12 +142,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
       if (dateRange.from) params.append('from', dateRange.from);
       if (dateRange.to) params.append('to', dateRange.to);
       
-      const response = await fetch(`/api/simple-events?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch simple events');
+      const response = await apiRequest(`/api/simple-events?${params}`);
       return response.json();
     },
     select: (data: any[]) => {
@@ -733,32 +728,28 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
       {selectedEvent && (
         <EventRegistrationModal
           isOpen={registrationModalOpen}
-          onOpenChange={setRegistrationModalOpen}
-          event={selectedEvent || undefined}
+          onClose={() => setRegistrationModalOpen(false)}
+          event={{
+            ...selectedEvent,
+            coach: selectedEvent.coach || undefined,
+            description: selectedEvent.description || undefined
+          }}
         />
       )}
 
       {/* Quick Add Event Modal */}
-      <Dialog open={quickAddModalOpen} onOpenChange={setQuickAddModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Quick Add Event</DialogTitle>
-          </DialogHeader>
-          <QuickAddEventForm
-            initialDate={quickAddDate}
-            initialTime={quickAddTime}
-            onSuccess={() => {
-              setQuickAddModalOpen(false);
-              queryClient.invalidateQueries({ queryKey: ['/api/simple-events'] });
-              toast({
-                title: "Event Added",
-                description: "Your personal event has been added to the calendar.",
-              });
-            }}
-            onCancel={() => setQuickAddModalOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <QuickAddEventForm
+        isOpen={quickAddModalOpen}
+        onOpenChange={(open) => {
+          setQuickAddModalOpen(open);
+          if (!open) {
+            // Refresh simple events when modal closes (in case event was added)
+            queryClient.invalidateQueries({ queryKey: ['/api/simple-events'] });
+          }
+        }}
+        initialDate={quickAddDate}
+        initialTime={quickAddTime}
+      />
     </div>
   );
 }

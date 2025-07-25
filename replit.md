@@ -296,7 +296,34 @@ Preferred communication style: Simple, everyday language.
 
 The application is designed to be easily deployable to platforms like Replit, with proper separation of concerns and environment-specific configurations.
 
-## Recent Changes (July 24, 2025) - Latest
+## Recent Changes (July 25, 2025) - Latest
+
+### Unified Calendar Integration with Personal Events (Latest)
+- **Completed comprehensive personal events integration** allowing personal/administrative events alongside court scheduling
+- **Added QuickAddEventForm integration** with modal dialogs accessible via Quick Add buttons on Day/Week/Month calendar views  
+- **Implemented click-to-add functionality** making all time slots and calendar days clickable to instantly create personal events
+- **Enhanced event display system** showing personal events with purple color (#4B0082) and "Personal" badges
+- **Created dual-query system** fetching both court events and simple events, merging them into unified calendar display
+- **Added hover interactions** with Plus icons appearing on time slots and calendar days for intuitive event creation
+- **Extended search functionality** to include personal event locations alongside court events and titles
+- **Fixed authentication integration** ensuring simple events API properly validates user tokens for secure personal event management
+- **Database integration confirmed** with test personal events ("Phone call with Michelle", "Haircut appointment") successfully displaying in calendar
+
+#### Technical Implementation
+- Separate `simple_events` table for personal/admin events distinct from court-based volleyball events
+- QuickAddEventForm component with role-based visibility controls and recurring event support
+- Unified calendar rendering merging court events (with court abbreviations) and personal events (with location display)
+- Real-time query invalidation ensuring calendar updates immediately after event creation
+- Event type differentiation with `isSimpleEvent` flag for proper rendering and interaction handling
+
+#### User Experience
+- **Dual-purpose calendar** serving both volleyball court scheduling and personal/administrative event management
+- **Instant event creation** via Quick Add buttons and clickable time slots across all calendar views
+- **Visual distinction** between court events (colored by event type) and personal events (purple with Personal badges)
+- **Overlay display** showing personal events alongside court activities without interfering with court scheduling
+- **Comprehensive search** finding events by title, location, court, or event type across both systems
+
+## Recent Changes (July 24, 2025) - Earlier
 
 ### Enhanced Court Grid with Advanced Scheduling Features (Latest)
 - **Implemented comprehensive Court Grid system** with drag-and-drop, conflict prevention, and inline editing capabilities
