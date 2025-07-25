@@ -140,39 +140,34 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
       if (dateRange.from) params.append('from', dateRange.from);
       if (dateRange.to) params.append('to', dateRange.to);
       
-      console.log('Simple events query params:', { dateRange, params: params.toString() });
-      
       const response = await apiRequest(`/api/simple-events?${params}`);
-      const data = await response.json();
-      console.log('Simple events API response:', data);
-      return data;
+      return response.json();
     },
     select: (data: any[]) => {
-      console.log('Simple events raw data:', data);
       return data.map((event: any) => {
-        const startDate = new Date(event.start_time);
-        const timeString = startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+        // Use startTime field from API response, not start_time
+        const startDate = new Date(event.startTime);
+        // Use UTC time to match the database storage format
+        const timeString = startDate.toLocaleTimeString('en-US', {
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: false,
+          timeZone: 'UTC'
+        });
         
         const processedEvent = {
           ...event,
-          court: event.location?.includes('Court') ? event.location : null, // Map Court 3 location to court field
+          court: event.location?.includes('Court') ? event.location : null,
           location: event.location || '',
           eventType: 'personal',
           type: 'personal',
           isSimpleEvent: true,
-          start_time: event.start_time,
-          end_time: event.end_time,
-          startTime: event.start_time,
-          date: event.start_time,
+          start_time: event.startTime, // Map startTime to start_time
+          end_time: event.endTime,     // Map endTime to end_time
+          startTime: event.startTime,
+          date: event.startTime,
           time: timeString
         };
-        
-        console.log(`Processed ${event.title}:`, {
-          original: event,
-          processed: processedEvent,
-          timeString,
-          dateString: startDate.toDateString()
-        });
         
         return processedEvent;
       });
@@ -183,15 +178,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
   const events = [...courtEvents, ...simpleEvents];
   const isLoading = isLoadingCourt || isLoadingSimple;
   
-  // Debug combined events
-  console.log('Combined events:', {
-    courtEvents: courtEvents.length,
-    simpleEvents: simpleEvents.length,
-    total: events.length,
-    dateRange,
-    currentDate: currentDate.toDateString(),
-    events: events.map(e => ({ id: e.id, title: e.title, isSimpleEvent: e.isSimpleEvent, date: e.date || e.start_time }))
-  });
+  // Remove debug logging now that we've identified the issue
 
   // Filter events based on search query
   const filteredEvents = events.filter((event: any) => {
@@ -374,17 +361,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                 const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}));
                 const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot; // Convert "9:00" to "09:00"
                 
-                // Debug logging for personal events in week view
-                if (event.isSimpleEvent) {
-                  console.log(`Week view debug - ${event.title}:`, {
-                    eventDate: eventDate.toDateString(),
-                    dayDate: day.toDateString(),
-                    eventTime,
-                    slotTime,
-                    event,
-                    matches: eventDate.toDateString() === day.toDateString() && eventTime === slotTime
-                  });
-                }
+                // Remove debug logging
                 
                 return eventDate.toDateString() === day.toDateString() && eventTime === slotTime;
               });
@@ -560,18 +537,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                       const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot;
                       const eventDate = new Date(event.start_time || event.startTime || event.date);
                       
-                      // Debug logging for personal events
-                      if (event.isSimpleEvent) {
-                        console.log(`Day view debug - ${event.title}:`, {
-                          eventDate: eventDate.toDateString(),
-                          currentDate: currentDate.toDateString(),
-                          eventTime,
-                          slotTime,
-                          courtIndex,
-                          event,
-                          matches: eventDate.toDateString() === currentDate.toDateString() && eventTime === slotTime
-                        });
-                      }
+                      // Remove debug logging
                       
                       // Skip if wrong date
                       if (eventDate.toDateString() !== currentDate.toDateString()) {
