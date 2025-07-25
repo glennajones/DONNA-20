@@ -339,7 +339,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                   <div className="flex items-center gap-2">
                     <div
                       className="w-4 h-4 rounded"
-                      style={{ backgroundColor: getEventColor(event.eventType) }}
+                      style={{ backgroundColor: event.isSimpleEvent ? '#4B0082' : getEventColor(event.eventType) }}
                     />
                     {canManageEvents && (
                       <Button
@@ -389,8 +389,9 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
             {weekDays.map((day, dayIndex) => {
               const dayEvents = filteredEvents.filter((event: any) => {
                 const eventDate = new Date(event.start_time || event.startTime || event.date);
-                const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
-                return eventDate.toDateString() === day.toDateString() && eventTime === timeSlot;
+                const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}));
+                const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot; // Convert "9:00" to "09:00"
+                return eventDate.toDateString() === day.toDateString() && eventTime === slotTime;
               });
 
               // Group events by court for multi-court display
@@ -426,7 +427,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                     <div
                       key={index}
                       className="text-xs p-1 rounded mb-1 text-white cursor-pointer hover:opacity-80 relative z-10"
-                      style={{ backgroundColor: getEventColor(eventGroup.eventType) }}
+                      style={{ backgroundColor: eventGroup.isSimpleEvent ? '#4B0082' : getEventColor(eventGroup.eventType) }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedEvent(eventGroup);
