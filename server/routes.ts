@@ -4644,6 +4644,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simple Events API Routes
+  app.get("/api/simple-events", authenticateToken, async (req: any, res) => {
+    try {
+      const { from, to } = req.query;
+      const simpleEvents = await storage.getSimpleEvents(req.user.userId, req.user.role, from, to);
+      res.json(simpleEvents);
+    } catch (error) {
+      console.error("Failed to fetch simple events:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/simple-events", authenticateToken, async (req: any, res) => {
+    try {
+      const eventData = {
+        ...req.body,
+        createdBy: req.user.userId
+      };
+
+      const simpleEvent = await storage.createSimpleEvent(eventData);
+      res.status(201).json(simpleEvent);
+    } catch (error) {
+      console.error("Failed to create simple event:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/simple-events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const event = await storage.getSimpleEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Only creator or admin can update events
+      if (event.createdBy !== req.user.userId && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const updatedEvent = await storage.updateSimpleEvent(eventId, req.body);
+      res.json(updatedEvent);
+    } catch (error) {
+      console.error("Failed to update simple event:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/simple-events/:id", authenticateToken, async (req: any, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const event = await storage.getSimpleEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Only creator or admin can delete events
+      if (event.createdBy !== req.user.userId && req.user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const deleted = await storage.deleteSimpleEvent(eventId);
+      if (deleted) {
+        res.json({ message: "Event deleted successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to delete event" });
+      }
+    } catch (error) {
+      console.error("Failed to delete simple event:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Mount AI Assistant routes
   app.use("/api/ai-assist", aiAssistRouter);
 

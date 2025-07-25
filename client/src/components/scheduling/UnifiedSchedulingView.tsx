@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Calendar, Grid3X3, UserPlus, Edit2, Trash2, Copy, Check, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Grid3X3, UserPlus, Edit2, Trash2, Copy, Check, X, Plus } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import EventRegistrationModal from "./EventRegistrationModal";
+import { QuickAddEventForm } from "./QuickAddEventForm";
 import { ScheduleEvent } from "@shared/schema";
 
 // Event type colors
@@ -25,7 +26,8 @@ const getEventColor = (eventType: string) => {
     "training": "#56A0D3",
     "match": "#FF0000",
     "tournament": "#FF0000",
-    "practice": "#56A0D3"
+    "practice": "#56A0D3",
+    "personal": "#4B0082"  // Purple color for personal/admin events
   };
   return colorMap[eventType] || "#56A0D3";
 };
@@ -80,6 +82,9 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
   const [dateRange, setDateRange] = useState(() => getDateRange(viewType, currentDate));
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
+  const [quickAddDate, setQuickAddDate] = useState<Date | undefined>();
+  const [quickAddTime, setQuickAddTime] = useState<string | undefined>();
   
   // Grid-specific state
   const [conflictMsg, setConflictMsg] = useState('');
@@ -113,8 +118,8 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
     }
   }, [targetDate, currentDate]);
 
-  // Fetch events
-  const { data: events = [], isLoading } = useQuery({
+  // Fetch court events
+  const { data: courtEvents = [], isLoading: isLoadingCourt } = useQuery({
     queryKey: ['/api/schedule', dateRange],
     select: (data: any) => {
       if (!data?.events) return [];
@@ -123,10 +128,45 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
         title: event.title || event.name,
         court: event.court || (event.assigned_courts && event.assigned_courts[0]),
         eventType: event.eventType || event.event_type || 'practice',
-        type: event.eventType || event.event_type || 'practice'
+        type: event.eventType || event.event_type || 'practice',
+        isSimpleEvent: false
       }));
     }
   });
+
+  // Fetch simple events (personal/admin events)
+  const { data: simpleEvents = [], isLoading: isLoadingSimple } = useQuery({
+    queryKey: ['/api/simple-events', dateRange],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (dateRange.from) params.append('from', dateRange.from);
+      if (dateRange.to) params.append('to', dateRange.to);
+      
+      const response = await fetch(`/api/simple-events?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch simple events');
+      return response.json();
+    },
+    select: (data: any[]) => {
+      return data.map((event: any) => ({
+        ...event,
+        court: null, // Simple events don't have courts
+        location: event.location || '',
+        eventType: 'personal',
+        type: 'personal',
+        isSimpleEvent: true,
+        start_time: event.startTime,
+        end_time: event.endTime
+      }));
+    }
+  });
+
+  // Combine court events and simple events
+  const events = [...courtEvents, ...simpleEvents];
+  const isLoading = isLoadingCourt || isLoadingSimple;
 
   // Filter events based on search query
   const filteredEvents = events.filter((event: any) => {
@@ -135,7 +175,8 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
     return (
       event.title?.toLowerCase().includes(query) ||
       event.eventType?.toLowerCase().includes(query) ||
-      event.court?.toLowerCase().includes(query)
+      event.court?.toLowerCase().includes(query) ||
+      event.location?.toLowerCase().includes(query)
     );
   });
 
@@ -290,7 +331,14 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                   <div>
                     <h3 className="font-semibold">{event.title}</h3>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))} - {event.court}
+                      {event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}))} 
+                      {event.court && ` - ${event.court}`}
+                      {event.location && ` - ${event.location}`}
+                      {event.isSimpleEvent && (
+                        <span className="ml-2 px-2 py-1 bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded text-xs">
+                          Personal
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -362,17 +410,40 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
               }, {});
 
               return (
-                <div key={dayIndex} className="p-1 border border-gray-200 dark:border-gray-700 min-h-[40px]">
+                <div 
+                  key={dayIndex} 
+                  className="p-1 border border-gray-200 dark:border-gray-700 min-h-[40px] relative group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => {
+                    const clickDate = new Date(day);
+                    const [hours, minutes] = timeSlot.split(':').map(Number);
+                    clickDate.setHours(hours, minutes);
+                    setQuickAddDate(clickDate);
+                    setQuickAddTime(timeSlot);
+                    setQuickAddModalOpen(true);
+                  }}
+                >
+                  {/* Plus icon appears on hover */}
+                  <div className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 text-gray-400">
+                    <Plus className="h-3 w-3" />
+                  </div>
+                  
                   {Object.values(courtGroups).map((eventGroup: any, index) => (
                     <div
                       key={index}
-                      className="text-xs p-1 rounded mb-1 text-white cursor-pointer hover:opacity-80"
+                      className="text-xs p-1 rounded mb-1 text-white cursor-pointer hover:opacity-80 relative z-10"
                       style={{ backgroundColor: getEventColor(eventGroup.eventType) }}
-                      onClick={() => setSelectedEvent(eventGroup)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(eventGroup);
+                      }}
                     >
                       <div className="font-medium truncate">{eventGroup.title}</div>
                       <div className="text-xs opacity-90">
-                        {eventGroup.courts.map((court: string) => getCourtAbbreviation(court)).join(', ')}
+                        {eventGroup.isSimpleEvent ? (
+                          <span>Personal</span>
+                        ) : (
+                          eventGroup.courts?.map((court: string) => getCourtAbbreviation(court)).join(', ')
+                        )}
                       </div>
                     </div>
                   ))}
@@ -418,20 +489,33 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
           return (
             <div
               key={index}
-              className={`border border-gray-200 dark:border-gray-700 min-h-[100px] p-1 ${
+              className={`border border-gray-200 dark:border-gray-700 min-h-[100px] p-1 relative group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
                 isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900'
               }`}
+              onClick={() => {
+                setQuickAddDate(day);
+                setQuickAddTime(undefined);
+                setQuickAddModalOpen(true);
+              }}
             >
               <div className={`text-sm font-medium ${isCurrentMonth ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>
                 {day.getDate()}
+              </div>
+              
+              {/* Plus icon appears on hover */}
+              <div className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 text-gray-400">
+                <Plus className="h-3 w-3" />
               </div>
               <div className="space-y-1 mt-1">
                 {dayEvents.slice(0, 3).map((event: any) => (
                   <div
                     key={event.id}
-                    className="text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 truncate"
+                    className="text-xs p-1 rounded text-white cursor-pointer hover:opacity-80 truncate relative z-10"
                     style={{ backgroundColor: getEventColor(event.eventType) }}
-                    onClick={() => setSelectedEvent(event)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedEvent(event);
+                    }}
                   >
                     {event.title}
                   </div>
@@ -615,6 +699,21 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
             </div>
           )}
         </div>
+
+        {/* Quick Add Button - Only show for Day, Week, Month views */}
+        {viewType !== "grid" && (
+          <Button
+            onClick={() => {
+              setQuickAddDate(currentDate);
+              setQuickAddTime(undefined);
+              setQuickAddModalOpen(true);
+            }}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Quick Add Event
+          </Button>
+        )}
       </div>
 
       {/* Main Content */}
@@ -638,6 +737,28 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
           event={selectedEvent || undefined}
         />
       )}
+
+      {/* Quick Add Event Modal */}
+      <Dialog open={quickAddModalOpen} onOpenChange={setQuickAddModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quick Add Event</DialogTitle>
+          </DialogHeader>
+          <QuickAddEventForm
+            initialDate={quickAddDate}
+            initialTime={quickAddTime}
+            onSuccess={() => {
+              setQuickAddModalOpen(false);
+              queryClient.invalidateQueries({ queryKey: ['/api/simple-events'] });
+              toast({
+                title: "Event Added",
+                description: "Your personal event has been added to the calendar.",
+              });
+            }}
+            onCancel={() => setQuickAddModalOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

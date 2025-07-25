@@ -34,6 +34,7 @@ import {
   coachResourceFolders,
   coachTimeLogs,
   eventFeedback,
+  simpleEvents,
 
   type User, 
   type InsertUser, 
@@ -105,6 +106,8 @@ import {
   adminSettings,
   type AdminSettings,
   type InsertAdminSettings,
+  type SimpleEvent,
+  type InsertSimpleEvent,
 
 } from "@shared/schema";
 import { db } from "./db";
@@ -314,6 +317,13 @@ export interface IStorage {
   getAdminSettings(adminId: number): Promise<AdminSettings | undefined>;
   upsertAdminSettings(data: InsertAdminSettings): Promise<AdminSettings>;
   getAllAdminSettings(): Promise<AdminSettings[]>;
+
+  // Simple Events methods
+  getSimpleEvent(id: number): Promise<SimpleEvent | undefined>;
+  getSimpleEvents(userId: number, userRole: string, from?: string, to?: string): Promise<SimpleEvent[]>;
+  createSimpleEvent(event: InsertSimpleEvent): Promise<SimpleEvent>;
+  updateSimpleEvent(id: number, event: Partial<InsertSimpleEvent>): Promise<SimpleEvent | undefined>;
+  deleteSimpleEvent(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1720,6 +1730,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCoachTimeLog(id: number): Promise<boolean> {
     const result = await db.delete(coachTimeLogs).where(eq(coachTimeLogs.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Simple Events methods
+  async getSimpleEvent(id: number): Promise<SimpleEvent | undefined> {
+    const [event] = await db.select().from(simpleEvents).where(eq(simpleEvents.id, id));
+    return event || undefined;
+  }
+
+  async getSimpleEvents(userId: number, userRole: string, from?: string, to?: string): Promise<SimpleEvent[]> {
+    let query = db.select().from(simpleEvents);
+    
+    // Apply date filtering if provided
+    if (from && to) {
+      query = query.where(
+        and(
+          gte(simpleEvents.startTime, new Date(from)),
+          lte(simpleEvents.startTime, new Date(to))
+        )
+      );
+    }
+
+    const allEvents = await query.orderBy(simpleEvents.startTime);
+    
+    // Filter based on visibility rules
+    return allEvents.filter(event => {
+      // Creator can always see their own events
+      if (event.createdBy === userId) {
+        return true;
+      }
+      
+      // Check role-based visibility
+      if (event.visibleToRoles.includes(userRole)) {
+        return true;
+      }
+      
+      // Check individual user visibility
+      if (event.visibleToUsers.includes(userId.toString())) {
+        return true;
+      }
+      
+      return false;
+    });
+  }
+
+  async createSimpleEvent(event: InsertSimpleEvent): Promise<SimpleEvent> {
+    const [createdEvent] = await db.insert(simpleEvents).values(event).returning();
+    return createdEvent;
+  }
+
+  async updateSimpleEvent(id: number, event: Partial<InsertSimpleEvent>): Promise<SimpleEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(simpleEvents)
+      .set({ ...event, updatedAt: new Date() })
+      .where(eq(simpleEvents.id, id))
+      .returning();
+    return updatedEvent || undefined;
+  }
+
+  async deleteSimpleEvent(id: number): Promise<boolean> {
+    const result = await db.delete(simpleEvents).where(eq(simpleEvents.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 

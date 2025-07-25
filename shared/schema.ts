@@ -906,6 +906,25 @@ export const coachResources = pgTable("coach_resources", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Simple Calendar Events Table (Personal/Admin Events)
+export const simpleEvents = pgTable("simple_events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  location: text("location"),
+  description: text("description"),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  visibleToRoles: text("visible_to_roles").array().notNull().default([]),
+  visibleToUsers: text("visible_to_users").array().notNull().default([]), // Individual user IDs as strings
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  recurringPattern: text("recurring_pattern"), // daily, weekly, monthly
+  recurringEndDate: timestamp("recurring_end_date"),
+  color: text("color").notNull().default("#4B0082"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
 // Relations for Dashboard Configuration
 export const dashboardWidgetsRelations = relations(dashboardWidgets, ({ many }) => ({
   userConfigs: many(userDashboardConfig),
@@ -1091,3 +1110,21 @@ export const insertAdminSettingsSchema = createInsertSchema(adminSettings).omit(
 
 export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
 export type AdminSettings = typeof adminSettings.$inferSelect;
+
+// Simple Events Relations
+export const simpleEventsRelations = relations(simpleEvents, ({ one }) => ({
+  createdByUser: one(users, {
+    fields: [simpleEvents.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// Simple Events Schema Types
+export const insertSimpleEventSchema = createInsertSchema(simpleEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSimpleEvent = z.infer<typeof insertSimpleEventSchema>;
+export type SimpleEvent = typeof simpleEvents.$inferSelect;
