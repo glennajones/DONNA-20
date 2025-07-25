@@ -140,28 +140,58 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
       if (dateRange.from) params.append('from', dateRange.from);
       if (dateRange.to) params.append('to', dateRange.to);
       
+      console.log('Simple events query params:', { dateRange, params: params.toString() });
+      
       const response = await apiRequest(`/api/simple-events?${params}`);
-      return response.json();
+      const data = await response.json();
+      console.log('Simple events API response:', data);
+      return data;
     },
     select: (data: any[]) => {
-      return data.map((event: any) => ({
-        ...event,
-        court: null, // Simple events don't have courts
-        location: event.location || '',
-        eventType: 'personal',
-        type: 'personal',
-        isSimpleEvent: true,
-        start_time: event.start_time || event.startTime,
-        end_time: event.end_time || event.endTime,
-        startTime: event.start_time || event.startTime,
-        date: event.start_time || event.startTime // For compatibility
-      }));
+      console.log('Simple events raw data:', data);
+      return data.map((event: any) => {
+        const startDate = new Date(event.start_time);
+        const timeString = startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false});
+        
+        const processedEvent = {
+          ...event,
+          court: event.location?.includes('Court') ? event.location : null, // Map Court 3 location to court field
+          location: event.location || '',
+          eventType: 'personal',
+          type: 'personal',
+          isSimpleEvent: true,
+          start_time: event.start_time,
+          end_time: event.end_time,
+          startTime: event.start_time,
+          date: event.start_time,
+          time: timeString
+        };
+        
+        console.log(`Processed ${event.title}:`, {
+          original: event,
+          processed: processedEvent,
+          timeString,
+          dateString: startDate.toDateString()
+        });
+        
+        return processedEvent;
+      });
     }
   });
 
   // Combine court events and simple events
   const events = [...courtEvents, ...simpleEvents];
   const isLoading = isLoadingCourt || isLoadingSimple;
+  
+  // Debug combined events
+  console.log('Combined events:', {
+    courtEvents: courtEvents.length,
+    simpleEvents: simpleEvents.length,
+    total: events.length,
+    dateRange,
+    currentDate: currentDate.toDateString(),
+    events: events.map(e => ({ id: e.id, title: e.title, isSimpleEvent: e.isSimpleEvent, date: e.date || e.start_time }))
+  });
 
   // Filter events based on search query
   const filteredEvents = events.filter((event: any) => {
@@ -344,13 +374,14 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                 const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}));
                 const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot; // Convert "9:00" to "09:00"
                 
-                // Debug logging for Private Lesson
-                if (event.title === "Private Lesson") {
-                  console.log(`Private Lesson debug:`, {
+                // Debug logging for personal events in week view
+                if (event.isSimpleEvent) {
+                  console.log(`Week view debug - ${event.title}:`, {
                     eventDate: eventDate.toDateString(),
                     dayDate: day.toDateString(),
                     eventTime,
                     slotTime,
+                    event,
                     matches: eventDate.toDateString() === day.toDateString() && eventTime === slotTime
                   });
                 }
@@ -360,12 +391,14 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
 
               // Group events by court for multi-court display
               const courtGroups = dayEvents.reduce((groups: any, event: any) => {
-                const courts = event.court ? event.court.split(', ') : [];
-                const key = event.title + '-' + event.eventType;
+                const key = event.title + '-' + event.eventType + '-' + event.id;
                 if (!groups[key]) {
-                  groups[key] = { ...event, courts: [] };
+                  const courts = event.court ? event.court.split(', ') : [];
+                  groups[key] = { ...event, courts };
+                } else {
+                  const courts = event.court ? event.court.split(', ') : [];
+                  groups[key].courts.push(...courts);
                 }
-                groups[key].courts.push(...courts);
                 return groups;
               }, {});
 
@@ -535,6 +568,7 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                           eventTime,
                           slotTime,
                           courtIndex,
+                          event,
                           matches: eventDate.toDateString() === currentDate.toDateString() && eventTime === slotTime
                         });
                       }
@@ -549,9 +583,14 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                         return true;
                       }
                       
-                      // For personal events (isSimpleEvent), show in first court column only at correct time
-                      if (event.isSimpleEvent && courtIndex === 0 && eventTime === slotTime) {
-                        return true;
+                      // For personal events (isSimpleEvent), show in first court column OR in their specified court
+                      if (event.isSimpleEvent && eventTime === slotTime) {
+                        // If event has Court 3 location, show in Court 3 column, otherwise show in first column
+                        if (event.court && event.court === court) {
+                          return true;
+                        } else if (!event.court && courtIndex === 0) {
+                          return true;
+                        }
                       }
                       
                       return false;
