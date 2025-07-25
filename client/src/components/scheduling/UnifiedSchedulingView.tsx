@@ -151,8 +151,10 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
         eventType: 'personal',
         type: 'personal',
         isSimpleEvent: true,
-        start_time: event.startTime,
-        end_time: event.endTime
+        start_time: event.start_time || event.startTime,
+        end_time: event.end_time || event.endTime,
+        startTime: event.start_time || event.startTime,
+        date: event.start_time || event.startTime // For compatibility
       }));
     }
   });
@@ -341,6 +343,18 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                 const eventDate = new Date(event.start_time || event.startTime || event.date);
                 const eventTime = event.time || (event.start_time && new Date(event.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}));
                 const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot; // Convert "9:00" to "09:00"
+                
+                // Debug logging for Private Lesson
+                if (event.title === "Private Lesson") {
+                  console.log(`Private Lesson debug:`, {
+                    eventDate: eventDate.toDateString(),
+                    dayDate: day.toDateString(),
+                    eventTime,
+                    slotTime,
+                    matches: eventDate.toDateString() === day.toDateString() && eventTime === slotTime
+                  });
+                }
+                
                 return eventDate.toDateString() === day.toDateString() && eventTime === slotTime;
               });
 
@@ -513,13 +527,30 @@ export default function UnifiedSchedulingView({ searchQuery = "", targetDate }: 
                       const slotTime = timeSlot.length === 4 ? `0${timeSlot}` : timeSlot;
                       const eventDate = new Date(event.start_time || event.startTime || event.date);
                       
+                      // Debug logging for personal events
+                      if (event.isSimpleEvent) {
+                        console.log(`Day view debug - ${event.title}:`, {
+                          eventDate: eventDate.toDateString(),
+                          currentDate: currentDate.toDateString(),
+                          eventTime,
+                          slotTime,
+                          courtIndex,
+                          matches: eventDate.toDateString() === currentDate.toDateString() && eventTime === slotTime
+                        });
+                      }
+                      
+                      // Skip if wrong date
+                      if (eventDate.toDateString() !== currentDate.toDateString()) {
+                        return false;
+                      }
+                      
                       // For court events, match by court and time
-                      if (event.court === court && eventTime === slotTime && eventDate.toDateString() === currentDate.toDateString()) {
+                      if (event.court === court && eventTime === slotTime) {
                         return true;
                       }
                       
                       // For personal events (isSimpleEvent), show in first court column only at correct time
-                      if (event.isSimpleEvent && courtIndex === 0 && eventTime === slotTime && eventDate.toDateString() === currentDate.toDateString()) {
+                      if (event.isSimpleEvent && courtIndex === 0 && eventTime === slotTime) {
                         return true;
                       }
                       
