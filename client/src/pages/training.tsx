@@ -7,17 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { DashboardNav } from "@/components/ui/dashboard-nav";
-import CalendarView from "@/components/scheduling/CalendarView";
+import UnifiedSchedulingView from "@/components/scheduling/UnifiedSchedulingView";
 import CourtManager from "@/components/scheduling/CourtManager";
 import SearchEventsTab from "@/components/scheduling/SearchEventsTab";
-import CourtGridDnD from "@/modules/Scheduling/CourtGridDnD";
 import { useAuth } from "@/lib/auth";
 import { ScheduleEvent } from "@shared/schema";
 import { Monitor, ExternalLink, Search } from "lucide-react";
 
 export default function TrainingPage() {
-  const [viewType, setViewType] = useState<"day" | "week" | "month">("week");
-  // Removed enhanced calendar mode - using classic calendar only
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("calendar");
   const [targetDate, setTargetDate] = useState<string | null>(null);
@@ -53,9 +50,8 @@ export default function TrainingPage() {
 
           <div className="px-4 sm:px-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-4" : "grid-cols-3"}`}>
-                <TabsTrigger value="calendar">📅 Schedule Calendar</TabsTrigger>
-                <TabsTrigger value="grid">🎯 Court Grid</TabsTrigger>
+              <TabsList className={`grid w-full ${user?.role && ["admin", "manager", "coach"].includes(user.role) ? "grid-cols-3" : "grid-cols-2"}`}>
+                <TabsTrigger value="calendar">📅 Unified Scheduling</TabsTrigger>
                 <TabsTrigger value="search">🔍 Search Events</TabsTrigger>
                 {user?.role && ["admin", "manager", "coach"].includes(user.role) && (
                   <TabsTrigger value="courts">🏟️ Court Manager</TabsTrigger>
@@ -64,26 +60,8 @@ export default function TrainingPage() {
               
               <TabsContent value="calendar" className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-6">
-                    {/* View controls */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">View:</span>
-                      <div className="flex bg-white dark:bg-gray-800 border rounded-lg">
-                        {(["day", "week", "month"] as const).map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => setViewType(type)}
-                            className={`px-3 py-1 text-sm capitalize ${
-                              viewType === type
-                                ? "bg-blue-500 text-white"
-                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            } first:rounded-l-lg last:rounded-r-lg`}
-                          >
-                            {type}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Switch between Day, Week, Month, and Grid views using the controls in the calendar below.
                   </div>
                   
                   {/* TV Display Button */}
@@ -98,15 +76,11 @@ export default function TrainingPage() {
                   </Button>
                 </div>
 
-                {/* Calendar Component */}
-                <CalendarView 
-                  viewType={viewType} 
+                {/* Unified Scheduling Component */}
+                <UnifiedSchedulingView 
+                  searchQuery={searchQuery}
                   targetDate={targetDate}
                 />
-              </TabsContent>
-
-              <TabsContent value="grid" className="space-y-4">
-                <CourtGridDnD />
               </TabsContent>
 
               <TabsContent value="search" className="space-y-4">
